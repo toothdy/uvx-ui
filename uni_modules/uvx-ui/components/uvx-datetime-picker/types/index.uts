@@ -16,8 +16,8 @@ export type Props = {
    maxHour: number;
    minMinute: number;
    maxMinute: number;
-   filter: Filter;
-   formatter: Formatter;
+   filter?: Filter;
+   formatter?: Formatter;
    loading: boolean;
    itemHeight: number;
    cancelText: string;
