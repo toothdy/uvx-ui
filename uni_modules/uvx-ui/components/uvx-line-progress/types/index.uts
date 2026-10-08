@@ -1,0 +1,20 @@
+/** 进度条数值 */
+export type ProgressValue = string | number;
+
+/** 线型进度条属性 */
+export type Props = {
+   /** 激活轨道颜色，空值时跟随主题 */
+   activeColor: string;
+   /** 背景轨道颜色，空值时跟随主题 */
+   inactiveColor: string;
+   /** 当前进度，范围为 0 至 100 */
+   percentage: ProgressValue;
+   /** 是否显示默认百分比文字 */
+   showText: boolean;
+   /** 进度条高度，单位 px */
+   height: ProgressValue;
+   /** 根节点自定义样式 */
+   uStyle: string;
+   /** 根节点自定义类名 */
+   uClass: string;
+};

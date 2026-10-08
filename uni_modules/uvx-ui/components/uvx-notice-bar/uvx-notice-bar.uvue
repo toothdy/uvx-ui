@@ -1,0 +1,407 @@
+<template>
+   <view
+      v-if="isShown"
+      class="uvx-notice-bar"
+      :class="uClass"
+      :style="rootStyle"
+      @tap="handleClick"
+   >
+      <!-- 左侧图标 -->
+      <view v-if="isIconVisible" class="uvx-notice-bar__left-icon">
+         <uvx-icon :name="iconName" :color="iconColor" :size="19"></uvx-icon>
+      </view>
+
+      <!-- 横向连续滚动 -->
+      <view v-if="!isPaged" ref="viewport" class="uvx-notice-bar__viewport">
+         <text
+            ref="movingText"
+            class="uvx-notice-bar__marquee"
+            :style="textStyle"
+         >{{ rowText }}</text>
+      </view>
+
+      <!-- 纵向或横向步进滚动 -->
+      <swiper
+         v-else
+         class="uvx-notice-bar__swiper"
+         :style="swiperStyle"
+         :vertical="direction == 'column'"
+         :circular="true"
+         :interval="intervalValue"
+         :autoplay="!disableScroll && columnText.length > 1"
+         :disable-touch="disableTouch"
+         @change="handleChange"
+      >
+         <swiper-item
+            v-for="(item, index) in columnText"
+            :key="index"
+            class="uvx-notice-bar__item"
+         >
+            <view class="uvx-notice-bar__item-content">
+               <text class="uvx-notice-bar__item-text" :style="textStyle">{{ item }}</text>
+            </view>
+         </swiper-item>
+      </swiper>
+
+      <!-- 右侧操作 -->
+      <view v-if="mode == 'link'" class="uvx-notice-bar__right-icon">
+         <uvx-icon name="arrow-right" :color="iconColor" :size="17"></uvx-icon>
+      </view>
+      <view
+         v-if="mode == 'closable'"
+         class="uvx-notice-bar__right-icon"
+         @tap.stop="handleClose"
+      >
+         <uvx-icon name="close" :color="iconColor" :size="16"></uvx-icon>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-notice-bar 滚动通知
+ * @description 支持横向连续滚动、纵向轮播和横向步进滚动。
+ * @tutorial https://www.uvxui.cn/components/notice-bar.html
+ * @property {String | Array} text 通知内容，横向可传字符串，轮播可传数组
+ * @property {String} keyName 对象数组中显示文字的字段，默认 text
+ * @property {String} direction row 或 column，默认 row
+ * @property {Boolean} step 横向模式是否按项步进，默认 false
+ * @property {String | Boolean} icon 左侧图标名称，false 或空字符串表示隐藏，默认 volume
+ * @property {String} mode 右侧操作，link、closable 或空字符串
+ * @property {String} color 自定义文字和图标颜色，默认跟随警告色
+ * @property {String} bgColor 自定义背景颜色，默认跟随主题
+ * @property {String | Number} speed 横向连续滚动速度，单位 px/s，默认 80
+ * @property {String | Number} fontSize 文字字号，默认 14px
+ * @property {String | Number} duration 轮播切换间隔，单位 ms，默认 2000
+ * @property {String} url 点击跳转的页面路径
+ * @property {String} linkType 页面跳转方式，默认 navigateTo
+ * @property {Boolean} disableTouch 是否禁止手动切换轮播，默认 true
+ * @property {Boolean} disableScroll 是否禁止轮播自动切换，默认 false
+ * @property {String} uStyle 自定义样式字符串
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击通知时触发，轮播模式返回索引，连续模式返回 null
+ * @event {Function} close 点击关闭图标时触发
+ * @event {Function} change 轮播切换时触发，返回当前索引
+ * @example <uvx-notice-bar text="这是一条通知" mode="closable"></uvx-notice-bar>
+ */
+
+import { $uvx } from "../../index.uts";
+import { createAnimation, AnimationEngine } from "../../core/animation/index.uts";
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-notice-bar",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   text: () => new Array<string>(),
+   keyName: "text",
+   direction: "row",
+   step: false,
+   icon: "volume",
+   mode: "",
+   color: "",
+   bgColor: "",
+   speed: 80,
+   fontSize: 14,
+   duration: 2000,
+   url: "",
+   linkType: "navigateTo",
+   disableTouch: true,
+   disableScroll: false,
+   uStyle: "",
+   uClass: "",
+});
+const emit = defineEmits<Emits>();
+
+// 当前通知是否显示
+const isShown = ref(true);
+// 当前轮播项索引
+const currentIndex = ref(0);
+// 横向滚动可见区域
+const viewport = ref<UniElement | null>(null);
+// 横向滚动文字
+const movingText = ref<UniElement | null>(null);
+// 当前连续滚动动画
+let marqueeAnimation: AnimationEngine | null = null;
+// 异步测量版本，用于忽略过期结果
+let measureVersion = 0;
+
+/**
+ * 是否使用轮播模式
+ * @returns boolean
+ */
+const isPaged = computed((): boolean => {
+   return props.direction == "column" || props.step;
+});
+
+/**
+ * 获取单项文字
+ * @param item 通知项
+ * @returns string
+ */
+const getItemText = (item: string | UTSJSONObject): string => {
+   if (typeof item == "string") return item;
+   const value = item.getString(props.keyName);
+   return value == null ? "" : value;
+};
+
+/**
+ * 横向滚动文字
+ * @returns string
+ */
+const rowText = computed((): string => {
+   if (typeof props.text == "string") return props.text;
+   const values: string[] = [];
+   for (const item of props.text) values.push(getItemText(item));
+   return values.join(" ");
+});
+
+/**
+ * 轮播文字列表
+ * @returns string[]
+ */
+const columnText = computed((): string[] => {
+   if (typeof props.text == "string") return [props.text];
+   const values: string[] = [];
+   for (const item of props.text) values.push(getItemText(item));
+   return values;
+});
+
+/**
+ * 左侧图标是否显示
+ * @returns boolean
+ */
+const isIconVisible = computed((): boolean => {
+   if (typeof props.icon == "boolean") return props.icon;
+   return !$uvx.string.empty(props.icon);
+});
+
+/**
+ * 左侧图标名称
+ * @returns string
+ */
+const iconName = computed((): string => {
+   return typeof props.icon == "string" ? props.icon : "volume";
+});
+
+/**
+ * 图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   return $uvx.string.empty(props.color) ? "warning" : props.color;
+});
+
+/**
+ * 通知根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 通知文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("font-size", $uvx.format.unit(props.fontSize));
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   return style;
+});
+
+/**
+ * 轮播高度
+ * @returns UTSJSONObject
+ */
+const swiperStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   const size = parseFloat($uvx.format.unit(props.fontSize));
+   style.set("height", (isNaN(size) ? 20 : Math.max(20, size + 4)).toString() + "px");
+   return style;
+});
+
+/**
+ * 轮播间隔
+ * @returns number
+ */
+const intervalValue = computed((): number => {
+   const value = Number(props.duration);
+   return isNaN(value) || value <= 0 ? 2000 : value;
+});
+
+/**
+ * 停止横向动画
+ * @returns null
+ */
+const stopMarquee = (): void => {
+   measureVersion++;
+   const previous = marqueeAnimation;
+   marqueeAnimation = null;
+   if (previous != null) previous.stop();
+};
+
+/**
+ * 按实际文本和容器宽度启动连续滚动
+ * @returns null
+ */
+const startMarquee = (): void => {
+   stopMarquee();
+   if (isPaged.value || $uvx.string.empty(rowText.value)) return;
+   const content = movingText.value;
+   const container = viewport.value;
+   if (content == null || container == null) return;
+   const contentMeasure = content.getBoundingClientRectAsync();
+   const containerMeasure = container.getBoundingClientRectAsync();
+   if (contentMeasure == null || containerMeasure == null) return;
+   const version = measureVersion;
+   containerMeasure.then((containerRect: DOMRect): void => {
+      contentMeasure.then((contentRect: DOMRect): void => {
+         if (version != measureVersion || !isShown.value) return;
+         const speed = Number(props.speed);
+         const pixelsPerSecond = isNaN(speed) || speed <= 0 ? 80 : speed;
+         const duration = Math.max(1, (containerRect.width + contentRect.width) / pixelsPerSecond * 1000);
+         const animation = createAnimation(content, {
+            duration: duration,
+            loop: -1,
+            timingFunction: "linear",
+         });
+         animation.translateX(containerRect.width.toString() + "px", (-contentRect.width).toString() + "px");
+         marqueeAnimation = animation;
+         animation.play();
+      });
+   });
+};
+
+/**
+ * 处理通知点击及可选页面跳转
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click", isPaged.value ? currentIndex.value : null);
+   if ($uvx.string.empty(props.url)) return;
+   if (props.linkType == "redirectTo") uni.redirectTo({ url: props.url });
+   else if (props.linkType == "reLaunch") uni.reLaunch({ url: props.url });
+   else if (props.linkType == "switchTab") uni.switchTab({ url: props.url });
+   else uni.navigateTo({ url: props.url });
+};
+
+/**
+ * 关闭通知
+ * @returns null
+ */
+const handleClose = (): void => {
+   stopMarquee();
+   isShown.value = false;
+   emit("close");
+};
+
+/**
+ * 更新轮播索引
+ * @param event 原生轮播事件
+ * @returns null
+ */
+const handleChange = (event: UniSwiperChangeEvent): void => {
+   currentIndex.value = event.detail.current;
+   emit("change", currentIndex.value);
+};
+
+/** 横向内容或布局变化后重新测量 */
+watch((): string => rowText.value + "|" + props.fontSize.toString() + "|" + props.speed.toString() + "|" + props.direction + "|" + props.step.toString(), (): void => {
+   nextTick(startMarquee);
+});
+
+/** 组件挂载后启动滚动 */
+onMounted((): void => {
+   nextTick(startMarquee);
+});
+
+/** 卸载时停止动画 */
+onUnmounted((): void => {
+   stopMarquee();
+});
+</script>
+
+<style lang="scss">
+// 通知主体
+.uvx-notice-bar {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+   box-sizing: border-box;
+   overflow: hidden;
+   padding: 9px 12px;
+   background-color: $uvx-warning-light;
+}
+
+// 左侧图标
+.uvx-notice-bar__left-icon {
+   display: flex;
+   align-items: center;
+   margin-right: 5px;
+}
+
+// 右侧图标
+.uvx-notice-bar__right-icon {
+   display: flex;
+   align-items: center;
+   margin-left: 5px;
+}
+
+// 横向滚动可见区域
+.uvx-notice-bar__viewport {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+}
+
+// 横向滚动文字
+.uvx-notice-bar__marquee {
+   flex-shrink: 0;
+   white-space: nowrap;
+   line-height: 1.2em;
+   color: var(--uvx-warning);
+}
+
+// 轮播容器
+.uvx-notice-bar__swiper {
+   flex: 1;
+   min-width: 0;
+}
+
+// 轮播项
+.uvx-notice-bar__item {
+   width: 100%;
+   height: 100%;
+   overflow: hidden;
+}
+
+// 轮播项内部布局
+.uvx-notice-bar__item-content {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+   height: 100%;
+   overflow: hidden;
+}
+
+// 轮播文字
+.uvx-notice-bar__item-text {
+   overflow: hidden;
+   white-space: nowrap;
+   text-overflow: ellipsis;
+   line-height: 1.2em;
+   color: var(--uvx-warning);
+}
+</style>

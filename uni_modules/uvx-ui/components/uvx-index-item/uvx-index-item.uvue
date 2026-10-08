@@ -1,0 +1,95 @@
+<template>
+   <view
+      ref="itemElement"
+      class="uvx-index-item"
+      :class="props.uClass"
+      :style="itemStyle"
+   >
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-index-item 索引列表分组
+ * @description 包裹一个索引分组的内容，并向 uvx-index-list 上报布局。
+ * @tutorial https://www.uvxui.cn/components/index-list.html
+ * @property {String | Number} index 分组标识
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @slot default 分组内容
+ * @example <uvx-index-item index="A">...</uvx-index-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Context } from "../uvx-index-list/types/index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-index-item",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   index: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 索引列表上下文
+const indexList = inject<Context | null>("uvx-index-list-context", null);
+if (indexList == null) throw new Error("uvx-index-item 必须在 uvx-index-list 内使用");
+// 分组根节点
+const itemElement = ref<UniElement | null>(null);
+
+/**
+ * 分组根节点样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 测量分组布局并上报父组件
+ * @returns null
+ */
+const measure = (): void => {
+   const element = itemElement.value;
+   if (element == null) return;
+   const promise = element.getBoundingClientRectAsync();
+   if (promise == null) return;
+   promise.then((rect: DOMRect): void => {
+      indexList.updateLayout(instance, rect.top, rect.height);
+   });
+};
+
+/** 组件挂载后注册并测量分组 */
+onMounted((): void => {
+   indexList.register(instance);
+   nextTick((): void => {
+      measure();
+   });
+});
+
+/** 组件卸载时注销分组 */
+onUnmounted((): void => {
+   indexList.unregister(instance);
+});
+
+defineExpose({ measure });
+</script>
+
+<style lang="scss">
+// 索引分组容器
+.uvx-index-item {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   flex-shrink: 0;
+   overflow: visible;
+}
+</style>

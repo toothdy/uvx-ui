@@ -1,0 +1,250 @@
+<template>
+   <view
+      class="uvx-slider"
+      :class="uClass"
+      :style="root"
+   >
+      <!-- 原生滑块 -->
+      <slider
+         class="uvx-slider__native"
+         :min="minValue"
+         :max="maxValue"
+         :step="stepValue"
+         :value="sliderValue"
+         <!-- #ifndef VUE3-VAPOR -->
+         :active-color="activeColorValue"
+         :background-color="backgroundColorValue"
+         :block-size="blockSizeValue"
+         :fore-color="blockColorValue"
+         <!-- #endif -->
+         :value-color="valueColor"
+         :show-value="showValue"
+         :disabled="disabled"
+         track-class="uvx-slider-track"
+         track-active-class="uvx-slider-track-active"
+         thumb-class="uvx-slider-thumb"
+         @changing="handleChanging"
+         @change="handleChange"
+      ></slider>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-slider 滑动选择器
+ * @description 用于选择一个范围内的数值，支持范围、步长、颜色、禁用和拖动事件。
+ * @tutorial https://www.uvxui.cn/components/slider.html
+ * @property {String | Number} value 当前值
+ * @property {String | Number} modelValue 双向绑定值
+ * @property {String | Number} min 最小值
+ * @property {String | Number} max 最大值
+ * @property {String | Number} step 步长
+ * @property {String} activeColor 激活颜色，空值时跟随主题
+ * @property {String} backgroundColor 背景颜色，空值时跟随主题
+ * @property {String | Number} blockSize 滑块大小，范围为 12 至 28
+ * @property {String} blockColor 滑块颜色，空值时跟随主题
+ * @property {Boolean} showValue 是否显示当前值
+ * @property {Boolean} disabled 是否禁用
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 输入值时触发
+ * @event {Function} changing 拖动过程中触发
+ * @event {Function} change 拖动结束后触发
+ * @example <uvx-slider v-model="value" min="0" max="100" step="1"></uvx-slider>
+ */
+
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import type { Emits, Props, Value } from "./types/index.uts";
+
+defineOptions({ name: "uvx-slider", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: 0,
+   modelValue: 0,
+   min: 0,
+   max: 100,
+   step: 1,
+   activeColor: "",
+   backgroundColor: "",
+   blockSize: 18,
+   blockColor: "",
+   showValue: false,
+   disabled: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 滑块事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 转换数值属性
+ * @param value 待转换值
+ * @param fallback 无效时的默认值
+ * @returns number
+ */
+const toNumber = (value: Value, fallback: number): number => {
+   const numberValue = Number(value);
+   return isNaN(numberValue) ? fallback : numberValue;
+};
+
+/**
+ * 最小值
+ * @returns number
+ */
+const minValue = computed((): number => {
+   return toNumber(props.min, 0);
+});
+
+/**
+ * 最大值
+ * @returns number
+ */
+const maxValue = computed((): number => {
+   const value = toNumber(props.max, 100);
+   return value > minValue.value ? value : minValue.value;
+});
+
+/**
+ * 步长
+ * @returns number
+ */
+const stepValue = computed((): number => {
+   const value = toNumber(props.step, 1);
+   return value > 0 ? value : 1;
+});
+
+/**
+ * 当前滑块值
+ * @returns number
+ */
+const sliderValue = computed((): number => {
+   const value = toNumber(props.value, 0);
+   if (value != 0) return value;
+   return toNumber(props.modelValue, 0);
+});
+
+/**
+ * 滑块尺寸
+ * @returns number
+ */
+const blockSizeValue = computed((): number => {
+   const value = toNumber(props.blockSize, 18);
+   return Math.max(12, Math.min(28, value));
+});
+
+/**
+ * 激活颜色
+ * @returns string
+ */
+const activeColorValue = computed((): string => {
+   return !$uvx.string.empty(props.activeColor)
+      ? props.activeColor
+      : (isDark.value ? "#398ade" : "#3c9cff");
+});
+
+/**
+ * 背景颜色
+ * @returns string
+ */
+const backgroundColorValue = computed((): string => {
+   if (!$uvx.string.empty(props.backgroundColor)) return props.backgroundColor;
+   return isDark.value ? "#4d4d4d" : "#c8c9cc";
+});
+
+/**
+ * 滑块颜色
+ * @returns string
+ */
+const blockColorValue = computed((): string => {
+   if (!$uvx.string.empty(props.blockColor)) return props.blockColor;
+   return "#ffffff";
+});
+
+/**
+ * 数值文字颜色 APP 下无效
+ * @returns string
+ */
+const valueColor = computed((): string => {
+   return isDark.value ? "#f5f5f5" : "#303133";
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const root = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "--uvx-slider-active-color": activeColorValue.value,
+      "--uvx-slider-background-color": backgroundColorValue.value,
+      "--uvx-slider-block-color": blockColorValue.value,
+      "--uvx-slider-block-size": `${blockSizeValue.value}px`,
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(
+      style,
+      $uvx.style.parse(props.uStyle),
+   );
+});
+
+/**
+ * 发布拖动中的值
+ * @param event 原生滑块事件
+ * @returns null
+ */
+const handleChanging = (event: UniSliderChangeEvent): void => {
+   const value = event.detail.value;
+   emit("input", value);
+   emit("changing", value);
+   emit("update:modelValue", value);
+};
+
+/**
+ * 发布拖动结束的值
+ * @param event 原生滑块事件
+ * @returns null
+ */
+const handleChange = (event: UniSliderChangeEvent): void => {
+   const value = event.detail.value;
+   emit("input", value);
+   emit("change", value);
+   emit("update:modelValue", value);
+};
+</script>
+
+<style lang="scss">
+// 滑块外层布局
+.uvx-slider {
+   width: 100%;
+}
+
+// 原生滑块宽度
+.uvx-slider__native {
+   width: 100%;
+
+   /* #ifdef MP */
+   // 微信小程序需要左右边距容纳滑块半径，避免端点超出轨道
+   width: auto;
+   margin: 10px 18px;
+   /* #endif */
+}
+
+// Vapor 未激活轨道
+.uvx-slider-track {
+   background-color: var(--uvx-slider-background-color);
+}
+
+// Vapor 激活轨道
+.uvx-slider-track-active {
+   background-color: var(--uvx-slider-active-color);
+}
+
+// Vapor 滑块
+.uvx-slider-thumb {
+   width: var(--uvx-slider-block-size);
+   height: var(--uvx-slider-block-size);
+   background-color: var(--uvx-slider-block-color);
+}
+</style>

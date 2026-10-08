@@ -1,0 +1,17 @@
+import type {
+   ClickValue,
+   CustomStyle,
+   DataItem,
+} from "../../uvx-grid/types/index.uts";
+
+export type Props = {
+   name?: string | number;
+   data?: UTSJSONObject | DataItem[] | string;
+   bgColor: string;
+   customStyle: CustomStyle;
+   customClass: string;
+};
+
+export type Emits = {
+   click: [value: ClickValue];
+};

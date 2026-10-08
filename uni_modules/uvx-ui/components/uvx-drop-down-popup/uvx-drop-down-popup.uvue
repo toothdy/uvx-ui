@@ -1,0 +1,391 @@
+<template>
+   <uvx-transition
+      mode="fade"
+      :show="isShow"
+      :duration="300"
+      :u-style="$uvx.style.stringify(overlayStyle)"
+      :u-class="props.uClass"
+   >
+      <!-- 遮罩和筛选列表 -->
+      <view
+         class="uvx-drop-down-popup__body"
+         @click="handleOverlayClick"
+         <!-- #ifdef APP-HARMONY -->
+         @touchmove.stop="handleTouchMove"
+         <!-- #else -->
+         @touchmove.stop.prevent="handleTouchMove"
+         <!-- #endif -->
+      >
+         <view class="uvx-drop-down-popup__list" @click.stop="handleContentClick">
+            <slot>
+               <view
+                  v-for="(item, index) in optionList"
+                  :key="index"
+                  class="uvx-drop-down-popup__item"
+                  :style="getItemStyle(index)"
+                  :hover-class="getItemHoverClass(index)"
+                  :hover-stay-time="150"
+                  @click="handleItemClick(item, index)"
+               >
+                  <text
+                     class="uvx-drop-down-popup__text"
+                     :class="getTextClass(index)"
+                     :style="getTextStyle(index)"
+                  >{{ getItemText(item) }}</text>
+               </view>
+            </slot>
+         </view>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-drop-down-popup 下拉筛选弹层
+ * @description 根据同 sign 的 uvx-drop-down 定位并展示筛选选项。
+ * @tutorial https://www.uvxui.cn/components/drop-down.html
+ * @property {String | Number} sign 组件唯一标识，需与 uvx-drop-down 一致
+ * @property {String | Number} zIndex 弹层层级
+ * @property {String | Number} opacity 遮罩透明度
+ * @property {Boolean} clickOverlayOnClose 是否允许点击遮罩关闭
+ * @property {Menu} currentDropItem 当前筛选菜单数据
+ * @property {String} keyName 选项文字字段名
+ * @property {String} uStyle 遮罩自定义样式
+ * @property {String} uClass 遮罩自定义类名
+ * @event {Function} clickItem 点击筛选选项时触发
+ * @event {Function} popupChange 弹层状态变化时触发
+ * @example <uvx-drop-down-popup sign="filter" :current-drop-item="menu"></uvx-drop-down-popup>
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   MenuMessage,
+   Rect,
+} from "../uvx-drop-down/types/index.uts";
+import type {
+   Menu,
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-drop-down-popup",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   sign: "UVDROPDOWN",
+   zIndex: 999,
+   opacity: 0.5,
+   clickOverlayOnClose: true,
+   currentDropItem: () => ({
+      activeIndex: 0,
+      child: [] as UTSJSONObject[],
+   }),
+   keyName: "label",
+   uStyle: "",
+   uClass: "",
+});
+
+// 弹层事件
+const emit = defineEmits<Emits>();
+// 弹层是否显示
+const isShow = ref(false);
+// 菜单栏锚点信息
+const anchorRect = ref<Rect>({
+   top: 0,
+   height: 0,
+});
+
+/**
+ * 获取组件通信事件名
+ * @param suffix 事件后缀
+ * @returns string
+ */
+const getEventName = (suffix: string): string => {
+   return props.sign.toString() + suffix;
+};
+
+/**
+ * 遮罩透明度
+ * @returns number
+ */
+const opacityValue = computed((): number => {
+   const value = parseFloat(props.opacity.toString());
+   if (Number.isNaN(value)) return 0.5;
+   return Math.max(0, Math.min(1, value));
+});
+
+/**
+ * 弹层层级
+ * @returns number
+ */
+const zIndexValue = computed((): number => {
+   const value = parseInt(props.zIndex.toString());
+   return Number.isNaN(value) ? 999 : value;
+});
+
+/**
+ * 弹层定位样式
+ * @returns UTSJSONObject
+ */
+const overlayStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "position": "fixed",
+      "top": (anchorRect.value.top + anchorRect.value.height).toString() + "px",
+      "right": "0",
+      "bottom": "0",
+      "left": "0",
+      "z-index": zIndexValue.value,
+      "background-color": "rgba(0, 0, 0, " + opacityValue.value.toString() + ")",
+   };
+   if (!$uvx.string.empty(props.uStyle)) {
+      return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+   }
+   return style;
+});
+
+/**
+ * 当前选项列表
+ * @returns UTSJSONObject[]
+ */
+const optionList = computed((): UTSJSONObject[] => {
+   return props.currentDropItem.child;
+});
+
+/**
+ * 当前选中索引
+ * @returns number
+ */
+const activeIndex = computed((): number => {
+   return props.currentDropItem.activeIndex;
+});
+
+/**
+ * 获取菜单可选配置字符串
+ * @param value 配置值
+ * @param fallback 默认值
+ * @returns string
+ */
+const getOptionalString = (value: string | null, fallback: string): string => {
+   return value == null || $uvx.string.empty(value) ? fallback : value;
+};
+
+/**
+ * 获取菜单可选字号
+ * @param value 配置值
+ * @param fallback 默认值
+ * @returns string | number
+ */
+const getOptionalSize = (
+   value: string | number | null,
+   fallback: string | number,
+): string | number => {
+   return value == null ? fallback : value;
+};
+
+/**
+ * 获取选项文字
+ * @param item 选项数据
+ * @returns string
+ */
+const getItemText = (item: UTSJSONObject): string => {
+   const text = item.getString(props.keyName);
+   if (text != null) return text;
+   const numberValue = item.getNumber(props.keyName);
+   return numberValue == null ? "" : numberValue.toString();
+};
+
+/**
+ * 获取选项按压类
+ * @param index 选项索引
+ * @returns string
+ */
+const getItemHoverClass = (index: number): string => {
+   return index == activeIndex.value ? "none" : "uvx-drop-down-popup__item--hover";
+};
+
+/**
+ * 获取选项文字状态类
+ * @param index 选项索引
+ * @returns string
+ */
+const getTextClass = (index: number): string => {
+   return index == activeIndex.value
+      ? "uvx-drop-down-popup__text--active"
+      : "uvx-drop-down-popup__text--normal";
+};
+
+/**
+ * 获取选项文字样式
+ * @param index 选项索引
+ * @returns UTSJSONObject
+ */
+const getTextStyle = (index: number): UTSJSONObject => {
+   const isActive = index == activeIndex.value;
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(
+         isActive
+            ? getOptionalSize(props.currentDropItem.activeSize, 15)
+            : getOptionalSize(props.currentDropItem.size, 15),
+      ),
+   };
+   const color = isActive
+      ? getOptionalString(props.currentDropItem.activeColor, "")
+      : getOptionalString(props.currentDropItem.color, "");
+   if (!$uvx.string.empty(color)) style.set("color", color);
+   return style;
+};
+
+/**
+ * 获取选项自定义样式
+ * @param index 选项索引
+ * @returns UTSJSONObject
+ */
+const getItemStyle = (index: number): UTSJSONObject => {
+   if (index == activeIndex.value) {
+      return $uvx.style.parse(
+         getOptionalString(props.currentDropItem.itemActiveCustomStyle, ""),
+      );
+   }
+   return $uvx.style.parse(getOptionalString(props.currentDropItem.itemCustomStyle, ""));
+};
+
+/**
+ * 发送弹层状态
+ * @param show 是否打开
+ * @returns null
+ */
+const emitPopupChange = (show: boolean): void => {
+   emit("popupChange", { show: show });
+};
+
+/**
+ * 打开弹层
+ * @returns null
+ */
+const open = (): void => {
+   if (isShow.value) return;
+   isShow.value = true;
+   emitPopupChange(true);
+};
+
+/**
+ * 关闭弹层
+ * @returns null
+ */
+const close = (): void => {
+   if (!isShow.value) return;
+   isShow.value = false;
+   uni.$emit(getEventName("_CLOSEPOPUP"));
+   emitPopupChange(false);
+};
+
+/**
+ * 接收菜单栏位置
+ * @param rect 菜单栏位置
+ * @returns null
+ */
+const handleRectMessage = (rect: Rect): void => {
+   anchorRect.value = rect;
+};
+
+/**
+ * 接收菜单显隐指令
+ * @param message 菜单显隐消息
+ * @returns null
+ */
+const handleMenuMessage = (message: MenuMessage): void => {
+   if (message.show) {
+      open();
+   } else {
+      close();
+   }
+};
+
+/**
+ * 处理选项点击
+ * @param item 选项数据
+ * @param index 选项索引
+ * @returns null
+ */
+const handleItemClick = (item: UTSJSONObject, index: number): void => {
+   props.currentDropItem.activeIndex = index;
+   emit("clickItem", item);
+   close();
+};
+
+/** 处理内容区域点击，阻止事件冒泡 */
+const handleContentClick = (): void => {};
+
+/** 处理触摸移动，阻止页面穿透 */
+const handleTouchMove = (): void => {};
+
+/** 点击遮罩时按配置关闭弹层 */
+const handleOverlayClick = (): void => {
+   if (props.clickOverlayOnClose) close();
+};
+
+/** 挂载时监听同 sign 组件消息 */
+onMounted((): void => {
+   uni.$on(getEventName("_GETRECT"), handleRectMessage);
+   uni.$on(getEventName("_CLICKMENU"), handleMenuMessage);
+});
+
+/** 卸载时移除组件通信监听 */
+onUnmounted((): void => {
+   uni.$off(getEventName("_GETRECT"), handleRectMessage);
+   uni.$off(getEventName("_CLICKMENU"), handleMenuMessage);
+});
+
+</script>
+
+<style lang="scss">
+// 弹层交互区域
+.uvx-drop-down-popup__body {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   height: 100%;
+   flex-direction: column;
+}
+
+// 筛选选项列表
+.uvx-drop-down-popup__list {
+   display: flex;
+   width: 100%;
+   flex-direction: column;
+   background-color: var(--uvx-container);
+}
+
+// 筛选选项
+.uvx-drop-down-popup__item {
+   display: flex;
+   min-height: 44px;
+   padding: 10px 30px;
+   align-items: center;
+   justify-content: flex-start;
+   box-sizing: border-box;
+
+   // 按压反馈
+   &--hover {
+      background-color: var(--uvx-hover);
+   }
+}
+
+// 筛选文字
+.uvx-drop-down-popup__text {
+   line-height: 1.2em;
+
+   // 普通状态
+   &--normal {
+      color: var(--uvx-text-main);
+   }
+
+   // 选中状态
+   &--active {
+      color: var(--uvx-primary);
+   }
+}
+</style>

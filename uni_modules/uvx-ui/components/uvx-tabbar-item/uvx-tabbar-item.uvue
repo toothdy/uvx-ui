@@ -1,0 +1,318 @@
+<template>
+   <view
+      class="uvx-tabbar-item"
+      :class="[uClass]"
+      :style="itemStyle"
+      :hover-class="raised ? 'none' : 'uvx-tabbar-item--hover'"
+      :hover-stay-time="120"
+      @click="handleClick"
+   >
+      <!-- 图标和徽标 -->
+      <view class="uvx-tabbar-item__icon">
+         <view
+            class="uvx-tabbar-item__icon-visual"
+            :class="raised ? 'uvx-tabbar-item__icon-visual--raised' : ''"
+         >
+            <view
+               class="uvx-tabbar-item__icon-content"
+               :class="raised ? 'uvx-tabbar-item__icon-content--raised' : ''"
+            >
+               <uvx-icon
+                  v-if="!$uvx.string.empty(icon)"
+                  :name="icon"
+                  :color="iconColor"
+                  :size="iconSizeValue"
+               ></uvx-icon>
+               <template v-else>
+                  <slot v-if="isActive" name="active-icon"></slot>
+                  <slot v-else name="inactive-icon"></slot>
+               </template>
+            </view>
+            <uvx-badge
+               :is-dot="dot"
+               :value="badge"
+               :show="showBadge"
+               :absolute="true"
+               :offset="badgeOffset"
+               :u-style="badgeStyle"
+            ></uvx-badge>
+         </view>
+      </view>
+
+      <!-- 导航项标题 -->
+      <slot name="text">
+         <text
+            class="uvx-tabbar-item__text"
+            :class="
+               isActive
+                  ? 'uvx-tabbar-item__text--active'
+                  : 'uvx-tabbar-item__text--inactive'
+            "
+            :style="textStyle"
+         >{{ text }}</text>
+      </slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-tabbar-item 底部导航项
+ * @description 搭配 uvx-tabbar 使用，支持图标、插槽和徽标。
+ * @property {String | Number} name 导航项名称，未设置时使用索引
+ * @property {String} icon uvx-icon 图标名称或图片地址
+ * @property {String | Number} iconSize 当前项图标尺寸，空值时继承父级配置
+ * @property {String | Number} badge 徽标内容
+ * @property {Boolean} dot 是否显示圆点徽标
+ * @property {Boolean} raised 是否使用凸起图标样式
+ * @property {String} raisedColor 凸起按钮颜色，默认 primary
+ * @property {String} text 导航项标题
+ * @property {String} badgeStyle 徽标自定义样式
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击导航项时触发
+ */
+
+import { $uvx } from "../../index.uts";
+// 本文件同时使用 tabbar 的 Value,徽标值以 BadgeValue 别名导入
+import type { Value as BadgeValue } from "../uvx-badge/types/index.uts";
+import type { Context, Value } from "../uvx-tabbar/types/index.uts";
+import type {
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-tabbar-item",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   name: "",
+   icon: "",
+   iconSize: "",
+   badge: "",
+   dot: false,
+   raised: false,
+   raisedColor: "primary",
+   text: "",
+   badgeStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 导航项事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件实例
+const instance = getCurrentInstance()!.proxy!;
+// 最近的导航栏上下文
+const tabbar = inject<Context | null>("uvx-tabbar-context", null);
+if (tabbar == null) throw new Error("uvx-tabbar-item 必须在 uvx-tabbar 内使用");
+
+// 当前导航项索引
+const itemIndex = ref(-1);
+
+/**
+ * 当前导航项名称
+ * @returns Value
+ */
+const itemName = computed((): Value => {
+   if ($uvx.string.unset(props.name)) return itemIndex.value;
+   if (typeof props.name == "number" && props.name == 0) return itemIndex.value;
+   return props.name;
+});
+
+/**
+ * 是否为当前选中项
+ * @returns boolean
+ */
+const isActive = computed((): boolean => {
+   if (props.raised) return false;
+   const value = tabbar.config.value.value;
+   return typeof value == typeof itemName.value && value == itemName.value;
+});
+
+/**
+ * 图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   if (props.raised) return props.raisedColor;
+   const color = isActive.value
+      ? tabbar.config.value.activeColor
+      : tabbar.config.value.inactiveColor;
+   if (!$uvx.string.empty(color)) return color;
+   return isActive.value ? "primary" : "";
+});
+
+/**
+ * 图标尺寸
+ * @returns string | number
+ */
+const iconSizeValue = computed((): string | number => {
+   if (!$uvx.string.unset(props.iconSize)) return props.iconSize;
+   return tabbar.config.value.iconSize;
+});
+
+/**
+ * 导航项自定义样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 标题颜色样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   const color = isActive.value
+      ? tabbar.config.value.activeColor
+      : tabbar.config.value.inactiveColor;
+   if (!$uvx.string.empty(color)) style.set("color", color);
+   return style;
+});
+
+/**
+ * 是否显示徽标
+ * @returns boolean
+ */
+const showBadge = computed((): boolean => {
+   if (props.dot) return true;
+   const value = typeof props.badge == "number" ? props.badge : parseFloat(props.badge);
+   return !Number.isNaN(value) && value > 0;
+});
+
+/**
+ * 徽标定位偏移
+ * @returns BadgeValue[]
+ */
+const badgeOffset = computed((): BadgeValue[] => {
+   return props.dot ? [0, "30rpx"] : ["-3px", "18rpx"];
+});
+
+/**
+ * 从父级同步索引
+ * @param index 当前索引
+ * @returns null
+ */
+const syncFromTabbar = (index: number): void => {
+   itemIndex.value = index;
+};
+
+/**
+ * 点击导航项
+ * @returns null
+ */
+const handleClick = (): void => {
+   if (!props.raised) tabbar.select(itemName.value);
+   emit("click", itemName.value);
+};
+
+/** 挂载时注册到父级 */
+onMounted((): void => {
+   tabbar.register(instance);
+});
+
+/** 卸载时从父级移除 */
+onUnmounted((): void => {
+   tabbar.unregister(instance);
+});
+
+defineExpose({ syncFromTabbar });
+</script>
+
+<style lang="scss">
+// 导航项布局
+.uvx-tabbar-item {
+   display: flex;
+   position: relative;
+   flex: 1;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   min-width: 0;
+   overflow: visible;
+}
+
+// 导航项按下反馈
+.uvx-tabbar-item--hover {
+   opacity: 0.65;
+}
+
+// 图标容器
+.uvx-tabbar-item__icon {
+   display: flex;
+   position: relative;
+   align-items: center;
+   justify-content: center;
+   width: 150rpx;
+   height: 22px;
+   overflow: visible;
+}
+
+// 图标视觉层
+.uvx-tabbar-item__icon-visual {
+   display: flex;
+   position: relative;
+   align-items: center;
+   justify-content: center;
+   width: 150rpx;
+   height: 22px;
+   overflow: visible;
+}
+
+// 图标和徽标内容层
+.uvx-tabbar-item__icon-content {
+   display: flex;
+   position: relative;
+   align-items: center;
+   justify-content: center;
+   width: 100%;
+   height: 100%;
+   overflow: visible;
+}
+
+// 凸起按钮主体
+.uvx-tabbar-item__icon-content--raised {
+   box-sizing: border-box;
+   overflow: hidden;
+   border-width: 2px;
+   border-style: solid;
+   border-color: var(--uvx-container);
+   border-radius: 22px;
+   background-color: var(--uvx-container);
+}
+
+// 凸起图标视觉层
+.uvx-tabbar-item__icon-visual--raised {
+   position: absolute;
+   bottom: 0;
+   left: 50%;
+   z-index: 1;
+   width: 44px;
+   height: 44px;
+   transform: translateX(-22px);
+}
+
+// 标题文本
+.uvx-tabbar-item__text {
+   margin-top: 2px;
+   font-size: 12px;
+   line-height: 16px;
+}
+
+// 选中标题颜色
+.uvx-tabbar-item__text--active {
+   color: var(--uvx-primary);
+}
+
+// 未选中标题颜色
+.uvx-tabbar-item__text--inactive {
+   color: var(--uvx-text-tips);
+}
+
+</style>

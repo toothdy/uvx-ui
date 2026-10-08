@@ -1,0 +1,262 @@
+<template>
+   <view
+      class="uvx-avatar-group"
+      :class="[props.uClass]"
+      :style="groupStyle"
+   >
+      <view
+         v-for="(item, index) in visibleItems"
+         :key="index"
+         class="uvx-avatar-group__item"
+         :style="getItemStyle(index)"
+      >
+         <uvx-avatar
+            :src="getSource(item)"
+            :size="props.size"
+            :shape="props.shape"
+            :mode="props.mode"
+         />
+
+         <!-- 超出数量提示 -->
+         <view
+            v-if="shouldShowMore(index)"
+            class="uvx-avatar-group__more"
+            :style="moreStyle"
+            @tap="handleShowMore"
+         >
+            <text
+               class="uvx-avatar-group__more-text"
+               :style="moreTextStyle"
+            >+{{ moreText }}</text>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-avatar-group 头像组
+ * @description 以叠放方式展示多个头像，并支持超量提示和对象地址数据。
+ * @tutorial https://www.uvxui.cn/components/avatar.html
+ * @property {Array} urls 头像图片地址列表
+ * @property {String | Number} maxCount 最多展示数量
+ * @property {String} shape 头像形状
+ * @property {String} mode 图片裁剪模式
+ * @property {Boolean} showMore 是否显示超量提示
+ * @property {String | Number} size 头像尺寸
+ * @property {String} keyName 对象地址字段名
+ * @property {String | Number} gap 头像遮挡比例
+ * @property {String | Number} extraValue 自定义超量数字
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} showMore 点击超量提示时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Emits,
+   Item,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-avatar-group",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   urls: (): Item[] => [],
+   maxCount: 5,
+   shape: "circle",
+   mode: "scaleToFill",
+   showMore: true,
+   size: 40,
+   keyName: "",
+   gap: 0.5,
+   extraValue: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+/**
+ * 读取正整数
+ * @param value 原始值
+ * @param fallback 无效时的默认值
+ * @returns number
+ */
+const getPositiveInteger = (value: string | number, fallback: number): number => {
+   const numberValue = parseInt(value.toString());
+   if (Number.isNaN(numberValue) || numberValue < 0) return fallback;
+   return numberValue;
+};
+
+/**
+ * 读取头像尺寸
+ * @returns number
+ */
+const size = computed((): number => {
+   if (typeof props.size == "string") {
+      if (props.size == "large") return 50;
+      if (props.size == "mini") return 30;
+      if (props.size == "default") return 40;
+   }
+   return getPositiveInteger(props.size, 40);
+});
+
+/**
+ * 当前最大展示数量
+ * @returns number
+ */
+const maxCount = computed((): number => {
+   return getPositiveInteger(props.maxCount, 5);
+});
+
+/**
+ * 当前头像遮挡比例
+ * @returns number
+ */
+const gap = computed((): number => {
+   const value = parseFloat(props.gap.toString());
+   if (Number.isNaN(value)) return 0.5;
+   return Math.max(0, Math.min(1, value));
+});
+
+/**
+ * 当前显示的头像项
+ * @returns Item[]
+ */
+const visibleItems = computed((): Item[] => {
+   return props.urls.slice(0, maxCount.value);
+});
+
+/**
+ * 读取头像地址
+ * @param item 头像数据项
+ * @returns string
+ */
+const getSource = (item: Item): string => {
+   if (typeof item == "string") return item;
+   if (!$uvx.string.empty(props.keyName)) {
+      const keySource = item.getString(props.keyName);
+      if (keySource != null) return keySource;
+   }
+   const source = item.getString("url");
+   return source == null ? "" : source;
+};
+
+/**
+ * 头像项布局样式
+ * @param index 头像索引
+ * @returns UTSJSONObject
+ */
+const getItemStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(size.value),
+      "height": $uvx.format.unit(size.value),
+      "margin-left": index == 0 ? "0px" : $uvx.format.unit(-size.value * gap.value),
+   };
+   return style;
+};
+
+/**
+ * 判断是否显示更多提示
+ * @param index 头像索引
+ * @returns boolean
+ */
+const shouldShowMore = (index: number): boolean => {
+   const extraValue = parseInt(props.extraValue.toString());
+   const hasOverflow = props.urls.length > visibleItems.value.length;
+   return props.showMore && index == visibleItems.value.length - 1 && (hasOverflow || (!Number.isNaN(extraValue) && extraValue > 0));
+};
+
+/**
+ * 更多提示数字
+ * @returns string
+ */
+const moreText = computed((): string => {
+   const extraValue = parseInt(props.extraValue.toString());
+   if (!Number.isNaN(extraValue) && extraValue > 0) return extraValue.toString();
+   return (props.urls.length - visibleItems.value.length).toString();
+});
+
+/**
+ * 头像组根节点样式
+ * @returns UTSJSONObject
+ */
+const groupStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "overflow": "visible",
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 更多遮罩样式
+ * @returns UTSJSONObject
+ */
+const moreStyle = computed((): UTSJSONObject => {
+   return {
+      "width": "100%",
+      "height": "100%",
+      "border-radius": props.shape == "circle" ? "10000px" : "4px",
+   };
+});
+
+/**
+ * 更多提示文字样式
+ * @returns UTSJSONObject
+ */
+const moreTextStyle = computed((): UTSJSONObject => {
+   return {
+      "font-size": $uvx.format.unit(size.value * 0.4),
+      "line-height": $uvx.format.unit(size.value * 0.4),
+   };
+});
+
+/**
+ * 处理更多提示点击
+ * @returns null
+ */
+const handleShowMore = (): void => {
+   emit("showMore");
+};
+</script>
+
+<style lang="scss">
+// 头像组容器
+.uvx-avatar-group {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   overflow: visible;
+}
+
+// 头像组单项
+.uvx-avatar-group__item {
+   position: relative;
+   flex-shrink: 0;
+   overflow: visible;
+}
+
+// 更多遮罩
+.uvx-avatar-group__more {
+   position: absolute;
+   top: 0;
+   left: 0;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   background-color: rgba(0, 0, 0, 0.3);
+}
+
+// 更多提示文字
+.uvx-avatar-group__more-text {
+   color: #ffffff;
+   text-align: center;
+}
+</style>

@@ -1,0 +1,120 @@
+/**
+ * 对象工具
+ */
+class ObjectUtils {
+	/**
+	 * 判断值是否为空(null 或空字符串)
+	 * @param value 待判断的值
+	 * @returns 为 null 或空字符串时返回 true
+	 */
+	isNull(value: any | null): boolean {
+		if (value == null) {
+			return true;
+		}
+		if (typeof value == "string") {
+			return (value as string) == "";
+		}
+		return false;
+	}
+
+	/**
+	 * 遍历对象的每个非空属性
+	 * @param data 待遍历的对象
+	 * @param iteratee 迭代回调，接收 (value, key)
+	 */
+	forInObject(data: UTSJSONObject, iteratee: (value: any, key: string) => void): void {
+		const keys = UTSJSONObject.keys(data);
+		const len = keys.length;
+		for (let i = 0; i < len; i++) {
+			const key = keys[i];
+			const value = data[key];
+			if (value != null) {
+				iteratee(value, key);
+			}
+		}
+	}
+
+	/**
+	 * 深度克隆
+	 * @param obj 待克隆的值，支持 Date/Array/Map/Set/普通对象
+	 * @returns 克隆后的新值
+	 */
+	deepClone<T>(obj: T): T {
+		if (obj == null || typeof obj != 'object') return obj;
+		if (obj instanceof Date) {
+			return new Date((obj as Date).getTime()) as T;
+		}
+		if (obj instanceof Array) {
+			const arr = obj as any[];
+			const len = arr.length;
+			const result: any[] = new Array(len);
+			for (let i = 0; i < len; i++) {
+				result[i] = this.deepClone(arr[i]);
+			}
+			return result as T;
+		}
+		if (obj instanceof Map) {
+			const result = new Map<any, any>();
+			(obj as Map<any, any>).forEach((value: any, key: any) => {
+				result.set(this.deepClone(key), this.deepClone(value));
+			});
+			return result as T;
+		}
+		if (obj instanceof Set) {
+			const result = new Set<any>();
+			(obj as Set<any>).forEach((value: any) => {
+				result.add(this.deepClone(value));
+			});
+			return result as T;
+		}
+		const objMap = (obj as any) as UTSJSONObject;
+		const objKeys = UTSJSONObject.keys(objMap);
+		const len = objKeys.length;
+		const result: UTSJSONObject = {};
+		for (let i = 0; i < len; i++) {
+			const key = objKeys[i];
+			const value = objMap[key];
+			result[key] = this.deepClone(value);
+		}
+		return result as T;
+	}
+
+	/**
+	 * 深度合并对象
+	 * @param target 目标对象
+	 * @param source 源对象
+	 * @returns 合并后的新对象，source 的属性覆盖 target 同名属性，对象类型递归合并
+	 * @example deepMerge({a: 1, b: {c: 2}}, {b: {d: 3}}) // => {a: 1, b: {c: 2, d: 3}}
+	 */
+	deepMerge(target: UTSJSONObject, source: UTSJSONObject): UTSJSONObject {
+		const merged: UTSJSONObject = this.deepClone(target);
+		const sourceKeys = UTSJSONObject.keys(source);
+		const len = sourceKeys.length;
+		for (let i = 0; i < len; i++) {
+			const key = sourceKeys[i];
+			const sourceValue = source[key];
+			if (sourceValue == null || typeof sourceValue != 'object') {
+				merged[key] = sourceValue;
+				continue;
+			}
+			if (sourceValue instanceof Date) {
+				merged[key] = new Date((sourceValue as Date).getTime());
+				continue;
+			}
+			if (sourceValue instanceof Array) {
+				merged[key] = this.deepClone(sourceValue);
+				continue;
+			}
+			const targetValue = merged[key];
+			if (targetValue != null && typeof targetValue == 'object' &&
+			    !(targetValue instanceof Date) && !(targetValue instanceof Array)) {
+				merged[key] = this.deepMerge(targetValue as UTSJSONObject, sourceValue as UTSJSONObject);
+			} else {
+				merged[key] = this.deepClone(sourceValue);
+			}
+		}
+		return merged;
+	}
+}
+
+export default new ObjectUtils();

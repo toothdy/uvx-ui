@@ -1,0 +1,82 @@
+import str from './string.uts';
+
+/**
+ * 验证工具
+ */
+class Validate {
+	/**
+	 * 邮箱校验
+	 * @param value 待校验字符串
+	 * @returns 是否为合法邮箱
+	 */
+	email(value: string): boolean {
+		return /^\w+((-\w+)|(\.\w+))*\@[A-Za-z0-9]+((\.|-)[A-Za-z0-9]+)*\.[A-Za-z0-9]+$/.test(value);
+	}
+
+	/**
+	 * 验证是否为空
+	 * @description 支持所有 UTS 类型：string、number、boolean、Array、UTSJSONObject、Date、Map、Set
+	 */
+	empty(value: string | number | boolean | Array<any> | UTSJSONObject | Map<any, any> | Set<any> | Date | null): boolean {
+		if (value == null) return true;
+		const _type = typeof value;
+
+		if (_type == 'string') {
+			return str.trim(value as string).length == 0;
+		}
+		if (_type == 'number') {
+			return (value as number) == 0 || isNaN(value as number);
+		}
+		if (_type == 'boolean') {
+			return !(value as boolean);
+		}
+		if (_type == 'object') {
+			if (value instanceof Array) {
+				return (value as Array<any>).length == 0;
+			}
+			if (value instanceof UTSJSONObject) {
+				return UTSJSONObject.keys(value as UTSJSONObject).length == 0;
+			}
+			if (value instanceof Map) {
+				return (value as Map<any, any>).size == 0;
+			}
+			if (value instanceof Set) {
+				return (value as Set<any>).size == 0;
+			}
+			if (value instanceof Date) {
+				return isNaN((value as Date).getTime());
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * 验证十进制数字
+	 * @param value 待校验值
+	 * @returns 是否为合法十进制数字
+	 */
+	number(value: string | number): boolean {
+		return /^[\+-]?(\d+\.?\d*|\.\d+|\d\.\d+e\+\d+)$/.test(value.toString());
+	}
+
+	/**
+	 * 验证是否为合法日期
+	 * @param value 待校验值
+	 * @returns 是否可被解析为合法日期
+	 */
+	date(value: string | number): boolean {
+		const d = new Date(value.toString());
+		return !isNaN(d.getTime());
+	}
+
+	/**
+	 * 验证是否为合法 URL(http/https)
+	 * @param value 待校验字符串
+	 * @returns 是否为合法 http/https URL
+	 */
+	url(value: string): boolean {
+		return /^https?:\/\/[\w\-]+(\.[\w\-]+)+([\w\-.,@?^=%&:/~+#]*[\w\-@?^=%&/~+#])?$/.test(value);
+	}
+}
+
+export default new Validate();

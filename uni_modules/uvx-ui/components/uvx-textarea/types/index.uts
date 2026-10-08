@@ -1,0 +1,45 @@
+export type Border = "surround" | "bottom" | "none";
+export type ConfirmType = "return" | "send" | "search" | "next" | "go" | "done";
+export type Formatter = (value: string) => string;
+
+export type Props = {
+   value: string | number;
+   modelValue: string | number;
+   placeholder: string;
+   placeholderClass: string;
+   placeholderStyle: string;
+   height: string | number;
+   confirmType: ConfirmType;
+   confirmHold: boolean;
+   disabled: boolean;
+   count: boolean;
+   focus: boolean;
+   autoHeight: boolean;
+   fixed: boolean;
+   cursorSpacing: number;
+   cursor: number;
+   showConfirmBar: boolean;
+   selectionStart: number;
+   selectionEnd: number;
+   adjustPosition: boolean;
+   disableDefaultPadding: boolean;
+   holdKeyboard: boolean;
+   maxlength: number;
+   border: Border;
+   formatter: Formatter;
+   textStyle: string;
+   countStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [value: string];
+   input: [value: string];
+   change: [value: string];
+   focus: [event: UniTextareaFocusEvent];
+   blur: [event: UniTextareaBlurEvent];
+   linechange: [event: UniTextareaLineChangeEvent];
+   confirm: [event: UniInputConfirmEvent];
+   keyboardheightchange: [event: UniInputKeyboardHeightChangeEvent];
+};

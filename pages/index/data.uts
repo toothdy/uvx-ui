@@ -1,0 +1,438 @@
+// 定义数据项类型
+export type ListItem = {
+	path: string
+	icon: string
+	title: string
+	isNew?: boolean
+}
+
+export type GroupItem = {
+	groupName: string
+	list: ListItem[]
+}
+
+const data: GroupItem[] = [
+	{
+		groupName: '最新组件',
+		list: [
+			{
+				path: '/pages/layout/float-drawer/float-drawer',
+				icon: 'popup',
+				title: '浮动面板',
+				isNew: true,
+			},
+			{
+				path: '/pages/form/drop-down/drop-down',
+				icon: 'color',
+				title: '下拉筛选',
+				isNew: true,
+			},
+			{
+				path: '/pages/layout/vtabs/vtabs',
+				icon: 'color',
+				title: '垂直选项卡',
+				isNew: true,
+			},
+			{
+				path: "/pages/form/pick-color/pick-color",
+				icon: 'color',
+				title: '选择颜色',
+				isNew: true,
+			},
+			{
+				path: '/pages/data/qrcode/qrcode',
+				icon: 'color',
+				title: '二维码',
+				isNew: true,
+			},
+			{
+				path: '/pages/layout/waterfall/waterfall',
+				icon: 'scrollList',
+				title: '瀑布流布局',
+				isNew: true,
+			},
+		],
+	},
+	{
+		groupName: '基础组件',
+		list: [
+			{
+				path: '/pages/basic/color/color',
+				icon: 'color',
+				title: '色彩',
+			},
+			{
+				path: '/pages/basic/layout/layout',
+				icon: 'layout',
+				title: '布局',
+			},
+			{
+				path: '/pages/basic/icon/icon',
+				icon: 'icon',
+				title: '图标',
+			},
+			{
+				path: '/pages/basic/button/button',
+				icon: 'button',
+				title: '按钮',
+			},
+			{
+				path: '/pages/basic/text/text',
+				icon: 'text',
+				title: '文本',
+			},
+			{
+				path: '/pages/basic/link/link',
+				icon: 'link',
+				title: '超链接',
+			},
+			{
+				path: '/pages/basic/image/image',
+				icon: 'image',
+				title: '图片',
+			},
+			{
+				path: '/pages/basic/transition/transition',
+				icon: 'transition',
+				title: '动画',
+			},
+		],
+	},
+	{
+		groupName: '表单组件',
+		list: [
+			{
+				path: '/pages/form/form/form',
+				icon: 'form',
+				title: '表单',
+			},
+			{
+				path: '/pages/form/input/input',
+				icon: 'field',
+				title: '输入框',
+			},
+			{
+				path: '/pages/form/textarea/textarea',
+				icon: 'textarea',
+				title: '文本域',
+			},
+			{
+				path: '/pages/form/checkbox/checkbox',
+				icon: 'checkbox',
+				title: '复选框',
+			},
+			{
+				path: '/pages/form/radio/radio',
+				icon: 'radio',
+				title: '单选框',
+			},
+			{
+				path: '/pages/form/switch/switch',
+				icon: 'switch',
+				title: '开关选择器',
+			},
+			{
+				path: '/pages/form/calendar/calendar',
+				icon: 'calendar',
+				title: '日历',
+			},
+			{
+				path: '/pages/form/picker/picker',
+				icon: 'picker',
+				title: '选择器',
+			},
+			{
+				path: '/pages/form/datetime-picker/datetime-picker',
+				icon: 'datetimePicker',
+				title: '时间选择器',
+			},
+			{
+				path: '/pages/form/drop-down/drop-down',
+				icon: 'color',
+				title: '下拉筛选',
+			},
+			{
+				path: '/pages/form/code/code',
+				icon: 'code',
+				title: '验证码倒计时',
+			},
+			{
+				path: '/pages/form/code-input/code-input',
+				icon: 'messageInput',
+				title: '验证码输入',
+			},
+			{
+				path: '/pages/form/keyboard/keyboard',
+				icon: 'keyboard',
+				title: '键盘',
+			},
+			{
+				path: '/pages/form/rate/rate',
+				icon: 'rate',
+				title: '评分',
+			},
+			{
+				path: '/pages/form/search/search',
+				icon: 'search',
+				title: '搜索',
+			},
+			{
+				path: '/pages/form/number-box/number-box',
+				icon: 'numberBox',
+				title: '步进器',
+			},
+			{
+				path: '/pages/form/upload/upload',
+				icon: 'upload',
+				title: '上传',
+			},
+			{
+				path: '/pages/form/slider/slider',
+				icon: 'slider',
+				title: '滑动选择器',
+			},
+		],
+	},
+	{
+		groupName: '数据组件',
+		list: [
+			{
+				path: '/pages/data/list/list',
+				icon: 'list',
+				title: '列表',
+			},
+			{
+				path: '/pages/data/index-list/index-list',
+				icon: 'indexList',
+				title: '索引列表',
+			},
+			{
+				path: '/pages/data/tags/tags',
+				icon: 'tag',
+				title: '标签',
+			},
+			{
+				path: '/pages/data/progress/progress',
+				icon: 'progress',
+				title: '进度条',
+			},
+			{
+				path: '/pages/data/badge/badge',
+				icon: 'badge',
+				title: '徽标数',
+			},
+			{
+				path: '/pages/data/count-down/count-down',
+				icon: 'countDown',
+				title: '倒计时',
+			},
+			{
+				path: '/pages/data/count-to/count-to',
+				icon: 'countTo',
+				title: '数字滚动',
+			},
+			{
+				path: '/pages/data/avatar/avatar',
+				icon: 'avatar',
+				title: '头像',
+			},
+			{
+				path: '/pages/data/skeleton/skeleton',
+				icon: 'skeleton',
+				title: '骨架屏',
+			},
+			{
+				path: '/pages/data/loading-icon/loading-icon',
+				icon: 'loading',
+				title: '加载动画',
+			},
+			{
+				path: '/pages/data/loading-page/loading-page',
+				icon: 'loading-page',
+				title: '加载页',
+			},
+			{
+				path: '/pages/data/load-more/load-more',
+				icon: 'loadmore',
+				title: '加载更多',
+			},
+			{
+				path: '/pages/data/empty/empty',
+				icon: 'empty',
+				title: '内容为空',
+			},
+			{
+				path: '/pages/data/scroll-list/scroll-list',
+				icon: 'scrollList',
+				title: '横向滚动列表',
+			},
+		],
+	},
+	{
+		groupName: '反馈组件',
+		list: [
+			{
+				path: '/pages/feedback/overlay/overlay',
+				icon: 'mask',
+				title: '遮罩层',
+			},
+			{
+				path: '/pages/feedback/tooltip/tooltip',
+				icon: 'tooltip',
+				title: '长按提示',
+			},
+			{
+				path: '/pages/feedback/alert/alert',
+				icon: 'alert',
+				title: '警告提示',
+			},
+			{
+				path: '/pages/feedback/toast/toast',
+				icon: 'toast',
+				title: '消息提示',
+			},
+			{
+				path: '/pages/feedback/notice-bar/notice-bar',
+				icon: 'noticeBar',
+				title: '滚动通知',
+			},
+			{
+				path: '/pages/feedback/notify/notify',
+				icon: 'notify',
+				title: '消息提示',
+			},
+			{
+				path: '/pages/feedback/no-network/no-network',
+				icon: 'noNetwork',
+				title: '无网络提示',
+			},
+			{
+				path: '/pages/feedback/popup/popup',
+				icon: 'popup',
+				title: '弹出层',
+			},
+			{
+				path: '/pages/feedback/modal/modal',
+				icon: 'modal',
+				title: '模态框',
+			},
+		],
+	},
+	{
+		groupName: '布局组件',
+		list: [
+			{
+				path: '/pages/layout/cell/cell',
+				icon: 'cell',
+				title: '单元格',
+			},
+			{
+				path: '/pages/layout/swipe-action/swipe-action',
+				icon: 'swipeAction',
+				title: '滑动单元格',
+			},
+			{
+				path: '/pages/layout/swiper/swiper',
+				icon: 'swiper',
+				title: '轮播图',
+			},
+			{
+				path: '/pages/layout/waterfall/waterfall',
+				icon: 'scrollList',
+				title: '瀑布流布局',
+			},
+			{
+				path: '/pages/layout/collapse/collapse',
+				icon: 'collapse',
+				title: '折叠面板',
+			},
+			{
+				path: '/pages/layout/grid/grid',
+				icon: 'grid',
+				title: '宫格布局',
+			},
+			{
+				path: '/pages/layout/album/album',
+				icon: 'album',
+				title: '相册',
+			},
+		],
+	},
+	{
+		groupName: '导航组件',
+		list: [
+			{
+				path: '/pages/navigation/tabbar/tabbar',
+				icon: 'tabbar',
+				title: '底部导航栏',
+			},
+			{
+				path: '/pages/navigation/backtop/backtop',
+				icon: 'backTop',
+				title: '返回顶部',
+			},
+			{
+				path: '/pages/navigation/navbar/navbar',
+				icon: 'navbar',
+				title: '导航栏',
+			},
+			{
+				path: '/pages/navigation/action-sheet/action-sheet',
+				icon: 'actionSheet',
+				title: '上拉菜单',
+			},
+			{
+				path: '/pages/navigation/tabs/tabs',
+				icon: 'tabs',
+				title: '标签',
+			},
+			{
+				path: '/pages/navigation/steps/steps',
+				icon: 'steps',
+				title: '步骤条',
+			},
+			{
+				path: '/pages/navigation/subsection/subsection',
+				icon: 'subsection',
+				title: '分段器',
+			},
+			{
+				path: '/pages/navigation/sticky/sticky',
+				icon: 'sticky',
+				title: '吸顶',
+			},
+		],
+	},
+	{
+		groupName: '其他组件',
+		list: [
+			{
+				path: '/pages/other/parse/parse',
+				icon: 'parse',
+				title: '富文本解析器',
+			},
+			{
+				path: '/pages/other/read-more/read-more',
+				icon: 'readMore',
+				title: '展开阅读更多',
+			},
+			{
+				path: '/pages/other/line/line',
+				icon: 'line',
+				title: '线条',
+			},
+			{
+				path: '/pages/other/gap/gap',
+				icon: 'gap',
+				title: '间隔槽',
+			},
+			{
+				path: '/pages/other/divider/divider',
+				icon: 'divider',
+				title: '分割线',
+			},
+		],
+	},
+];
+
+export default data;

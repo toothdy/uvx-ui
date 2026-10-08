@@ -1,0 +1,565 @@
+<template>
+   <view
+      class="uvx-swiper"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <!-- 加载状态 -->
+      <view v-if="loading" class="uvx-swiper__loading">
+         <uvx-loading-icon mode="circle"></uvx-loading-icon>
+      </view>
+
+      <!-- 原生轮播区域 -->
+      <swiper
+         v-else
+         class="uvx-swiper__wrapper"
+         :style="wrapperStyle"
+         :circular="circular"
+         :vertical="vertical"
+         :interval="intervalValue"
+         :duration="durationValue"
+         :autoplay="autoplay"
+         :current="currentValue"
+         :current-item-id="currentItemId"
+         :previous-margin="$uvx.format.unit(previousMargin)"
+         :next-margin="$uvx.format.unit(nextMargin)"
+         :acceleration="acceleration"
+         :display-multiple-items="safeDisplayMultipleItems"
+         :easing-function="easingFunction"
+         @change="handleChange"
+      >
+         <swiper-item
+            v-for="(item, index) in swiperItems"
+            :key="index"
+            class="uvx-swiper__item"
+            :item-id="getItemId(item, index)"
+         >
+            <view
+               class="uvx-swiper__item-wrapper"
+               :style="getItemStyle(index)"
+            >
+               <!-- 图片轮播项 -->
+               <image
+                  v-if="getItemType(item) == 'image'"
+                  class="uvx-swiper__image"
+                  :src="getSource(item)"
+                  :mode="imgMode"
+                  :style="mediaStyle"
+                  @tap="handleClick(item, index)"
+               ></image>
+
+               <!-- 视频轮播项 -->
+               <video
+                  v-else
+                  class="uvx-swiper__video"
+                  :id="getVideoId(index)"
+                  :src="getSource(item)"
+                  :poster="getPoster(item)"
+                  :title="showTitle ? getTitle(item) : ''"
+                  :style="getVideoStyle(index)"
+                  :enable-progress-gesture="false"
+                  controls
+                  @tap="handleClick(item, index)"
+                  @fullscreenchange="handleVideoFullscreenChange($event, index)"
+               ></video>
+
+               <!-- 标题遮罩 -->
+               <text
+                  v-if="showTitle && !$uvx.string.empty(getTitle(item))"
+                  class="uvx-swiper__title"
+                  :style="titleTextStyle"
+               >{{ getTitle(item) }}</text>
+            </view>
+         </swiper-item>
+      </swiper>
+
+      <!-- 指示器区域 -->
+      <view class="uvx-swiper__indicator" :style="indicatorWrapStyle">
+         <slot name="indicator">
+            <uvx-swiper-indicator
+               v-if="!loading && indicator && !showTitle"
+               :indicator-active-color="indicatorActiveColor"
+               :indicator-inactive-color="indicatorInactiveColor"
+               :length="list.length"
+               :current="currentIndex"
+               :indicator-mode="indicatorMode"
+            ></uvx-swiper-indicator>
+         </slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-swiper 轮播图
+ * @description 基于 uni-app x 原生 swiper，支持图片、视频、标题、加载态和自定义指示器。
+ * @tutorial https://www.uvxui.cn/components/swiper.html
+ * @property {Array} list 轮播图数据
+ * @property {Boolean} indicator 是否显示内置指示器
+ * @property {String} indicatorActiveColor 指示器激活颜色，空值时跟随主题主色
+ * @property {String} indicatorInactiveColor 指示器未激活颜色，空值时跟随主题弱化色
+ * @property {String} indicatorStyle 指示器定位样式
+ * @property {String} indicatorMode 指示器模式：line、dot
+ * @property {Boolean} autoplay 是否自动切换
+ * @property {String | Number} current 当前索引
+ * @property {String} currentItemId 当前条目标识
+ * @property {String | Number} interval 自动切换间隔
+ * @property {String | Number} duration 切换动画时长
+ * @property {Boolean} circular 是否循环播放
+ * @property {Boolean} vertical 是否纵向滑动
+ * @property {String | Number} previousMargin 前边距
+ * @property {String | Number} nextMargin 后边距
+ * @property {Boolean} acceleration 是否连续滑动多屏
+ * @property {Number} displayMultipleItems 同时显示数量
+ * @property {String} easingFunction 切换缓动类型
+ * @property {String} keyName 对象资源地址字段名
+ * @property {String} imgMode 图片裁剪模式
+ * @property {String | Number} height 组件高度
+ * @property {String} bgColor 背景颜色，空值时跟随主题
+ * @property {String | Number} radius 圆角
+ * @property {Boolean} loading 是否显示加载状态
+ * @property {Boolean} showTitle 是否显示标题
+ * @property {String} titleStyle 标题样式
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击轮播项时触发
+ * @event {Function} change 当前轮播项变化时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Emits,
+   Item,
+   ItemType,
+   Props,
+   Style,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-swiper", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   list: () => [] as Item[],
+   indicator: false,
+   indicatorActiveColor: "",
+   indicatorInactiveColor: "",
+   indicatorStyle: "",
+   indicatorMode: "line",
+   autoplay: true,
+   current: 0,
+   currentItemId: "",
+   interval: 3000,
+   duration: 300,
+   circular: false,
+   vertical: false,
+   previousMargin: 0,
+   nextMargin: 0,
+   acceleration: false,
+   displayMultipleItems: 1,
+   easingFunction: "default",
+   keyName: "url",
+   imgMode: "aspectFill",
+   height: 130,
+   bgColor: "",
+   radius: 4,
+   loading: false,
+   showTitle: false,
+   titleStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 模板轮播项列表
+ * @returns Item[]
+ */
+const swiperItems = computed((): Item[] => props.list);
+
+/** 轮播组件事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件实例，用于限定视频上下文查询范围
+const instance = getCurrentInstance()!.proxy!;
+// 当前激活索引
+const currentIndex = ref(Math.max(0, Number(props.current)));
+// #ifdef APP-ANDROID
+// Android 当前全屏视频索引
+const fullscreenVideoIndex = ref(-1);
+// Android 全屏视频高度
+const fullscreenVideoHeight = ref(0);
+// #endif
+
+/**
+ * 当前索引数值
+ * @returns number
+ */
+const currentValue = computed((): number => {
+   return Math.max(0, Number(props.current));
+});
+
+/**
+ * 自动播放间隔数值
+ * @returns number
+ */
+const intervalValue = computed((): number => {
+   return Math.max(0, Number(props.interval));
+});
+
+/**
+ * 切换动画时长数值
+ * @returns number
+ */
+const durationValue = computed((): number => {
+   return Math.max(0, Number(props.duration));
+});
+
+/**
+ * 安全的同时显示数量
+ * @returns number
+ */
+const safeDisplayMultipleItems = computed((): number => {
+   return Math.min(Math.max(1, props.displayMultipleItems), Math.max(1, props.list.length));
+});
+
+/**
+ * 根容器样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": $uvx.format.unit(props.height),
+      "border-radius": $uvx.format.unit(props.radius),
+   };
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 原生轮播容器样式
+ * @returns UTSJSONObject
+ */
+const wrapperStyle = computed((): UTSJSONObject => {
+   return {
+      "height": $uvx.format.unit(props.height),
+   };
+});
+
+/**
+ * 图片和视频样式
+ * @returns UTSJSONObject
+ */
+const mediaStyle = computed((): UTSJSONObject => {
+   return {
+      "height": $uvx.format.unit(props.height),
+      "border-radius": $uvx.format.unit(props.radius),
+   };
+});
+
+/**
+ * 解析字符串或对象样式
+ * @param value 样式配置
+ * @returns UTSJSONObject
+ */
+const getStyleObject = (value: Style): UTSJSONObject => {
+   return $uvx.style.parse(value);
+};
+
+/**
+ * 标题文字样式
+ * @returns UTSJSONObject
+ */
+const titleTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "color": "#ffffff",
+      "font-size": "14px",
+      "text-align": "left",
+   };
+   return $uvx.object.deepMerge(style, getStyleObject(props.titleStyle));
+});
+
+/**
+ * 指示器容器样式
+ * @returns UTSJSONObject
+ */
+const indicatorWrapStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { "bottom": "10px" };
+   return $uvx.object.deepMerge(style, getStyleObject(props.indicatorStyle));
+});
+
+/**
+ * 判断边距是否有效
+ * @param value 边距值
+ * @returns boolean
+ */
+const hasMargin = (value: string | number): boolean => {
+   if (typeof value == "number") return value != 0;
+   return !$uvx.string.empty(value) && value != "0" && value != "0px";
+};
+
+/**
+ * 获取单个轮播项样式
+ * @param index 轮播项索引
+ * @returns UTSJSONObject
+ */
+const getItemStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   // #ifndef APP-ANDROID
+   if (hasMargin(props.previousMargin) && hasMargin(props.nextMargin)) {
+      style.set("border-radius", $uvx.format.unit(props.radius));
+      if (index != currentIndex.value) style.set("transform", "scale(0.92)");
+   }
+   // #endif
+   return style;
+};
+
+/**
+ * 获取对象字段字符串
+ * @param item 轮播项
+ * @param key 字段名
+ * @returns string
+ */
+const getObjectString = (item: Item, key: string): string => {
+   if (typeof item == "string") return "";
+   const value = item[key];
+   return value != null ? value as string : "";
+};
+
+/**
+ * 获取资源地址
+ * @param item 轮播项
+ * @returns string
+ */
+const getSource = (item: Item): string => {
+   if (typeof item == "string") return item;
+   return getObjectString(item, props.keyName);
+};
+
+/**
+ * 判断资源是否为视频
+ * @param source 资源地址
+ * @returns boolean
+ */
+const isVideoSource = (source: string): boolean => {
+   const cleanSource = source.split("?")[0].toLowerCase();
+   return cleanSource.endsWith(".mp4")
+      || cleanSource.endsWith(".mov")
+      || cleanSource.endsWith(".m4v")
+      || cleanSource.endsWith(".webm")
+      || cleanSource.endsWith(".ogg");
+};
+
+/**
+ * 获取轮播项类型
+ * @param item 轮播项
+ * @returns ItemType
+ */
+const getItemType = (item: Item): ItemType => {
+   const type = getObjectString(item, "type");
+   if (type == "video") return "video";
+   if (type == "image") return "image";
+   return isVideoSource(getSource(item)) ? "video" : "image";
+};
+
+/**
+ * 获取轮播项标题
+ * @param item 轮播项
+ * @returns string
+ */
+const getTitle = (item: Item): string => {
+   return getObjectString(item, "title");
+};
+
+/**
+ * 获取视频封面
+ * @param item 轮播项
+ * @returns string
+ */
+const getPoster = (item: Item): string => {
+   return getObjectString(item, "poster");
+};
+
+/**
+ * 获取轮播项标识
+ * @param item 轮播项
+ * @param index 轮播项索引
+ * @returns string
+ */
+const getItemId = (item: Item, index: number): string => {
+   const itemId = getObjectString(item, "itemId");
+   return !$uvx.string.empty(itemId) ? itemId : `${index}`;
+};
+
+/**
+ * 获取视频元素标识
+ * @param index 轮播项索引
+ * @returns string
+ */
+const getVideoId = (index: number): string => {
+   return `uvx-swiper-video-${index}`;
+};
+
+/**
+ * 获取视频动态样式
+ * @param index 轮播项索引
+ * @returns UTSJSONObject
+ */
+const getVideoStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   // #ifdef APP-ANDROID
+   if (index == fullscreenVideoIndex.value && fullscreenVideoHeight.value > 0) {
+      style.set("height", $uvx.format.unit(fullscreenVideoHeight.value));
+   }
+   // #endif
+   return style;
+};
+
+/**
+ * 处理 Android 视频全屏尺寸
+ * @param event 视频全屏变化事件
+ * @param index 轮播项索引
+ * @returns null
+ */
+const handleVideoFullscreenChange = (event: UniVideoFullScreenChangeEvent, index: number): void => {
+   // #ifdef APP-ANDROID
+   if (event.detail.fullScreen) {
+      const windowInfo = uni.getWindowInfo();
+      fullscreenVideoIndex.value = index;
+      fullscreenVideoHeight.value = event.detail.direction == "horizontal"
+         ? Math.min(windowInfo.windowWidth, windowInfo.windowHeight)
+         : Math.max(windowInfo.windowWidth, windowInfo.windowHeight);
+      return;
+   }
+   fullscreenVideoIndex.value = -1;
+   fullscreenVideoHeight.value = 0;
+   // #endif
+};
+
+/**
+ * 暂停指定索引的视频
+ * @param index 轮播项索引
+ * @returns null
+ */
+const pauseVideo = (index: number): void => {
+   if (index < 0 || index >= props.list.length) return;
+   if (getItemType(props.list[index]) != "video") return;
+   const context = uni.createVideoContext(getVideoId(index), instance);
+   if (context != null) context.pause();
+};
+
+/**
+ * 处理轮播切换
+ * @param event 原生轮播切换事件
+ * @returns null
+ */
+const handleChange = (event: UniSwiperChangeEvent): void => {
+   pauseVideo(currentIndex.value);
+   currentIndex.value = event.detail.current;
+   emit("change", {
+      current: event.detail.current,
+      currentItemId: event.detail.currentItemId != null ? event.detail.currentItemId : "",
+      source: event.detail.source,
+   });
+};
+
+/**
+ * 处理轮播项点击
+ * @param item 轮播项
+ * @param index 轮播项索引
+ * @returns null
+ */
+const handleClick = (item: Item, index: number): void => {
+   emit("click", item, index);
+};
+
+watch(() => props.current, (value: string | number): void => {
+   currentIndex.value = Math.max(0, Number(value));
+});
+</script>
+
+<style lang="scss">
+// 轮播图容器
+.uvx-swiper {
+   position: relative;
+   display: flex;
+   flex-direction: column;
+   align-items: stretch;
+   justify-content: center;
+   width: 100%;
+   overflow: hidden;
+
+   // 加载状态
+   &__loading {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 原生轮播区域
+   &__wrapper {
+      flex: 1;
+      width: 100%;
+   }
+
+   // 轮播项
+   &__item {
+      width: 100%;
+      height: 100%;
+   }
+
+   // 轮播项内容
+   &__item-wrapper {
+      position: relative;
+      display: flex;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      transition-property: transform;
+      transition-duration: 300ms;
+   }
+
+   // 图片内容
+   &__image {
+      flex: 1;
+      width: 100%;
+   }
+
+   // 视频内容
+   &__video {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+   }
+
+   // 标题遮罩
+   &__title {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      height: 30px;
+      padding: 0 12px;
+      overflow: hidden;
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 30px;
+      background-color: rgba(0, 0, 0, 0.35);
+      box-sizing: border-box;
+   }
+
+   // 指示器容器
+   &__indicator {
+      position: absolute;
+      right: 0;
+      left: 0;
+      z-index: 3;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+}
+</style>

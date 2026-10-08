@@ -1,0 +1,53 @@
+export type Mode = "date" | "time" | "year-month" | "datetime" | "year";
+export type PickerValue = string | number;
+export type ColumnType = "year" | "month" | "day" | "hour" | "minute";
+export type Filter = (type: ColumnType, values: string[]) => string[];
+export type Formatter = (type: ColumnType, value: string) => string;
+
+export type Props = {
+   value: PickerValue;
+   modelValue: PickerValue;
+   showToolbar: boolean;
+   title: string;
+   mode: Mode;
+   maxDate: number;
+   minDate: number;
+   minHour: number;
+   maxHour: number;
+   minMinute: number;
+   maxMinute: number;
+   filter: Filter;
+   formatter: Formatter;
+   loading: boolean;
+   itemHeight: number;
+   cancelText: string;
+   confirmText: string;
+   cancelColor: string;
+   confirmColor: string;
+   visibleItemCount: number;
+   closeOnClickOverlay: boolean;
+   closeOnClickConfirm: boolean;
+   clearDate: boolean;
+   round: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+export type ChangeEvent = {
+   value: PickerValue;
+   mode: Mode;
+};
+
+export type ConfirmEvent = {
+   value: PickerValue;
+   mode: Mode;
+};
+
+export type Emits = {
+   "update:modelValue": [value: PickerValue];
+   input: [value: PickerValue];
+   change: [event: ChangeEvent];
+   confirm: [event: ConfirmEvent];
+   cancel: [];
+   close: [];
+};

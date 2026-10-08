@@ -1,0 +1,79 @@
+import str from './string.uts';
+
+/**
+ * 样式工具
+ */
+class Style {
+	/**
+	 * 将样式字符串解析为对象
+	 * @param styleStr 样式字符串
+	 * @returns 样式对象
+	 */
+	parse(styleStr: string): UTSJSONObject {
+		const text = str.trim(styleStr);
+		const style: UTSJSONObject = {};
+		if (text.length == 0) {
+			return style;
+		}
+
+		const arr: string[] = text.split(';');
+		for (let i = 0; i < arr.length; i++) {
+			const temp = arr[i];
+			const separator = temp.indexOf(':');
+			if (separator > 0) {
+				const key = str.trim(temp.substring(0, separator));
+				const value = str.trim(temp.substring(separator + 1));
+				style.set(key, value);
+			}
+		}
+		return style;
+	}
+
+	/**
+	 * 将样式对象序列化为字符串
+	 * @param style 样式对象
+	 * @returns 样式字符串
+	 */
+	stringify(style: UTSJSONObject): string {
+		let result = '';
+		for (const i in style) {
+			const key = i.replace(/([A-Z])/g, '-$1').toLowerCase();
+			result += `${key}:${style[i]};`;
+		}
+		return str.trim(result);
+	}
+
+	/**
+	 * BEM 类名生成器
+	 * @param name 组件名(如 'button')
+	 * @param props 组件 props 对象
+	 * @param fixed 固定类名字段数组 - 字段值拼接到类名(如 ['size', 'type'])
+	 * @param change 变化类名字段数组 - 字段为 truthy 时添加字段名(如 ['disabled', 'loading'])
+	 */
+	bem(name: string, props: UTSJSONObject, fixed: Array<string> | null = null, change: Array<string> | null = null): Array<string> {
+		const prefix = `uvx-${name}--`;
+		const classList: Array<string> = [];
+		if (fixed != null && fixed.length > 0) {
+			for (let i = 0; i < fixed.length; i++) {
+				const field = fixed[i];
+				const value = props[field];
+				if (value != null) {
+					classList.push(`${prefix}${value}`);
+				}
+			}
+		}
+
+		if (change != null && change.length > 0) {
+			for (let i = 0; i < change.length; i++) {
+				const field = change[i];
+				const value = props[field];
+				if (value != null && value != false && value != '' && value != 0) {
+					classList.push(`${prefix}${field}`);
+				}
+			}
+		}
+		return classList;
+	}
+}
+
+export default new Style();

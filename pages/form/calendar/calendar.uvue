@@ -1,0 +1,274 @@
+<template>
+   <uvx-page ref="uPage">
+      <view class="calendar-demo">
+         <!-- 演示入口 -->
+         <uvx-cell-group>
+            <uvx-cell
+            v-for="(item, itemIndex) in ITEMS"
+               :key="itemIndex"
+               :title="item.title"
+               :label="resultValues[itemIndex]"
+               :is-link="true"
+               @click="openCalendar(itemIndex)"
+            >
+               <template #icon>
+                  <image
+                     class="uv-cell-icon"
+                     :src="item.iconUrl"
+                     mode="widthFix"
+                  ></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 插入模式 -->
+         <view v-if="isInlineVisible" class="calendar-demo__inline">
+            <uvx-calendar
+               :insert="true"
+               :lunar="true"
+               start-date="2021-01-01"
+               end-date="2030-01-01"
+               @change="showResult"
+            ></uvx-calendar>
+         </view>
+
+         <!-- 弹窗模式实例 -->
+         <uvx-calendar
+            ref="uSingle"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uMultiple"
+            mode="multiple"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uRange"
+            mode="range"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uColor"
+            mode="range"
+            :date="COLOR_DATES"
+            color="#f56c6c"
+            confirm-color="#f56c6c"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uText"
+            mode="range"
+            title="选择日期"
+            start-text="住店"
+            end-text="离店"
+            :selected="SELECTED"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uLimit"
+            :start-date="START_DATE"
+            :end-date="END_DATE"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uLunar"
+            :lunar="true"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uDefault"
+            :date="DEFAULT_DATE"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uDefaultMultiple"
+            mode="multiple"
+            :date="MULTIPLE_DATES"
+            @confirm="showResult"
+         ></uvx-calendar>
+         <uvx-calendar
+            ref="uDefaultRange"
+            mode="range"
+            :date="RANGE_DATES"
+            @confirm="showResult"
+         ></uvx-calendar>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "@/uni_modules/uvx-ui/index.uts";
+import type {
+   ChangeEvent,
+   SelectedItem,
+} from "@/uni_modules/uvx-ui/components/uvx-calendar/types/index.uts";
+
+type DemoItem = {
+   title: string;
+   iconUrl: string;
+};
+
+const CURRENT_DATE = new Date();
+const CURRENT_YEAR = CURRENT_DATE.getFullYear();
+const CURRENT_MONTH = (CURRENT_DATE.getMonth() + 1).toString().padStart(2, "0");
+const START_DATE = `${CURRENT_YEAR}-${CURRENT_MONTH}-02`;
+const END_DATE = `${CURRENT_YEAR}-${CURRENT_MONTH}-20`;
+const DEFAULT_DATE = `${CURRENT_YEAR}-${CURRENT_MONTH}-15`;
+const COLOR_DATES: string[] = [
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-08`,
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-20`,
+];
+const MULTIPLE_DATES: string[] = [
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-08`,
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-16`,
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-24`,
+];
+const RANGE_DATES: string[] = [
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-08`,
+   `${CURRENT_YEAR}-${CURRENT_MONTH}-20`,
+];
+const SELECTED: SelectedItem[] = [
+   {
+      date: `${CURRENT_YEAR}-${CURRENT_MONTH}-02`,
+      info: "签到",
+      badge: true,
+      infoColor: "#ff0000",
+   },
+   {
+      date: `${CURRENT_YEAR}-${CURRENT_MONTH}-06`,
+      info: "余10",
+      infoColor: "#19be6b",
+      topinfo: "￥100",
+      topinfoColor: "#19be6b",
+   },
+];
+const ITEMS: DemoItem[] = [
+   { title: "插入模式", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/10.png" },
+   { title: "单个日期", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/7.png" },
+   { title: "多个日期", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/8.png" },
+   { title: "日期范围", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/9.png" },
+   { title: "自定义主题颜色", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/15.png" },
+   { title: "自定义文案", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/14.png" },
+   { title: "限制日期选择范围", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/13.png" },
+   { title: "显示农历", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/5.png" },
+   { title: "默认单个日期", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/10.png" },
+   { title: "默认多个日期", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/10.png" },
+   { title: "默认日期范围", iconUrl: "https://cdn.uviewui.com/uview/demo/calendar/10.png" },
+];
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+// 单选日历实例
+const uSingle = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 多选日历实例
+const uMultiple = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 范围日历实例
+const uRange = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 自定义颜色日历实例
+const uColor = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 自定义文案日历实例
+const uText = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 日期限制日历实例
+const uLimit = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 农历日历实例
+const uLunar = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 默认单选日历实例
+const uDefault = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 默认多选日历实例
+const uDefaultMultiple = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 默认范围日历实例
+const uDefaultRange = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 是否显示插入模式
+const isInlineVisible = ref(false);
+// 当前演示入口
+const activeIndex = ref(-1);
+// 各入口选择结果
+const resultValues = ref<string[]>(["", "", "", "", "", "", "", "", "", "", ""]);
+
+/**
+ * 打开指定日历
+ * @param index 入口下标
+ * @returns null
+ */
+const openCalendar = (index: number): void => {
+   activeIndex.value = index;
+   switch (index) {
+      case 0:
+         isInlineVisible.value = !isInlineVisible.value;
+         break;
+      case 1:
+         uSingle.value?.open();
+         break;
+      case 2:
+         uMultiple.value?.open();
+         break;
+      case 3:
+         uRange.value?.open();
+         break;
+      case 4:
+         uColor.value?.open();
+         break;
+      case 5:
+         uText.value?.open();
+         break;
+      case 6:
+         uLimit.value?.open();
+         break;
+      case 7:
+         uLunar.value?.open();
+         break;
+      case 8:
+         uDefault.value?.open();
+         break;
+      case 9:
+         uDefaultMultiple.value?.open();
+         break;
+      case 10:
+         uDefaultRange.value?.open();
+         break;
+   }
+};
+
+/**
+ * 获取选择结果文字
+ * @param event 日历结果
+ * @returns string
+ */
+const getText = (event: ChangeEvent): string => {
+   if (!$uvx.string.empty(event.range.before) && !$uvx.string.empty(event.range.after)) {
+      return `${event.range.before} 至 ${event.range.after}`;
+   }
+   if (event.multiple.data.length > 0) {
+      const firstDate = event.multiple.data[0];
+      return event.multiple.data.length > 1 ? `${firstDate}等多个日期` : firstDate;
+   }
+   return event.fulldate;
+};
+
+/**
+ * 显示选择结果
+ * @param event 日历结果
+ * @returns null
+ */
+const showResult = (event: ChangeEvent): void => {
+   const text = getText(event);
+   if (activeIndex.value >= 0 && activeIndex.value < resultValues.value.length) {
+      resultValues.value[activeIndex.value] = text;
+   }
+   uPage.value?.toast({ message: text, icon: false });
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 演示容器
+.calendar-demo {
+   padding-bottom: 30px;
+
+   // 插入模式容器
+   &__inline {
+      margin-top: 15px;
+   }
+}
+</style>

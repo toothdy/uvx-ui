@@ -1,0 +1,510 @@
+<template>
+   <view
+      class="uvx-steps-item"
+      :class="[isColumn ? 'uvx-steps-item--column' : 'uvx-steps-item--row', uClass]"
+      :style="rootStyle"
+   >
+      <!-- 步骤连接线 -->
+      <view
+         v-if="itemIndex < itemTotal - 1"
+         class="uvx-steps-item__line"
+         :class="isColumn ? 'uvx-steps-item__line--column' : 'uvx-steps-item__line--row'"
+      >
+         <view
+            class="uvx-steps-item__line-segment"
+            :class="lineClasses"
+            :style="lineStyle"
+         ></view>
+      </view>
+
+      <!-- 步骤标记 -->
+      <view
+         class="uvx-steps-item__marker"
+         :class="isColumn ? 'uvx-steps-item__marker--column' : 'uvx-steps-item__marker--row'"
+      >
+         <slot name="icon">
+            <view
+               v-if="steps.config.value.dot"
+               class="uvx-steps-item__dot"
+               :class="markerClasses"
+               :style="markerStyle"
+            ></view>
+            <view v-else-if="hasCustomIcon" class="uvx-steps-item__icon">
+               <uvx-icon
+                  :name="iconName"
+                  :size="iconSize"
+                  :color="iconColor"
+               ></uvx-icon>
+            </view>
+            <view
+               v-else
+               class="uvx-steps-item__circle"
+               :class="markerClasses"
+               :style="markerStyle"
+            >
+               <text
+                  v-if="status == 'process' || status == 'wait'"
+                  class="uvx-steps-item__number"
+                  :class="status == 'process' ? 'uvx-steps-item__number--process' : 'uvx-steps-item__number--wait'"
+                  :style="numberStyle"
+               >{{ itemIndex + 1 }}</text>
+               <uvx-icon
+                  v-else
+                  :name="status == 'error' ? 'close' : 'checkmark'"
+                  :size="12"
+                  :color="iconColor"
+               ></uvx-icon>
+            </view>
+         </slot>
+      </view>
+
+      <!-- 步骤说明 -->
+      <view
+         class="uvx-steps-item__content"
+         :class="[isColumn ? 'uvx-steps-item__content--column' : 'uvx-steps-item__content--row', steps.config.value.dot ? 'uvx-steps-item__content--dot' : '']"
+      >
+         <slot name="title">
+            <text
+               class="uvx-steps-item__title"
+               :class="itemIndex == steps.config.value.current ? 'uvx-steps-item__title--current' : ''"
+            >{{ title }}</text>
+         </slot>
+         <slot name="desc">
+            <text class="uvx-steps-item__desc">{{ desc }}</text>
+         </slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-steps-item 步骤项
+ * @description 搭配 uvx-steps 使用，展示步骤状态、标题和说明。
+ * @tutorial https://www.uvxui.cn/components/steps.html
+ * @property {String | Number} title 步骤标题
+ * @property {String | Number} desc 步骤说明
+ * @property {String | Number} iconSize 自定义图标大小，单位 px
+ * @property {Boolean} error 是否为错误状态
+ * @property {String} uStyle 根节点样式
+ * @property {String} uClass 根节点类名
+ * @slot icon 自定义步骤标记
+ * @slot title 自定义标题
+ * @slot desc 自定义说明
+ * @example <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Context } from "../uvx-steps/types/index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-steps-item",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   title: "",
+   desc: "",
+   iconSize: 17,
+   error: false,
+   uStyle: "",
+   uClass: "",
+});
+
+// 最近的步骤条上下文
+const steps = inject<Context | null>("uvx-steps-context", null);
+if (steps == null) throw new Error("uvx-steps-item 必须在 uvx-steps 内使用");
+// 当前组件实例
+const instance = getCurrentInstance()!.proxy!;
+// 步骤索引
+const itemIndex = ref(-1);
+// 步骤总数
+const itemTotal = ref(0);
+
+/**
+ * 判断是否为竖向排列
+ * @returns boolean
+ */
+const isColumn = computed((): boolean => steps.config.value.direction == "column");
+
+/**
+ * 获取步骤状态
+ * @returns string
+ */
+const status = computed((): string => {
+   if (props.error) return "error";
+   if (itemIndex.value == steps.config.value.current) return "process";
+   return itemIndex.value < steps.config.value.current ? "finish" : "wait";
+});
+
+/**
+ * 判断是否使用自定义图标
+ * @returns boolean
+ */
+const hasCustomIcon = computed((): boolean => {
+   return !$uvx.string.empty(steps.config.value.activeIcon)
+      || !$uvx.string.empty(steps.config.value.inactiveIcon);
+});
+
+/**
+ * 获取当前图标名称
+ * @returns string
+ */
+const iconName = computed((): string => {
+   return itemIndex.value <= steps.config.value.current
+      ? steps.config.value.activeIcon : steps.config.value.inactiveIcon;
+});
+
+/**
+ * 获取图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   if (status.value == "error") return "error";
+   if (status.value == "wait") {
+      return $uvx.string.empty(steps.config.value.inactiveColor)
+         ? "info" : steps.config.value.inactiveColor;
+   }
+   return $uvx.string.empty(steps.config.value.activeColor)
+      ? "primary" : steps.config.value.activeColor;
+});
+
+/**
+ * 获取标记状态类
+ * @returns string[]
+ */
+const markerClasses = computed((): string[] => {
+   return [
+      steps.config.value.dot
+         ? "uvx-steps-item__dot--" + status.value
+         : "uvx-steps-item__circle--" + status.value,
+   ];
+});
+
+/**
+ * 获取连接线状态类
+ * @returns string[]
+ */
+const lineClasses = computed((): string[] => {
+   return [
+      isColumn.value
+         ? "uvx-steps-item__line-segment--column"
+         : "uvx-steps-item__line-segment--row",
+      steps.isNextError(itemIndex.value)
+         ? "uvx-steps-item__line-segment--error"
+         : itemIndex.value < steps.config.value.current
+            ? "uvx-steps-item__line-segment--active" : "uvx-steps-item__line-segment--inactive",
+   ];
+});
+
+/**
+ * 获取根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => $uvx.style.parse(props.uStyle));
+
+/**
+ * 获取连接线样式
+ * @returns UTSJSONObject
+ */
+const lineStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (steps.isNextError(itemIndex.value)) return style;
+   const color = itemIndex.value < steps.config.value.current
+      ? steps.config.value.activeColor : steps.config.value.inactiveColor;
+   if (!$uvx.string.empty(color)) style.set("background-color", color);
+   return style;
+});
+
+/**
+ * 获取标记样式
+ * @returns UTSJSONObject
+ */
+const markerStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (status.value == "error") return style;
+   const color = status.value == "wait"
+      ? steps.config.value.inactiveColor : steps.config.value.activeColor;
+   if (!$uvx.string.empty(color)) {
+      if (steps.config.value.dot || status.value == "process") style.set("background-color", color);
+      if (!steps.config.value.dot) style.set("border-color", color);
+   }
+   return style;
+});
+
+/**
+ * 获取序号文字样式
+ * @returns UTSJSONObject
+ */
+const numberStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (status.value == "wait" && !$uvx.string.empty(steps.config.value.inactiveColor)) {
+      style.set("color", steps.config.value.inactiveColor);
+   }
+   return style;
+});
+
+/**
+ * 同步父级传入的索引和数量
+ * @param index 步骤索引
+ * @param total 步骤总数
+ * @returns null
+ */
+const syncFromSteps = (index: number, total: number): void => {
+   itemIndex.value = index;
+   itemTotal.value = total;
+};
+
+/** 挂载时注册步骤项 */
+onMounted((): void => steps.register(instance, props.error));
+
+/** 错误状态变化时同步连接线 */
+watch(() => props.error, (isError: boolean): void => {
+   steps.setError(instance, isError);
+});
+
+/** 卸载时注销步骤项 */
+onUnmounted((): void => steps.unregister(instance));
+
+defineExpose({ syncFromSteps });
+</script>
+
+<style lang="scss">
+// 步骤项容器
+.uvx-steps-item {
+   position: relative;
+   display: flex;
+   box-sizing: border-box;
+   overflow: visible;
+}
+
+// 横向步骤项
+.uvx-steps-item--row {
+   flex: 1;
+   flex-direction: column;
+   align-items: center;
+   min-width: 0;
+}
+
+// 竖向步骤项
+.uvx-steps-item--column {
+   flex-direction: row;
+   min-height: 56px;
+   padding-bottom: 5px;
+}
+
+// 步骤连接线占位
+.uvx-steps-item__line {
+   position: absolute;
+   display: flex;
+   overflow: visible;
+}
+
+// 横向线段跨越相邻步骤的中心
+.uvx-steps-item__line--row {
+   top: 10px;
+   left: 50%;
+   flex-direction: row;
+   width: 100%;
+   height: 1px;
+}
+
+// 竖向线段跨越相邻步骤的中心
+.uvx-steps-item__line--column {
+   top: 16px;
+   left: 10px;
+   flex-direction: column;
+   width: 1px;
+   height: 100%;
+}
+
+// 实际可见线段
+.uvx-steps-item__line-segment {
+   flex: 1;
+}
+
+// 横向线段两端避开标记
+.uvx-steps-item__line-segment--row {
+   height: 1px;
+   margin-right: 14px;
+   margin-left: 14px;
+}
+
+// 竖向线段两端避开标记
+.uvx-steps-item__line-segment--column {
+   width: 1px;
+   margin-top: 14px;
+   margin-bottom: 14px;
+}
+
+// 已完成线段
+.uvx-steps-item__line-segment--active {
+   background-color: var(--uvx-primary);
+}
+
+// 等待线段
+.uvx-steps-item__line-segment--inactive {
+   background-color: var(--uvx-text-tips);
+}
+
+// 步骤标记容器
+.uvx-steps-item__marker {
+   display: flex;
+   position: relative;
+   align-items: center;
+   justify-content: center;
+   flex-shrink: 0;
+   overflow: visible;
+}
+
+// 横向标记占位
+.uvx-steps-item__marker--row {
+   width: 32px;
+   height: 20px;
+}
+
+// 竖向标记占位
+.uvx-steps-item__marker--column {
+   width: 20px;
+   height: 32px;
+}
+
+// 圆点标记
+.uvx-steps-item__dot {
+   width: 10px;
+   height: 10px;
+   border-radius: 100px;
+}
+
+// 数字圆圈
+.uvx-steps-item__circle {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   width: 20px;
+   height: 20px;
+   border-width: 1px;
+   border-style: solid;
+   border-radius: 100px;
+   background-color: var(--uvx-container);
+}
+
+// 已完成圆圈
+.uvx-steps-item__circle--finish {
+   border-color: var(--uvx-primary);
+}
+
+// 当前圆圈
+.uvx-steps-item__circle--process {
+   border-color: var(--uvx-primary);
+   background-color: var(--uvx-primary);
+}
+
+// 等待圆圈
+.uvx-steps-item__circle--wait {
+   border-color: var(--uvx-text-tips);
+}
+
+// 错误圆圈
+.uvx-steps-item__circle--error {
+   border-color: var(--uvx-error);
+}
+
+// 已完成圆点
+.uvx-steps-item__dot--finish {
+   background-color: var(--uvx-primary);
+}
+
+// 当前圆点
+.uvx-steps-item__dot--process {
+   background-color: var(--uvx-primary);
+}
+
+// 等待圆点
+.uvx-steps-item__dot--wait {
+   background-color: var(--uvx-text-tips);
+}
+
+// 错误圆点
+.uvx-steps-item__dot--error {
+   background-color: var(--uvx-error);
+}
+
+// 错误线段
+.uvx-steps-item__line-segment--error {
+   background-color: var(--uvx-error);
+}
+
+// 圆圈内的图标
+.uvx-steps-item__icon {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   width: 20px;
+   height: 20px;
+}
+
+// 步骤序号
+.uvx-steps-item__number {
+   font-size: 11px;
+   line-height: 1.2em;
+   text-align: center;
+}
+
+// 当前序号
+.uvx-steps-item__number--process {
+   color: #ffffff;
+}
+
+// 等待序号
+.uvx-steps-item__number--wait {
+   color: var(--uvx-text-tips);
+}
+
+// 步骤说明容器
+.uvx-steps-item__content {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   min-width: 0;
+}
+
+// 横向说明
+.uvx-steps-item__content--row {
+   align-items: center;
+   margin-top: 6px;
+}
+
+// 竖向说明
+.uvx-steps-item__content--column {
+   margin-top: 6px;
+   margin-left: 6px;
+}
+
+// 圆点说明
+.uvx-steps-item__content--dot {
+   margin-top: 2px;
+}
+
+// 步骤标题
+.uvx-steps-item__title {
+   color: var(--uvx-text-content);
+   font-size: 13px;
+   line-height: 20px;
+}
+
+// 当前步骤标题
+.uvx-steps-item__title--current {
+   color: var(--uvx-text-main);
+   font-size: 14px;
+}
+
+// 步骤说明文字
+.uvx-steps-item__desc {
+   color: var(--uvx-text-tips);
+   font-size: 12px;
+   line-height: 1.2em;
+}
+</style>

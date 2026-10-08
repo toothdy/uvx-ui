@@ -1,0 +1,78 @@
+<template>
+   <view class="uvx-swipe-action">
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-swipe-action 滑动单元格组
+ * @description 管理滑动单元格子项，并支持自动关闭其他已打开子项。
+ * @tutorial https://www.uvxui.cn/components/swipe-action.html
+ * @property {Boolean} autoClose 是否自动关闭其他滑动单元格
+ * @example <uvx-swipe-action><uvx-swipe-action-item /></uvx-swipe-action>
+ */
+
+import type { ComponentPublicInstance } from "vue";
+import type { Props, Context } from "./types/index.uts";
+
+defineOptions({ name: "uvx-swipe-action", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   autoClose: true,
+});
+
+// 已注册的滑动单元格实例
+const children = ref<ComponentPublicInstance[]>([]);
+
+/**
+ * 注册滑动单元格
+ * @param child 子组件实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+};
+
+/**
+ * 移除已卸载的滑动单元格
+ * @param child 子组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index != -1) children.value.splice(index, 1);
+};
+
+/**
+ * 关闭当前操作项之外的滑动单元格
+ * @param child 当前操作的子组件实例
+ * @returns null
+ */
+const closeOther = (child: ComponentPublicInstance): void => {
+   if (!props.autoClose) return;
+   for (let index = 0; index < children.value.length; index++) {
+      const item = children.value[index];
+      if (item != child) item.$callMethod("closeHandler");
+   }
+};
+
+provide<Context>("uvx-swipe-action-context", {
+   register,
+   unregister,
+   closeOther,
+});
+
+defineExpose({ register, unregister, closeOther });
+</script>
+
+<style lang="scss">
+// 滑动单元格组
+.uvx-swipe-action {
+   width: 100%;
+   border-top-width: 0.5px;
+   border-top-style: solid;
+   border-top-color: var(--uvx-border);
+   box-sizing: border-box;
+}
+</style>

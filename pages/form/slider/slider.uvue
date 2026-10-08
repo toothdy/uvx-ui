@@ -1,0 +1,69 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基本案例 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本案例"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-slider v-model="value1"></uvx-slider>
+            </view>
+         </view>
+         <!-- 自定义范围 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义范围(0-50)"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-slider
+                  v-model="value2"
+                  :show-value="true"
+                  min="0"
+                  max="50"
+               ></uvx-slider>
+            </view>
+         </view>
+         <!-- 指定步长 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="指定步长(每次步进5)"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-slider
+                  v-model="value3"
+                  :step="5"
+               ></uvx-slider>
+            </view>
+         </view>
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-slider
+                  v-model="value4"
+                  active-color="#deab8a"
+                  block-color="#f47920"
+               ></uvx-slider>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基本案例数值
+const value1 = ref(30);
+// 自定义范围数值
+const value2 = ref(30);
+// 指定步长数值
+const value3 = ref(30);
+// 自定义样式数值
+const value4 = ref(30);
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

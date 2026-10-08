@@ -1,0 +1,29 @@
+/**
+ * 动画回调
+ * @returns null
+ */
+export type AnimationCallback = () => void;
+
+/**
+ * 启动动画
+ * @param animationId 动画标识
+ * @param callback 动画回调
+ * @returns null
+ */
+export type StartAnimation = (
+   animationId: number,
+   callback: AnimationCallback,
+) => void;
+
+/**
+ * 停止动画
+ * @param animationId 动画标识
+ * @returns null
+ */
+export type StopAnimation = (animationId: number) => void;
+
+/**
+ * 打开系统设置页
+ * @returns null
+ */
+export type OpenSystemSettings = () => void;

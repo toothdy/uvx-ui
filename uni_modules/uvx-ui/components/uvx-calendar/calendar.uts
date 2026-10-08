@@ -1,0 +1,250 @@
+import { $uvx } from "../../index.uts";
+import { getInfo } from "./lunar.uts";
+import type {
+   BuildOptions,
+   DateInfo,
+   DateValue,
+   Day,
+   SelectedItem,
+} from "./types/index.uts";
+
+/**
+ * 数字补齐为两位
+ * @param value 数字
+ * @returns string
+ */
+const pad = (value: number): string => {
+   return value < 10 ? `0${value}` : value.toString();
+};
+
+/**
+ * Date 转标准日期信息
+ * @param date 日期对象
+ * @returns DateInfo
+ */
+const getDateInfo = (date: Date): DateInfo => {
+   const year = date.getFullYear();
+   const month = date.getMonth() + 1;
+   const day = date.getDate();
+   return {
+      fullDate: `${year}-${pad(month)}-${pad(day)}`,
+      year: year,
+      month: month,
+      date: day,
+      day: date.getDay(),
+      timestamp: new Date(year, month - 1, day, 12, 0, 0, 0).getTime(),
+   };
+};
+
+/**
+ * 解析标准日期字符串
+ * @param value 日期字符串
+ * @returns DateInfo | null
+ */
+export const parseDate = (value: string): DateInfo | null => {
+   if ($uvx.string.empty(value)) return null;
+   const parts = value.split("-");
+   if (parts.length != 3) return null;
+   const year = Number(parts[0]);
+   const month = Number(parts[1]);
+   const day = Number(parts[2]);
+   if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+   const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+   if (date.getFullYear() != year || date.getMonth() + 1 != month || date.getDate() != day) {
+      return null;
+   }
+   return getDateInfo(date);
+};
+
+/**
+ * 获取今天
+ * @returns DateInfo
+ */
+export const getTodayDate = (): DateInfo => {
+   return getDateInfo(new Date());
+};
+
+/**
+ * 获取日期值指定项
+ * @param value 日期值
+ * @param index 数组下标
+ * @returns string
+ */
+export const getDateValue = (value: DateValue, index: number): string => {
+   if (Array.isArray(value)) {
+      if (index < 0 || index >= value.length) return "";
+      return value[index];
+   }
+   return index == 0 ? value : "";
+};
+
+/**
+ * 获取有效日期，无效时回退今天
+ * @param value 日期字符串
+ * @returns DateInfo
+ */
+export const getValidDate = (value: string): DateInfo => {
+   const parsed = parseDate(value);
+   return parsed != null ? parsed : getTodayDate();
+};
+
+/**
+ * 获取指定月份第一天
+ * @param date 当前日期
+ * @returns DateInfo
+ */
+export const getMonthFirstDate = (date: DateInfo): DateInfo => {
+   return getDateInfo(new Date(date.year, date.month - 1, 1, 12, 0, 0, 0));
+};
+
+/**
+ * 切换月份
+ * @param date 当前月份
+ * @param offset 月份偏移
+ * @returns DateInfo
+ */
+export const shiftMonth = (date: DateInfo, offset: number): DateInfo => {
+   return getDateInfo(new Date(date.year, date.month - 1 + offset, 1, 12, 0, 0, 0));
+};
+
+/**
+ * 时间戳转换为月份第一天
+ * @param timestamp 时间戳
+ * @returns DateInfo
+ */
+export const getMonthFromTimestamp = (timestamp: number): DateInfo => {
+   return getMonthFirstDate(getDateInfo(new Date(timestamp)));
+};
+
+/**
+ * 获取自然日范围
+ * @param startDate 开始日期
+ * @param endDate 结束日期
+ * @returns string[]
+ */
+export const getDateRange = (startDate: string, endDate: string): string[] => {
+   const start = parseDate(startDate);
+   const end = parseDate(endDate);
+   if (start == null || end == null || start.timestamp > end.timestamp) return [];
+   const result: string[] = [];
+   const cursor = new Date(start.year, start.month - 1, start.date, 12, 0, 0, 0);
+   while (cursor.getTime() <= end.timestamp) {
+      result.push(getDateInfo(cursor).fullDate);
+      cursor.setDate(cursor.getDate() + 1);
+   }
+   return result;
+};
+
+/**
+ * 规范化多选日期
+ * @param value 日期值
+ * @returns string[]
+ */
+export const normalizeMultipleDates = (value: DateValue): string[] => {
+   const result: string[] = [];
+   if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index++) {
+         const parsed = parseDate(value[index]);
+         if (parsed != null && result.indexOf(parsed.fullDate) == -1) result.push(parsed.fullDate);
+      }
+   } else {
+      const parsed = parseDate(value);
+      if (parsed != null) result.push(parsed.fullDate);
+   }
+   if (result.length == 0) result.push(getTodayDate().fullDate);
+   return result;
+};
+
+/**
+ * 查找日期打点信息
+ * @param selected 打点列表
+ * @param fullDate 标准日期
+ * @returns SelectedItem | null
+ */
+const findSelectedInfo = (
+   selected: SelectedItem[],
+   fullDate: string,
+): SelectedItem | null => {
+   for (let index = 0; index < selected.length; index++) {
+      const parsed = parseDate(selected[index].date);
+      if (parsed != null && parsed.fullDate == fullDate) return selected[index];
+   }
+   return null;
+};
+
+/**
+ * 判断日期是否超出选择边界
+ * @param date 日期信息
+ * @param start 开始边界
+ * @param end 结束边界
+ * @returns boolean
+ */
+const isOutsideBoundary = (
+   date: DateInfo,
+   start: DateInfo | null,
+   end: DateInfo | null,
+): boolean => {
+   if (start != null && date.timestamp < start.timestamp) return true;
+   if (end != null && date.timestamp > end.timestamp) return true;
+   return false;
+};
+
+/**
+ * 生成六周日期网格
+ * @param options 构建参数
+ * @returns Day[]
+ */
+export const buildDays = (options: BuildOptions): Day[] => {
+   const result: Day[] = [];
+   const startBoundary = parseDate(options.startDate);
+   const endBoundary = parseDate(options.endDate);
+   const rangeStart = parseDate(options.rangeBefore);
+   const rangeEnd = parseDate(options.rangeAfter);
+   const firstDay = new Date(
+      options.viewDate.year,
+      options.viewDate.month - 1,
+      1,
+      12,
+      0,
+      0,
+      0,
+   );
+   firstDay.setDate(firstDay.getDate() - firstDay.getDay());
+
+   for (let index = 0; index < 42; index++) {
+      const cursor = new Date(firstDay.getTime());
+      cursor.setDate(firstDay.getDate() + index);
+      const date = getDateInfo(cursor);
+      const extraInfo = findSelectedInfo(options.selected, date.fullDate);
+      const isCurrentMonth = date.year == options.viewDate.year && date.month == options.viewDate.month;
+      const isExtraDisabled = extraInfo != null && extraInfo.disable == true;
+      const isRangeStart = rangeStart != null && rangeStart.fullDate == date.fullDate;
+      const isRangeEnd = rangeEnd != null && rangeEnd.fullDate == date.fullDate;
+      const isInRange = rangeStart != null
+         && rangeEnd != null
+         && date.timestamp >= rangeStart.timestamp
+         && date.timestamp <= rangeEnd.timestamp;
+      result.push({
+         fullDate: date.fullDate,
+         year: date.year,
+         month: date.month,
+         date: date.date,
+         day: date.day,
+         isCurrentMonth: isCurrentMonth,
+         isToday: date.fullDate == options.today.fullDate,
+         isDisabled: !isCurrentMonth
+            || isOutsideBoundary(date, startBoundary, endBoundary)
+            || isExtraDisabled,
+         isSelected: !$uvx.string.empty(options.selectedDate)
+            && date.fullDate == options.selectedDate,
+         isRangeStart: isRangeStart,
+         isRangeEnd: isRangeEnd,
+         isInRange: isInRange,
+         isMultiple: options.multipleDates.indexOf(date.fullDate) != -1,
+         isSameRange: isRangeStart && isRangeEnd,
+         lunar: getInfo(date.year, date.month, date.date),
+         extraInfo: extraInfo,
+      });
+   }
+   return result;
+};

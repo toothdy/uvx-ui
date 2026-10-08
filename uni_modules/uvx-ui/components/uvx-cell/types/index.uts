@@ -1,0 +1,33 @@
+export type LinkType = "navigateTo" | "redirectTo" | "reLaunch" | "switchTab" | "navigateBack";
+export type ArrowDirection = "up" | "down" | "left" | "right";
+export type Size = "large" | "normal";
+
+export type Props = {
+   title: string;
+   label: string;
+   value: string;
+   icon: string;
+   disabled: boolean;
+   border: boolean;
+   center: boolean;
+   url: string;
+   linkType: LinkType;
+   clickable: boolean;
+   isLink: boolean;
+   required: boolean;
+   rightIcon: string;
+   arrowDirection: ArrowDirection;
+   iconStyle: string;
+   rightIconStyle: string;
+   titleStyle: string;
+   size: Size;
+   stop: boolean;
+   name: string;
+   cellStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [item: UTSJSONObject];
+};

@@ -1,0 +1,969 @@
+<template>
+   <!-- 垂直选项卡主体 -->
+   <view
+      class="uvx-vtabs"
+      :class="props.uClass"
+      :style="rootStyle"
+   >
+      <!-- 左侧标签栏 -->
+      <scroll-view
+         :id="barScrollId"
+         class="uvx-vtabs__bar"
+         :direction="barScrollable ? 'vertical' : 'none'"
+         :show-scrollbar="false"
+         :scroll-top="barScrollTarget"
+         :scroll-into-view="barScrollIntoView"
+         :scroll-with-animation="true"
+         :style="barStyleValue"
+         @scroll="handleBarScroll"
+      >
+         <view class="uvx-vtabs__bar-content">
+            <view
+               v-for="(item, index) in barItems"
+               :id="getBarItemId(index)"
+               :key="index"
+               class="uvx-vtabs__bar-item"
+               :class="getBarItemClasses(item, index)"
+               :style="getBarItemStyle(index)"
+               :hover-class="getBarItemHoverClass(item)"
+               :hover-stay-time="150"
+               @tap.stop="handleBarItemClick(item, index)"
+            >
+               <!-- 激活指示线 -->
+               <view
+                  v-if="index == activeIndex"
+                  class="uvx-vtabs__bar-line"
+                  :style="activeLineStyle"
+               ></view>
+
+               <!-- 标签文字 -->
+               <text
+                  class="uvx-vtabs__bar-text"
+                  :class="getBarTextClasses(item, index)"
+                  :style="getBarTextStyle(index)"
+               >{{ getItemText(item) }}</text>
+
+               <!-- 标签徽标 -->
+               <view
+                  v-if="hasBadge(item)"
+                  class="uvx-vtabs__bar-badge"
+                  :style="badgeContainerStyle"
+               >
+                  <uvx-badge
+                     :show="true"
+                     :is-dot="getBadgeBoolean(item, 'isDot', false)"
+                     :value="getBadgeValue(item, 'value', '')"
+                     :max="getBadgeValue(item, 'max', 999)"
+                     :type="getBadgeType(item)"
+                     :show-zero="getBadgeBoolean(item, 'showZero', false)"
+                     :bg-color="getBadgeString(item, 'bgColor', '')"
+                     :color="getBadgeString(item, 'color', '')"
+                     :shape="getBadgeShape(item)"
+                     :number-type="getBadgeNumberType(item)"
+                     :inverted="getBadgeBoolean(item, 'inverted', false)"
+                  ></uvx-badge>
+               </view>
+            </view>
+         </view>
+      </scroll-view>
+
+      <!-- 右侧内容区域 -->
+      <scroll-view
+         :id="contentScrollId"
+         class="uvx-vtabs__content"
+         direction="vertical"
+         :show-scrollbar="false"
+         :scroll-top="contentScrollTarget"
+         :scroll-with-animation="chain"
+         :style="contentStyleValue"
+         @scroll="handleContentScroll"
+         @scrollend="handleContentScrollEnd"
+         @scrolltolower="handleScrollToLower"
+      >
+         <view class="uvx-vtabs__content-inner">
+            <slot></slot>
+         </view>
+      </scroll-view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-vtabs 垂直选项卡
+ * @description 提供左侧分类导航和右侧内容联动，支持徽标、禁用项和非联动模式。
+ * @tutorial https://www.uvxui.cn/components/vtabs.html
+ * @property {Array} list 标签数据
+ * @property {String} keyName 标签文字字段名
+ * @property {String | Number} current 当前标签下标
+ * @property {String | Number} hdHeight 内容区域头部占位高度
+ * @property {Boolean} chain 是否启用左右联动
+ * @property {String | Number} height 组件高度
+ * @property {String | Number} barWidth 左侧导航宽度
+ * @property {Boolean} barScrollable 左侧导航是否允许滚动
+ * @property {String} barBgColor 左侧导航背景颜色
+ * @property {String} barStyle 左侧导航自定义样式
+ * @property {String} barItemStyle 标签项自定义样式
+ * @property {String} barItemActiveStyle 激活标签项自定义样式
+ * @property {String} barItemActiveLineStyle 激活线自定义样式
+ * @property {String} barItemBadgeStyle 徽标容器自定义样式
+ * @property {String} contentStyle 右侧内容区域自定义样式
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} change 激活下标变化时触发
+ * @event {Function} scrolltolower 内容滚动到底部时触发
+ * @method init 重新测量标签和内容布局
+ * @slot default 垂直选项卡内容项
+ * @example <uvx-vtabs :list="list"><uvx-vtabs-item :index="0">...</uvx-vtabs-item></uvx-vtabs>
+ */
+
+import type { ComponentPublicInstance } from "vue";
+
+import { $uvx } from "../../index.uts";
+import type {
+   NumberType,
+   Shape,
+   Type,
+   Value,
+} from "../uvx-badge/types/index.uts";
+import type {
+   BarItemRect,
+   Context,
+   Emits,
+   Item,
+   ItemLayout,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-vtabs",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   list: () => [] as Item[],
+   keyName: "name",
+   current: 0,
+   hdHeight: 0,
+   chain: true,
+   height: "auto",
+   barWidth: "180rpx",
+   barScrollable: true,
+   barBgColor: "",
+   barStyle: "",
+   barItemStyle: "",
+   barItemActiveStyle: "",
+   barItemActiveLineStyle: "",
+   barItemBadgeStyle: "",
+   contentStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 模板标签列表
+ * @returns Item[]
+ */
+const barItems = computed((): Item[] => props.list);
+
+/** 垂直选项卡事件 */
+const emit = defineEmits<Emits>();
+
+// 组件实例唯一标识
+const instanceId = "uvx-vtabs-" + Date.now().toString() + "-" + Math.floor(Math.random() * 100000).toString();
+// 左侧滚动容器元素 id
+const barScrollId = instanceId + "-bar";
+// 右侧滚动容器元素 id
+const contentScrollId = instanceId + "-content";
+// 已注册内容项实例
+const children = ref<ComponentPublicInstance[]>([]);
+// 内容项布局缓存
+const itemLayouts = ref<ItemLayout[]>([]);
+// 左侧标签布局缓存
+const barItemRects = ref<BarItemRect[]>([]);
+// 当前激活下标
+const activeIndex = ref(0);
+// 左侧程序滚动目标
+const barScrollTarget = ref(0);
+// 左侧实际滚动位置
+const barScrollPosition = ref(0);
+// 左侧回退定位元素
+const barScrollIntoView = ref("");
+// 左侧可视区域高度
+const barViewportHeight = ref(0);
+// 左侧内容总高度
+const barContentHeight = ref(0);
+// 右侧程序滚动目标
+const contentScrollTarget = ref(0);
+// 右侧实际滚动位置
+const contentScrollPosition = ref(0);
+// 右侧可视区域页面顶部
+const contentViewportTop = ref(0);
+// 程序滚动目标下标
+const programmaticIndex = ref(-1);
+// 等待布局后滚动的下标
+const pendingScrollIndex = ref(-1);
+
+/**
+ * 将尺寸转换为 px 数值
+ * @param value 尺寸值
+ * @param fallback 无效值回退
+ * @returns number
+ */
+const getPxSize = (value: string | number, fallback: number): number => {
+   if (typeof value == "number") return value >= 0 ? value : fallback;
+   const text = value.trim();
+   const size = parseFloat(text);
+   if (Number.isNaN(size) || size < 0) return fallback;
+   if (text.endsWith("rpx")) {
+      return size * uni.getWindowInfo().windowWidth / 750;
+   }
+   return size;
+};
+
+/**
+ * 获取组件高度
+ * @returns number
+ */
+const getHeight = (): number => {
+   if (typeof props.height == "string") {
+      const value = props.height.trim();
+      if ($uvx.string.empty(value) || value == "auto") return uni.getWindowInfo().windowHeight;
+   }
+   return getPxSize(props.height, uni.getWindowInfo().windowHeight);
+};
+
+/**
+ * 归一化标签下标
+ * @param value 外部下标
+ * @returns number
+ */
+const normalizeCurrent = (value: string | number): number => {
+   if (props.list.length == 0) return 0;
+   const numberValue = Number(value);
+   const index = Number.isNaN(numberValue) ? 0 : Math.floor(numberValue);
+   return Math.max(0, Math.min(props.list.length - 1, index));
+};
+
+activeIndex.value = normalizeCurrent(props.current);
+pendingScrollIndex.value = activeIndex.value;
+
+/**
+ * 获取左侧标签元素 id
+ * @param index 标签下标
+ * @returns string
+ */
+const getBarItemId = (index: number): string => {
+   return instanceId + "-bar-item-" + index.toString();
+};
+
+/**
+ * 获取标签文字
+ * @param item 标签项
+ * @returns string
+ */
+const getItemText = (item: Item): string => {
+   const text = item.getString(props.keyName);
+   if (text != null) return text;
+   const numberValue = item.getNumber(props.keyName);
+   return numberValue == null ? "" : numberValue.toString();
+};
+
+/**
+ * 判断标签是否禁用
+ * @param item 标签项
+ * @returns boolean
+ */
+const isItemDisabled = (item: Item): boolean => {
+   const value = item["disabled"] as boolean | null;
+   return value != null && value;
+};
+
+/**
+ * 获取标签项状态类
+ * @param item 标签项
+ * @param index 标签下标
+ * @returns string[]
+ */
+const getBarItemClasses = (item: Item, index: number): string[] => {
+   const classes: string[] = [];
+   if (index == activeIndex.value) classes.push("uvx-vtabs__bar-item--active");
+   if (isItemDisabled(item)) classes.push("uvx-vtabs__bar-item--disabled");
+   return classes;
+};
+
+/**
+ * 获取标签文字状态类
+ * @param item 标签项
+ * @param index 标签下标
+ * @returns string[]
+ */
+const getBarTextClasses = (item: Item, index: number): string[] => {
+   const classes: string[] = [];
+   classes.push(
+      index == activeIndex.value
+         ? "uvx-vtabs__bar-text--active"
+         : "uvx-vtabs__bar-text--inactive",
+   );
+   if (isItemDisabled(item)) classes.push("uvx-vtabs__bar-text--disabled");
+   return classes;
+};
+
+/**
+ * 获取标签项动态样式
+ * @param index 标签下标
+ * @returns UTSJSONObject
+ */
+const getBarItemStyle = (index: number): UTSJSONObject => {
+   const styleText = index == activeIndex.value
+      ? props.barItemActiveStyle
+      : props.barItemStyle;
+   return $uvx.style.parse(styleText);
+};
+
+/**
+ * 获取标签文字动态样式
+ * @param index 标签下标
+ * @returns UTSJSONObject
+ */
+const getBarTextStyle = (index: number): UTSJSONObject => {
+   const source = getBarItemStyle(index);
+   const style: UTSJSONObject = {};
+   const properties: string[] = [
+      "color",
+      "font-size",
+      "font-weight",
+      "font-style",
+      "line-height",
+      "text-align",
+      "text-decoration",
+   ];
+   for (let propertyIndex = 0; propertyIndex < properties.length; propertyIndex++) {
+      const property = properties[propertyIndex];
+      const value = source.getString(property);
+      if (value != null) style.set(property, value);
+   }
+   return style;
+};
+
+/**
+ * 获取标签项按压类名
+ * @param item 标签项
+ * @returns string
+ */
+const getBarItemHoverClass = (item: Item): string => {
+   return isItemDisabled(item) ? "none" : "uvx-vtabs__bar-item--hover";
+};
+
+/**
+ * 获取徽标配置
+ * @param item 标签项
+ * @returns UTSJSONObject | null
+ */
+const getBadge = (item: Item): UTSJSONObject | null => {
+   const value = item["badge"];
+   if (value == null || typeof value != "object" || value instanceof Array) return null;
+   return value as UTSJSONObject;
+};
+
+/**
+ * 获取徽标布尔配置
+ * @param item 标签项
+ * @param key 配置字段
+ * @param fallback 默认值
+ * @returns boolean
+ */
+const getBadgeBoolean = (item: Item, key: string, fallback: boolean): boolean => {
+   const badge = getBadge(item);
+   if (badge == null) return fallback;
+   const value = badge[key] as boolean | null;
+   return value == null ? fallback : value;
+};
+
+/**
+ * 获取徽标字符串配置
+ * @param item 标签项
+ * @param key 配置字段
+ * @param fallback 默认值
+ * @returns string
+ */
+const getBadgeString = (item: Item, key: string, fallback: string): string => {
+   const badge = getBadge(item);
+   if (badge == null) return fallback;
+   const value = badge.getString(key);
+   return value == null ? fallback : value;
+};
+
+/**
+ * 获取徽标数值或字符串配置
+ * @param item 标签项
+ * @param key 配置字段
+ * @param fallback 默认值
+ * @returns Value
+ */
+const getBadgeValue = (item: Item, key: string, fallback: Value): Value => {
+   const badge = getBadge(item);
+   if (badge == null) return fallback;
+   const stringValue = badge.getString(key);
+   if (stringValue != null) return stringValue;
+   const numberValue = badge.getNumber(key);
+   return numberValue == null ? fallback : numberValue;
+};
+
+/**
+ * 获取徽标主题类型
+ * @param item 标签项
+ * @returns Type
+ */
+const getBadgeType = (item: Item): Type => {
+   return getBadgeString(item, "type", "error") as Type;
+};
+
+/**
+ * 获取徽标形状
+ * @param item 标签项
+ * @returns Shape
+ */
+const getBadgeShape = (item: Item): Shape => {
+   return getBadgeString(item, "shape", "circle") as Shape;
+};
+
+/**
+ * 获取徽标数字模式
+ * @param item 标签项
+ * @returns NumberType
+ */
+const getBadgeNumberType = (item: Item): NumberType => {
+   return getBadgeString(item, "numberType", "overflow") as NumberType;
+};
+
+/**
+ * 判断标签是否配置徽标
+ * @param item 标签项
+ * @returns boolean
+ */
+const hasBadge = (item: Item): boolean => {
+   const badge = getBadge(item);
+   if (badge == null) return false;
+   if (getBadgeBoolean(item, "show", false)) return true;
+   if (getBadgeBoolean(item, "isDot", false)) return true;
+   const value = getBadgeValue(item, "value", "");
+   return typeof value == "number" ? value != 0 : !$uvx.string.empty(value);
+};
+
+/**
+ * 根节点动态样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { "height": getHeight().toString() + "px" };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 左侧标签栏动态样式
+ * @returns UTSJSONObject
+ */
+const barStyleValue = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(props.barWidth),
+      "height": getHeight().toString() + "px",
+   };
+   if (!$uvx.string.empty(props.barBgColor)) {
+      style.set("background-color", props.barBgColor);
+   }
+   if ($uvx.string.empty(props.barStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.barStyle));
+});
+
+/**
+ * 右侧内容区域动态样式
+ * @returns UTSJSONObject
+ */
+const contentStyleValue = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { "height": getHeight().toString() + "px" };
+   if ($uvx.string.empty(props.contentStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.contentStyle));
+});
+
+/**
+ * 激活线动态样式
+ * @returns UTSJSONObject
+ */
+const activeLineStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.barItemActiveLineStyle);
+});
+
+/**
+ * 徽标容器动态样式
+ * @returns UTSJSONObject
+ */
+const badgeContainerStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.barItemBadgeStyle);
+});
+
+/**
+ * 重建内容项布局缓存
+ * @returns null
+ */
+const resetItemLayouts = (): void => {
+   const layouts: ItemLayout[] = [];
+   for (let index = 0; index < props.list.length; index++) {
+      layouts.push({ top: 0, height: 0, isReady: false });
+   }
+   itemLayouts.value = layouts;
+};
+
+resetItemLayouts();
+
+/**
+ * 获取子项下标
+ * @param child 内容项实例
+ * @returns number
+ */
+const getChildIndex = (child: ComponentPublicInstance): number => {
+   return child.$callMethod("getIndex") as number;
+};
+
+/**
+ * 将左侧激活项移动到可视区域中间
+ * @returns null
+ */
+const centerActiveBarItem = (): void => {
+   const index = activeIndex.value;
+   if (!props.barScrollable || index < 0 || index >= props.list.length) return;
+   if (index >= barItemRects.value.length) {
+      barScrollIntoView.value = getBarItemId(index);
+      return;
+   }
+   const rect = barItemRects.value[index];
+   const centered = rect.top - Math.max(0, barViewportHeight.value - rect.height) / 2;
+   const maxScroll = Math.max(0, barContentHeight.value - barViewportHeight.value);
+   const target = Math.max(0, Math.min(maxScroll, centered));
+   barScrollTarget.value = target;
+   const element = uni.getElementById<UniScrollViewElement>(barScrollId);
+   if (element != null) element.scrollTop = target;
+};
+
+/**
+ * 更新激活下标
+ * @param index 目标下标
+ * @param shouldEmit 是否触发事件
+ * @returns null
+ */
+const setActiveIndex = (index: number, shouldEmit: boolean): void => {
+   const normalized = normalizeCurrent(index);
+   if (normalized == activeIndex.value) return;
+   activeIndex.value = normalized;
+   centerActiveBarItem();
+   if (shouldEmit) emit("change", normalized);
+};
+
+/**
+ * 滚动到指定内容项
+ * @param index 内容项下标
+ * @returns null
+ */
+const scrollToContent = (index: number): void => {
+   if (!props.chain || index < 0 || index >= itemLayouts.value.length) return;
+   const layout = itemLayouts.value[index];
+   if (!layout.isReady) {
+      pendingScrollIndex.value = index;
+      return;
+   }
+   const target = Math.max(0, layout.top - getPxSize(props.hdHeight, 0));
+   pendingScrollIndex.value = -1;
+   programmaticIndex.value = Math.abs(contentScrollPosition.value - target) <= 1 ? -1 : index;
+   contentScrollTarget.value = target;
+   const element = uni.getElementById<UniScrollViewElement>(contentScrollId);
+   if (element != null) element.scrollTop = target;
+};
+
+/**
+ * 非联动模式回到内容顶部
+ * @returns null
+ */
+const resetContentScroll = (): void => {
+   contentScrollTarget.value = 0;
+   const element = uni.getElementById<UniScrollViewElement>(contentScrollId);
+   if (element != null) element.scrollTop = 0;
+};
+
+/**
+ * 测量左侧标签布局
+ * @returns null
+ */
+const measureBarItems = (): void => {
+   const barElement = uni.getElementById<UniScrollViewElement>(barScrollId);
+   if (barElement == null) return;
+   try {
+      const barRect = barElement.getBoundingClientRect();
+      const rects: BarItemRect[] = [];
+      let contentHeight = 0;
+      for (let index = 0; index < props.list.length; index++) {
+         const itemElement = uni.getElementById<UniElement>(getBarItemId(index));
+         if (itemElement == null) return;
+         const itemRect = itemElement.getBoundingClientRect();
+         const top = itemRect.top - barRect.top + barScrollPosition.value;
+         rects.push({ top, height: itemRect.height });
+         contentHeight = Math.max(contentHeight, top + itemRect.height);
+      }
+      barItemRects.value = rects;
+      barViewportHeight.value = barRect.height;
+      barContentHeight.value = contentHeight;
+      centerActiveBarItem();
+   } catch (_error) {
+      barScrollIntoView.value = getBarItemId(activeIndex.value);
+   }
+};
+
+/**
+ * 测量内容滚动容器和全部内容项
+ * @returns null
+ */
+const measureContentItems = (): void => {
+   const element = uni.getElementById<UniScrollViewElement>(contentScrollId);
+   if (element == null) return;
+   const promise = element.getBoundingClientRectAsync();
+   if (promise == null) return;
+   promise.then((rect: DOMRect): void => {
+      contentViewportTop.value = rect.top;
+      for (let index = 0; index < children.value.length; index++) {
+         children.value[index].$callMethod("measure");
+      }
+   });
+};
+
+/**
+ * 重新测量标签和内容布局
+ * @returns null
+ */
+const init = (): void => {
+   nextTick((): void => {
+      measureBarItems();
+      measureContentItems();
+   });
+};
+
+/**
+ * 注册内容项
+ * @param child 内容项实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) != -1) return;
+   children.value.push(child);
+};
+
+/**
+ * 注销内容项
+ * @param child 内容项实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const childIndex = children.value.indexOf(child);
+   if (childIndex == -1) return;
+   const itemIndex = getChildIndex(child);
+   children.value.splice(childIndex, 1);
+   if (itemIndex < 0 || itemIndex >= itemLayouts.value.length) return;
+   itemLayouts.value[itemIndex] = { top: 0, height: 0, isReady: false };
+};
+
+/**
+ * 更新内容项布局
+ * @param child 内容项实例
+ * @param top 页面顶部位置
+ * @param height 内容项高度
+ * @returns null
+ */
+const updateLayout = (child: ComponentPublicInstance, top: number, height: number): void => {
+   const index = getChildIndex(child);
+   if (index < 0 || index >= itemLayouts.value.length) return;
+   itemLayouts.value[index] = {
+      top: Math.max(0, top - contentViewportTop.value + contentScrollPosition.value),
+      height: Math.max(0, height),
+      isReady: height > 0,
+   };
+   if (pendingScrollIndex.value == index) scrollToContent(index);
+};
+
+/** 向内容项提供父级上下文 */
+provide<Context>("uvx-vtabs-context", {
+   register,
+   unregister,
+   updateLayout,
+   init,
+});
+
+/**
+ * 处理左侧标签点击
+ * @param item 标签项
+ * @param index 标签下标
+ * @returns null
+ */
+const handleBarItemClick = (item: Item, index: number): void => {
+   if (isItemDisabled(item) || index == activeIndex.value) return;
+   setActiveIndex(index, true);
+   if (props.chain) {
+      pendingScrollIndex.value = index;
+      scrollToContent(index);
+   } else {
+      resetContentScroll();
+   }
+};
+
+/**
+ * 根据内容滚动位置更新激活下标
+ * @param currentTop 当前滚动位置
+ * @returns null
+ */
+const updateActiveFromContent = (currentTop: number): void => {
+   let matchedIndex = -1;
+   for (let index = 0; index < itemLayouts.value.length; index++) {
+      const layout = itemLayouts.value[index];
+      if (!layout.isReady || currentTop + getPxSize(props.hdHeight, 0) < layout.top) break;
+      matchedIndex = index;
+   }
+   if (matchedIndex != -1) setActiveIndex(matchedIndex, true);
+};
+
+/**
+ * 处理左侧标签栏滚动
+ * @param event 滚动事件
+ * @returns null
+ */
+const handleBarScroll = (event: UniScrollEvent): void => {
+   barScrollPosition.value = Math.max(0, event.detail.scrollTop);
+};
+
+/**
+ * 处理右侧内容滚动
+ * @param event 滚动事件
+ * @returns null
+ */
+const handleContentScroll = (event: UniScrollEvent): void => {
+   contentScrollPosition.value = Math.max(0, event.detail.scrollTop);
+   if (programmaticIndex.value != -1) return;
+   if (props.chain) updateActiveFromContent(contentScrollPosition.value);
+};
+
+/**
+ * 处理右侧滚动结束
+ * @param event 滚动事件
+ * @returns null
+ */
+const handleContentScrollEnd = (event: UniScrollEvent): void => {
+   contentScrollPosition.value = Math.max(0, event.detail.scrollTop);
+   const index = programmaticIndex.value;
+   programmaticIndex.value = -1;
+   if (index != -1 && index < itemLayouts.value.length) {
+      const target = Math.max(0, itemLayouts.value[index].top - getPxSize(props.hdHeight, 0));
+      if (Math.abs(contentScrollPosition.value - target) <= 1) return;
+   }
+   if (props.chain) updateActiveFromContent(contentScrollPosition.value);
+};
+
+/**
+ * 处理内容滚动到底部
+ * @returns null
+ */
+const handleScrollToLower = (): void => {
+   emit("scrolltolower", activeIndex.value);
+};
+
+/** 外部下标变化时同步激活项 */
+watch(() => props.current, (value: string | number): void => {
+   const index = normalizeCurrent(value);
+   setActiveIndex(index, false);
+   pendingScrollIndex.value = index;
+   if (props.chain) scrollToContent(index);
+   else resetContentScroll();
+});
+
+/** 标签数据变化时重建布局并同步下标 */
+watch(() => props.list, (): void => {
+   const shouldPositionCurrent = itemLayouts.value.length == 0;
+   resetItemLayouts();
+   activeIndex.value = normalizeCurrent(props.current);
+   pendingScrollIndex.value = shouldPositionCurrent ? activeIndex.value : -1;
+   init();
+}, { deep: true });
+
+/** 激活下标变化后重新测量可能改变尺寸的激活样式 */
+watch((): number => activeIndex.value, (): void => {
+   init();
+});
+
+/** 影响布局的属性变化时重新测量 */
+watch((): string => props.barItemStyle, (): void => {
+   init();
+});
+
+/** 激活项样式变化时重新测量 */
+watch((): string => props.barItemActiveStyle, (): void => {
+   init();
+});
+
+/** 左侧标签栏样式变化时重新测量 */
+watch((): string => props.barStyle, (): void => {
+   init();
+});
+
+/** 右侧内容区域样式变化时重新测量 */
+watch((): string => props.contentStyle, (): void => {
+   init();
+});
+
+/** 组件高度变化时重新测量 */
+watch(() => props.height, (): void => {
+   init();
+});
+
+/** 左侧标签栏宽度变化时重新测量 */
+watch(() => props.barWidth, (): void => {
+   init();
+});
+
+/** 根节点样式变化时重新测量 */
+watch((): string => props.uStyle, (): void => {
+   init();
+});
+
+/** 标签文字字段变化时重新测量 */
+watch((): string => props.keyName, (): void => {
+   init();
+});
+
+/** 组件挂载后执行首次布局测量 */
+onMounted((): void => {
+   init();
+});
+
+defineExpose({ init });
+</script>
+
+<style lang="scss">
+// 垂直选项卡主体
+.uvx-vtabs {
+   display: flex;
+   flex-direction: row;
+   width: 100%;
+   overflow: hidden;
+   background-color: var(--uvx-container);
+}
+
+// 左侧标签栏
+.uvx-vtabs__bar {
+   display: flex;
+   flex-shrink: 0;
+   overflow: hidden;
+   background-color: var(--uvx-page);
+}
+
+// 左侧标签内容
+.uvx-vtabs__bar-content {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   overflow: visible;
+}
+
+// 左侧标签项
+.uvx-vtabs__bar-item {
+   position: relative;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   width: 100%;
+   height: 54px;
+   padding: 0 14px 0 10px;
+   flex-shrink: 0;
+   overflow: visible;
+}
+
+// 左侧标签按压态
+.uvx-vtabs__bar-item--hover {
+   background-color: var(--uvx-hover);
+}
+
+// 左侧标签激活态
+.uvx-vtabs__bar-item--active {
+   background-color: var(--uvx-container);
+}
+
+// 左侧标签禁用态
+.uvx-vtabs__bar-item--disabled {
+   background-color: var(--uvx-page);
+}
+
+// 激活指示线
+.uvx-vtabs__bar-line {
+   position: absolute;
+   top: 0;
+   bottom: 0;
+   left: 0;
+   z-index: 1;
+   width: 2px;
+   background-color: var(--uvx-primary);
+}
+
+// 标签文字
+.uvx-vtabs__bar-text {
+   flex: 1;
+   min-width: 0;
+   color: var(--uvx-text-content);
+   font-size: 14px;
+   line-height: 1.2em;
+   text-align: center;
+}
+
+// 激活标签文字
+.uvx-vtabs__bar-text--active {
+   color: var(--uvx-primary);
+}
+
+// 普通标签文字
+.uvx-vtabs__bar-text--inactive {
+   color: var(--uvx-text-content);
+}
+
+// 禁用标签文字
+.uvx-vtabs__bar-text--disabled {
+   color: var(--uvx-disabled);
+}
+
+// 标签徽标容器
+.uvx-vtabs__bar-badge {
+   position: absolute;
+   top: 4px;
+   right: 6px;
+   z-index: 2;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   min-width: 18px;
+   min-height: 18px;
+   overflow: visible;
+}
+
+// 右侧内容区域
+.uvx-vtabs__content {
+   display: flex;
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+   background-color: var(--uvx-container);
+}
+
+// 右侧内容容器
+.uvx-vtabs__content-inner {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   overflow: visible;
+}
+</style>

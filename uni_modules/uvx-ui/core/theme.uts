@@ -1,0 +1,159 @@
+/**
+ * 主题类型
+ */
+type Theme = "light" | "dark";
+
+/**
+ * 是否为自动主题模式(跟随系统)
+ */
+export const isAuto = ref(true);
+
+/**
+ * 获取当前主题
+ * @description APP 下优先获取 appTheme，若为 auto 则跟随系统 osTheme；H5/小程序下优先获取 hostTheme，否则默认为 light
+ * @returns 当前主题值
+ */
+const getTheme = () => {
+	let value : string | null = null;
+	// #ifdef APP
+	const appTheme = uni.getAppBaseInfo().appTheme;
+	const osTheme = uni.getDeviceInfo().osTheme;
+	// 如果应用为自动，则跟随系统主题，否则使用应用主题 
+	value = appTheme == 'auto' ? osTheme : appTheme;
+	isAuto.value = appTheme == 'auto';
+	// #endif
+	// #ifdef WEB | MP
+	const hostTheme = uni.getAppBaseInfo().hostTheme;
+	value = hostTheme == null ? 'light' : hostTheme;
+	// #endif
+	return value as Theme;
+};
+
+/**
+ * 当前主题响应式变量
+ */
+export const theme = ref<Theme>(getTheme());
+
+/**
+ * 是否为暗色模式
+ */
+export const isDark = computed(() => {
+	return theme.value == 'dark';
+});
+
+/**
+ * 切换自动主题模式（仅 APP 有效）
+ */
+export const setIsAuto = () => {
+	// #ifdef APP
+	isAuto.value = !isAuto.value;
+	if (isAuto.value) {
+		// 设置为自动主题，跟随系统
+		uni.setAppTheme({
+			theme: "auto"
+		});
+	} else {
+		// 关闭自动，使用当前 theme
+		setTheme(theme.value);
+	}
+	// #endif
+};
+
+/**
+ * H5 下通过切换 documentElement 的 dark 类驱动 Tailwind 全局暗色
+ */
+export const setH5 = (): void => {
+	// #ifdef WEB
+	// 设置主题类
+	document.documentElement.classList.toggle("dark", isDark.value);
+
+	// 设置 tabbar 背景色
+	const tabbar = document.querySelector(".uni-tabbar");
+	if (tabbar != null) {
+		tabbar.style.backgroundColor = isDark.value ? "#000000" : "#ffffff";
+	}
+
+	// 设置页面头部背景色和文字颜色
+	const pageHead = document.querySelector(".uni-page-head");
+	if (pageHead != null) {
+		pageHead.style.backgroundColor = isDark.value ? "#000000" : "#ffffff";
+		pageHead.style.color = isDark.value ? "#ffffff" : "#000000";
+	}
+
+	// 设置页面头部按钮路径颜色
+	const pageHeadBtnPath = document.querySelector(".uni-page-head-btn path");
+	if (pageHeadBtnPath != null) {
+		pageHeadBtnPath.style.fill = isDark.value ? "#ffffff" : "#000000";
+	}
+	// #endif
+};
+
+/**
+ * 设置主题
+ * @param value 主题值（"light" | "dark"）
+ */
+export const setTheme = (value : Theme) => {
+	if (theme.value == value) return;
+	isAuto.value = false;
+	// #ifdef APP
+	uni.setAppTheme({
+		theme: value,
+		success: () => {
+			theme.value = value;
+		}
+	});
+	// #endif
+	// #ifndef APP
+	theme.value = value;
+	// #endif
+	// #ifdef WEB
+	setH5();
+	// #endif
+};
+
+/**
+ * 切换主题
+ */
+export const toggleTheme = () => {
+	if (isDark.value) {
+		setTheme("light");
+	} else {
+		setTheme("dark");
+	}
+};
+
+/**
+ * 初始化主题监听
+ * APP 下监听系统主题和 App 主题变化
+ * H5/小程序下监听 hostTheme 变化
+ */
+export const initTheme = () => {
+	// #ifdef APP
+	// 监听系统主题
+	uni.onOsThemeChange((res) => {
+		if (isAuto.value) {
+			setTimeout(() => {
+				uni.setAppTheme({
+					theme: res.osTheme,
+					success: () => {
+						theme.value = res.osTheme;
+					}
+				})
+			}, 100);
+		}
+	});
+	// 监听应用主题
+	uni.onAppThemeChange((res) => {
+		theme.value = res.appTheme;
+	});
+	// #endif
+	// #ifdef MP
+	uni.onHostThemeChange((res) => {
+		setTheme(res.hostTheme);
+	});
+	// #endif
+
+	// #ifdef WEB
+	setH5();
+	// #endif
+};

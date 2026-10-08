@@ -1,0 +1,264 @@
+<template>
+   <uvx-page>
+      <view class="uvx-number-box-demo">
+         <uvx-cell-group :border="true">
+            <!-- 基础用法 -->
+            <uvx-cell :border="true" title="基础用法">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value1"
+                     step="1"
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 步长设置 -->
+            <uvx-cell :border="true" title="步长设置">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value2"
+                     :step="step"
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 限制输入范围 -->
+            <uvx-cell :border="true" title="限制输入范围">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value3"
+                     step="1"
+                     :min="min"
+                     :max="max"
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 限制输入整数 -->
+            <uvx-cell :border="true" title="限制输入整数">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value4"
+                     step="1"
+                     integer
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 禁用状态 -->
+            <uvx-cell :border="true" title="禁用状态">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value5"
+                     step="1"
+                     disabled
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 禁用输入框 -->
+            <uvx-cell :border="true" title="禁用输入框">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value6"
+                     step="1"
+                     disabled-input
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 禁用长按 -->
+            <uvx-cell :border="true" title="禁用长按">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value7"
+                     step="1"
+                     :long-press="false"
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 固定小数位数 -->
+            <uvx-cell :border="true" title="固定小数位数">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value8"
+                     step="0.2"
+                     decimal-length="1"
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 异步变更 -->
+            <uvx-cell :border="true" title="异步变更">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value9"
+                     step="1"
+                     :async-change="isAsyncChange"
+                     @change="handleAsyncChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 自定义大小颜色样式 -->
+            <uvx-cell :border="true" title="自定义大小颜色样式">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value10"
+                     step="1"
+                     :color="color"
+                     :button-size="buttonSize"
+                     :bg-color="backgroundColor"
+                     icon-style="color: #ffffff"
+                     @change="handleChange"
+                  ></uvx-number-box>
+               </template>
+            </uvx-cell>
+            <!-- 自定义插槽 -->
+            <uvx-cell :border="true" title="自定义(为0时减少按钮会消失)">
+               <template #right-icon>
+                  <uvx-number-box
+                     v-model="value11"
+                     step="1"
+                     :min="0"
+                     :show-minus="isMinusVisible"
+                  >
+                     <template #minus>
+                        <view class="uvx-number-box-demo__minus">
+                           <uvx-icon name="minus" size="12"></uvx-icon>
+                        </view>
+                     </template>
+                     <template #input>
+                        <text class="uvx-number-box-demo__input">{{ value11 }}</text>
+                     </template>
+                     <template #plus>
+                        <view class="uvx-number-box-demo__plus">
+                           <uvx-icon name="plus" color="#ffffff" size="12"></uvx-icon>
+                        </view>
+                     </template>
+                  </uvx-number-box>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "@/uni_modules/uvx-ui";
+import type { ChangeDetail, Value } from "@/uni_modules/uvx-ui/components/uvx-number-box/types";
+
+// 基础示例数值
+const value1 = ref<Value>(3);
+// 步长示例数值
+const value2 = ref<Value>(3);
+// 范围限制示例数值
+const value3 = ref<Value>(3);
+// 整数限制示例数值
+const value4 = ref<Value>(3);
+// 禁用状态示例数值
+const value5 = ref<Value>(3);
+// 禁用输入框示例数值
+const value6 = ref<Value>(3);
+// 禁用长按示例数值
+const value7 = ref<Value>(3);
+// 固定小数示例数值
+const value8 = ref<Value>(3.1);
+// 异步变更示例数值
+const value9 = ref<Value>(3);
+// 自定义样式示例数值
+const value10 = ref<Value>(3);
+// 自定义插槽示例数值
+const value11 = ref<Value>(3);
+// 自定义步长
+const step = ref(2);
+// 最小值
+const min = ref(5);
+// 最大值
+const max = ref(8);
+// 是否由外部异步更新
+const isAsyncChange = ref(true);
+// 自定义文字与图标颜色
+const color = ref("#ffffff");
+// 自定义按钮高度
+const buttonSize = ref(36);
+// 自定义背景颜色
+const backgroundColor = ref("#2979ff");
+
+/**
+ * 自定义减少按钮是否显示
+ * @returns boolean
+ */
+const isMinusVisible = computed((): boolean => {
+   return Number(value11.value) > 0;
+});
+
+/**
+ * 输出数值变化
+ * @param detail 数值变化详情
+ * @returns null
+ */
+const handleChange = (detail: ChangeDetail): void => {
+   console.log("change", detail);
+};
+
+/**
+ * 模拟异步同步数值
+ * @param detail 数值变化详情
+ * @returns null
+ */
+const handleAsyncChange = async (detail: ChangeDetail): Promise<void> => {
+   isAsyncChange.value = false;
+   uni.showLoading({ title: "加载中..." });
+   try {
+      await $uvx.sleep(3000);
+      value9.value = detail.value;
+   } finally {
+      uni.hideLoading();
+      isAsyncChange.value = true;
+   }
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// NumberBox 演示页容器
+.uvx-number-box-demo {
+   padding-bottom: 20px;
+
+   // 自定义减少按钮
+   &__minus {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-width: 1px;
+      border-style: solid;
+      border-color: var(--uvx-border);
+      border-radius: 100px;
+   }
+
+   // 自定义数值文本
+   &__input {
+      width: 50px;
+      padding: 0 10px;
+      color: var(--uvx-text-main);
+      text-align: center;
+   }
+
+   // 自定义增加按钮
+   &__plus {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 100px;
+      background-color: #ff0000;
+   }
+}
+</style>

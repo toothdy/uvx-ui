@@ -1,0 +1,121 @@
+<template>
+   <uvx-page>
+      <view class="overlay-demo">
+         <!-- 演示入口 -->
+         <uvx-cell
+            v-for="(item, index) in demoItems"
+            :key="index"
+            :title="item.title"
+            :is-link="true"
+            @click="handleOpen(item.mode)"
+         >
+            <template #icon>
+               <image class="uv-cell-icon" :src="item.iconUrl" mode="widthFix"></image>
+            </template>
+         </uvx-cell>
+
+         <!-- 基础遮罩 -->
+         <uvx-overlay :show="isBasicVisible" @click="handleCloseBasic"></uvx-overlay>
+
+         <!-- 带内容遮罩 -->
+         <uvx-overlay :show="isContentVisible" @click="handleCloseContent">
+            <view class="overlay-demo__center">
+               <view class="overlay-demo__box"></view>
+            </view>
+         </uvx-overlay>
+
+         <!-- 自定义透明度遮罩 -->
+         <uvx-overlay
+            :show="isOpacityVisible"
+            :opacity="0.85"
+            @click="handleCloseOpacity"
+         ></uvx-overlay>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type OverlayDemoItem = {
+   title: string;
+   iconUrl: string;
+   mode: string;
+};
+
+// 演示入口
+const demoItems: OverlayDemoItem[] = [
+   { title: "基本案列", iconUrl: "https://cdn.uviewui.com/uview/demo/overlay/baseCases.png", mode: "basic" },
+   { title: "嵌入内容", iconUrl: "https://cdn.uviewui.com/uview/demo/overlay/embeddedContent.png", mode: "content" },
+   { title: "设置透明度", iconUrl: "https://cdn.uviewui.com/uview/demo/overlay/setTransparency.png", mode: "opacity" },
+];
+// 基础遮罩是否显示
+const isBasicVisible = ref(false);
+// 内容遮罩是否显示
+const isContentVisible = ref(false);
+// 自定义遮罩是否显示
+const isOpacityVisible = ref(false);
+
+/**
+ * 打开指定遮罩
+ * @param mode 演示类型
+ * @returns null
+ */
+const handleOpen = (mode: string): void => {
+   if (mode == "basic") {
+      isBasicVisible.value = true;
+   } else if (mode == "content") {
+      isContentVisible.value = true;
+   } else {
+      isOpacityVisible.value = true;
+   }
+};
+
+/**
+ * 关闭基础遮罩
+ * @returns null
+ */
+const handleCloseBasic = (): void => {
+   isBasicVisible.value = false;
+};
+
+/**
+ * 关闭内容遮罩
+ * @returns null
+ */
+const handleCloseContent = (): void => {
+   isContentVisible.value = false;
+};
+
+/**
+ * 关闭自定义遮罩
+ * @returns null
+ */
+const handleCloseOpacity = (): void => {
+   isOpacityVisible.value = false;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 遮罩演示页面
+.overlay-demo {
+   // 遮罩内容居中区
+   &__center {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 遮罩内容块
+   &__box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 200rpx;
+      height: 200rpx;
+      background-color: #70e1f5;
+   }
+}
+</style>

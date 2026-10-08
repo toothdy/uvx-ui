@@ -1,0 +1,599 @@
+<template>
+   <uvx-page ref="uPage">
+      <view class="uvx-page-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-form ref="uForm" :model="model">
+                  <!-- 姓名 -->
+                  <uvx-form-item
+                     label="姓名"
+                     prop="userInfo.name"
+                     border-bottom
+                     :label-width="80"
+                  >
+                     <uvx-input
+                        v-model="model.userInfo.name"
+                        border="none"
+                        placeholder="请输入姓名"
+                        @blur="handleNameBlur"
+                     ></uvx-input>
+                  </uvx-form-item>
+
+                  <!-- 性别 -->
+                  <uvx-form-item
+                     label="性别"
+                     prop="userInfo.sex"
+                     border-bottom
+                     :label-width="80"
+                     @click="handleShowSexSelect"
+                  >
+                     <uvx-input
+                        v-model="model.userInfo.sex"
+                        readonly
+                        placeholder="请选择性别"
+                        border="none"
+                     ></uvx-input>
+                     <template #right>
+                        <uvx-icon name="arrow-right"></uvx-icon>
+                     </template>
+                  </uvx-form-item>
+
+                  <!-- 水果 -->
+                  <uvx-form-item
+                     label="水果"
+                     prop="radiovalue1"
+                     border-bottom
+                     :label-width="80"
+                  >
+                     <uvx-radio-group
+                        v-model="model.radiovalue1"
+                        shape="circle"
+                        @change="handleFruitChange"
+                     >
+                        <uvx-radio
+                           v-for="(item, index) in FRUIT_LIST"
+                           :key="index"
+                           :label="item.name"
+                           :name="item.name"
+                           u-style="margin-right: 5px;"
+                        ></uvx-radio>
+                     </uvx-radio-group>
+                  </uvx-form-item>
+
+                  <!-- 兴趣爱好 -->
+                  <uvx-form-item
+                     label="兴趣爱好"
+                     prop="checkboxValue1"
+                     border-bottom
+                     :label-width="80"
+                  >
+                     <uvx-checkbox-group
+                        v-model="model.checkboxValue1"
+                        @change="handleHobbiesChange"
+                     >
+                        <uvx-checkbox
+                           v-for="(item, index) in HOBBY_LIST"
+                           :key="index"
+                           :label="item.name"
+                           :name="item.name"
+                           u-style="margin-right: 5px;"
+                        ></uvx-checkbox>
+                     </uvx-checkbox-group>
+                  </uvx-form-item>
+
+                  <!-- 简介 -->
+                  <uvx-form-item
+                     label="简介"
+                     prop="intro"
+                     border-bottom
+                     :label-width="80"
+                  >
+                     <uvx-textarea
+                        v-model="model.intro"
+                        placeholder="不低于3个字"
+                        count
+                        @change="handleIntroChange"
+                     ></uvx-textarea>
+                  </uvx-form-item>
+
+                  <!-- 住店时间 -->
+                  <uvx-form-item
+                     label="住店时间"
+                     prop="hotel"
+                     border-bottom
+                     :label-width="80"
+                     @click="handleShowTimeSelect"
+                  >
+                     <uvx-input
+                        v-model="model.hotel"
+                        readonly
+                        placeholder="请选择住店和离店时间"
+                        border="none"
+                     ></uvx-input>
+                     <template #right>
+                        <uvx-icon name="arrow-right"></uvx-icon>
+                     </template>
+                  </uvx-form-item>
+
+                  <!-- 验证码 -->
+                  <uvx-form-item
+                     label="验证码"
+                     prop="code"
+                     border-bottom
+                     :label-width="80"
+                  >
+                     <uvx-input
+                        v-model="model.code"
+                        border="none"
+                        placeholder="请填写验证码"
+                        @blur="handleCodeBlur"
+                     ></uvx-input>
+                     <template #right>
+                        <uvx-button
+                           :text="codeTips"
+                           type="success"
+                           size="mini"
+                           :disabled="isCodeDisabled"
+                           @click="handleGetCode"
+                        ></uvx-button>
+                     </template>
+                  </uvx-form-item>
+
+                  <!-- 生日 -->
+                  <uvx-form-item
+                     label="生日"
+                     prop="userInfo.birthday"
+                     border-bottom
+                     :label-width="80"
+                     @click="handleShowDateSelect"
+                  >
+                     <uvx-input
+                        v-model="model.userInfo.birthday"
+                        readonly
+                        placeholder="请选择生日"
+                        border="none"
+                     ></uvx-input>
+                     <template #right>
+                        <uvx-icon name="arrow-right"></uvx-icon>
+                     </template>
+                  </uvx-form-item>
+               </uvx-form>
+
+               <!-- 表单操作 -->
+               <uvx-button
+                  type="primary"
+                  text="提交"
+                  u-style="width: 100%; margin-top: 50px;"
+                  @click="handleSubmit"
+               ></uvx-button>
+               <uvx-button
+                  type="error"
+                  text="重置"
+                  u-style="width: 100%; margin-top: 10px;"
+                  @click="handleReset"
+               ></uvx-button>
+
+               <!-- 表单辅助选择器 -->
+               <view>
+                  <uvx-action-sheet
+                     ref="uSexSelect"
+                     :round="10"
+                     :actions="SEX_ACTIONS"
+                     title="请选择性别"
+                     description="如果选择保密会报错"
+                     @select="handleSexSelect"
+                  ></uvx-action-sheet>
+                  <uvx-calendar
+                     ref="uTimeSelect"
+                     mode="range"
+                     start-text="住店"
+                     end-text="离店"
+                     @confirm="handleCalendarConfirm"
+                  ></uvx-calendar>
+                  <uvx-code
+                     ref="uCode"
+                     :seconds="20"
+                     @start="handleCodeStart"
+                     @end="handleCodeEnd"
+                     @change="handleCodeChange"
+                  ></uvx-code>
+                  <uvx-datetime-picker
+                     ref="uDateSelect"
+                     v-model="birthday"
+                     mode="date"
+                     close-on-click-overlay
+                     @confirm="handleBirthdayConfirm"
+                  ></uvx-datetime-picker>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "@/uni_modules/uvx-ui/index.uts";
+// 类型名以各组件 types/index.uts 实际导出为准，页面侧用别名保持语义命名
+import type { Item as ActionSheetItem } from "@/uni_modules/uvx-ui/components/uvx-action-sheet/types/index.uts";
+import type { ChangeEvent as CalendarChangeEvent } from "@/uni_modules/uvx-ui/components/uvx-calendar/types/index.uts";
+import type { Value as CheckboxValue } from "@/uni_modules/uvx-ui/components/uvx-checkbox/types/index.uts";
+import type {
+   ConfirmEvent as DatetimePickerConfirmEvent,
+   PickerValue as DatetimePickerValue,
+} from "@/uni_modules/uvx-ui/components/uvx-datetime-picker/types/index.uts";
+import type {
+   FieldValue as FormFieldValue,
+   ValidateResult as FormValidatorResult,
+   Validator as FormValidator,
+} from "@/uni_modules/uvx-ui/components/uvx-form/types/index.uts";
+import type { Value as RadioValue } from "@/uni_modules/uvx-ui/components/uvx-radio/types/index.uts";
+
+type UserInfo = {
+   name: string;
+   sex: string;
+   birthday: string;
+};
+
+type FormModel = {
+   userInfo: UserInfo;
+   radiovalue1: RadioValue;
+   checkboxValue1: CheckboxValue[];
+   intro: string;
+   code: string;
+   hotel: string;
+};
+
+type SelectItem = {
+   name: string;
+};
+
+const SEX_ACTIONS: ActionSheetItem[] = [
+   { name: "男" },
+   { name: "女" },
+   { name: "保密" },
+];
+const FRUIT_LIST: SelectItem[] = [
+   { name: "苹果" },
+   { name: "香蕉" },
+   { name: "毒橙子" },
+];
+const HOBBY_LIST: SelectItem[] = [
+   { name: "羽毛球" },
+   { name: "跑步" },
+   { name: "爬山" },
+];
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+// 表单组件实例
+const uForm = ref<UvxFormComponentPublicInstance | null>(null);
+// 性别选择器实例
+const uSexSelect = ref<UvxActionSheetComponentPublicInstance | null>(null);
+// 住店日期选择器实例
+const uTimeSelect = ref<UvxCalendarComponentPublicInstance | null>(null);
+// 验证码倒计时实例
+const uCode = ref<UvxCodeComponentPublicInstance | null>(null);
+// 生日选择器实例
+const uDateSelect = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+// 表单数据
+const model = reactive<FormModel>({
+   userInfo: {
+      name: "楼兰",
+      sex: "",
+      birthday: "",
+   },
+   radiovalue1: "苹果",
+   checkboxValue1: [],
+   intro: "",
+   code: "",
+   hotel: "",
+});
+// 验证码按钮文字
+const codeTips = ref("");
+// 验证码按钮是否禁用
+const isCodeDisabled = ref(false);
+// 生日选择器值
+const birthday = ref<DatetimePickerValue>(Date.now());
+
+/**
+ * 校验姓名是否全部为中文
+ * @param rule 当前规则
+ * @param value 姓名字段值
+ * @returns FormValidatorResult
+ */
+const validateChinese: FormValidator = (
+   rule: UTSJSONObject,
+   value: FormFieldValue,
+): FormValidatorResult => {
+   const type = rule["type"];
+   if (typeof type == "string" && (type as string) != "string") return false;
+   if (typeof value != "string") return false;
+   return /^[\u4e00-\u9fa5]+$/.test(value as string);
+};
+
+const FORM_RULES: UTSJSONObject = {
+   "userInfo.name": [
+      {
+         type: "string",
+         required: true,
+         message: "请填写姓名",
+         trigger: ["blur", "change"],
+      },
+      {
+         type: "string",
+         validator: validateChinese,
+         message: "姓名必须为中文",
+         trigger: ["change", "blur"],
+      },
+   ],
+   code: {
+      type: "string",
+      required: true,
+      len: 4,
+      message: "请填写4位验证码",
+      trigger: "blur",
+   },
+   "userInfo.sex": {
+      type: "string",
+      max: 1,
+      required: true,
+      message: "请选择男或女",
+      trigger: ["blur", "change"],
+   },
+   radiovalue1: {
+      type: "string",
+      min: 1,
+      max: 2,
+      message: "橙子有毒",
+      trigger: "change",
+   },
+   checkboxValue1: {
+      type: "array",
+      min: 2,
+      required: true,
+      message: "不能太宅，至少选两项",
+      trigger: "change",
+   },
+   intro: {
+      type: "string",
+      min: 3,
+      required: true,
+      message: "不低于3个字",
+      trigger: "change",
+   },
+   hotel: {
+      type: "string",
+      min: 2,
+      required: true,
+      message: "请选择住店时间",
+      trigger: "change",
+   },
+   "userInfo.birthday": {
+      type: "string",
+      required: true,
+      message: "请选择生日",
+      trigger: "change",
+   },
+};
+
+/**
+ * 静默校验指定字段
+ * @param field 字段路径
+ * @param trigger 触发方式
+ * @returns Promise<void>
+ */
+const validateField = async (field: string, trigger: "blur" | "change"): Promise<void> => {
+   if (uForm.value == null) return;
+   try {
+      await uForm.value.validateField(field, trigger);
+   } catch (_error) {
+      // 错误已由表单项展示。
+   }
+};
+
+/**
+ * 姓名失焦校验
+ * @param value 当前姓名
+ * @returns Promise<void>
+ */
+const handleNameBlur = async (value: string): Promise<void> => {
+   model.userInfo.name = value;
+   await validateField("userInfo.name", "blur");
+};
+
+/**
+ * 水果变化校验
+ * @param value 当前水果
+ * @returns Promise<void>
+ */
+const handleFruitChange = async (value: RadioValue): Promise<void> => {
+   model.radiovalue1 = value;
+   await validateField("radiovalue1", "change");
+};
+
+/**
+ * 兴趣变化校验
+ * @param values 当前兴趣
+ * @returns Promise<void>
+ */
+const handleHobbiesChange = async (values: CheckboxValue[]): Promise<void> => {
+   model.checkboxValue1 = values;
+   await validateField("checkboxValue1", "change");
+};
+
+/**
+ * 简介变化校验
+ * @param value 当前简介
+ * @returns Promise<void>
+ */
+const handleIntroChange = async (value: string): Promise<void> => {
+   model.intro = value;
+   await validateField("intro", "change");
+};
+
+/**
+ * 验证码失焦校验
+ * @param value 当前验证码
+ * @returns Promise<void>
+ */
+const handleCodeBlur = async (value: string): Promise<void> => {
+   model.code = value;
+   await validateField("code", "blur");
+};
+
+/**
+ * 打开性别选择器
+ * @returns null
+ */
+const handleShowSexSelect = (): void => {
+   uSexSelect.value?.open();
+   uni.hideKeyboard();
+};
+
+/**
+ * 回填性别并校验
+ * @param item 选中的性别
+ * @returns Promise<void>
+ */
+const handleSexSelect = async (item: ActionSheetItem): Promise<void> => {
+   model.userInfo.sex = item.name;
+   await validateField("userInfo.sex", "change");
+};
+
+/**
+ * 打开住店日期选择器
+ * @returns null
+ */
+const handleShowTimeSelect = (): void => {
+   uTimeSelect.value?.open();
+   uni.hideKeyboard();
+};
+
+/**
+ * 回填住店日期并校验
+ * @param event 日期范围
+ * @returns Promise<void>
+ */
+const handleCalendarConfirm = async (event: CalendarChangeEvent): Promise<void> => {
+   if ($uvx.string.empty(event.range.before) || $uvx.string.empty(event.range.after)) return;
+   model.hotel = `${event.range.before} 至 ${event.range.after}`;
+   await validateField("hotel", "change");
+};
+
+/**
+ * 更新验证码按钮文字
+ * @param value 倒计时文字
+ * @returns null
+ */
+const handleCodeChange = (value: string): void => {
+   codeTips.value = value;
+};
+
+/**
+ * 禁用验证码按钮
+ * @returns null
+ */
+const handleCodeStart = (): void => {
+   isCodeDisabled.value = true;
+};
+
+/**
+ * 启用验证码按钮
+ * @returns null
+ */
+const handleCodeEnd = (): void => {
+   isCodeDisabled.value = false;
+};
+
+/**
+ * 模拟获取验证码
+ * @returns null
+ */
+const handleGetCode = (): void => {
+   if (uCode.value == null || !uCode.value.canGetCode) {
+      uPage.value?.toast({ message: "倒计时结束后再发送", icon: false });
+      return;
+   }
+   uni.showLoading({ title: "正在获取验证码" });
+   setTimeout((): void => {
+      uni.hideLoading();
+      uPage.value?.toast({ message: "验证码已发送", icon: false });
+      uCode.value?.start();
+   }, 2000);
+};
+
+/**
+ * 打开生日选择器
+ * @returns null
+ */
+const handleShowDateSelect = (): void => {
+   uDateSelect.value?.open();
+   uni.hideKeyboard();
+};
+
+/**
+ * 格式化日期选择值
+ * @param value 日期选择值
+ * @returns string
+ */
+const getDateText = (value: DatetimePickerValue): string => {
+   const timestamp = typeof value == "number" ? value as number : Number(value as string);
+   if (Number.isNaN(timestamp)) return "";
+   const date = new Date(timestamp);
+   const year = date.getFullYear().toString();
+   const month = (date.getMonth() + 1).toString().padStart(2, "0");
+   const day = date.getDate().toString().padStart(2, "0");
+   return `${year}-${month}-${day}`;
+};
+
+/**
+ * 回填生日并校验
+ * @param event 生日选择结果
+ * @returns Promise<void>
+ */
+const handleBirthdayConfirm = async (event: DatetimePickerConfirmEvent): Promise<void> => {
+   birthday.value = event.value;
+   const value = getDateText(event.value);
+   if ($uvx.string.empty(value)) return;
+   model.userInfo.birthday = value;
+   await validateField("userInfo.birthday", "change");
+};
+
+/**
+ * 提交表单
+ * @returns Promise<void>
+ */
+const handleSubmit = async (): Promise<void> => {
+   if (uForm.value == null) return;
+   try {
+      await uForm.value.validate();
+      uPage.value?.toast({ type: "success", message: "校验通过" });
+   } catch (_error) {
+      // 错误已由表单项展示。
+   }
+};
+
+/**
+ * 重置表单
+ * @returns null
+ */
+const handleReset = (): void => {
+   uForm.value?.resetFields();
+};
+
+/**
+ * 页面就绪后通过实例设置包含函数的规则
+ * @returns null
+ */
+onReady((): void => {
+   uForm.value?.setRules(FORM_RULES);
+});
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

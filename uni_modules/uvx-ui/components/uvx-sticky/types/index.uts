@@ -1,0 +1,11 @@
+/** 吸顶组件属性 */
+export type Props = {
+   offsetTop: string | number;
+   customNavHeight: string | number;
+   disabled: boolean;
+   bgColor: string;
+   zIndex: string | number;
+   index: string | number;
+   uStyle: string;
+   uClass: string;
+};

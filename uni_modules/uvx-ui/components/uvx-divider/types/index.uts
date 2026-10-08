@@ -1,0 +1,18 @@
+export type TextPosition = "left" | "center" | "right";
+
+export type Props = {
+   dashed: boolean;
+   hairline: boolean;
+   dot: boolean;
+   textPosition: TextPosition;
+   text: string | number;
+   textSize: string | number;
+   textColor: string;
+   lineColor: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [];
+};

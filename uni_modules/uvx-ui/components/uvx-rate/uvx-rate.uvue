@@ -1,0 +1,447 @@
+<template>
+   <view
+      class="uvx-rate"
+      :class="[uClass]"
+      :style="rateStyle"
+      @touchmove.stop="touchMove"
+      @touchend.stop="touchEnd"
+   >
+      <view class="uvx-rate__content">
+         <view
+            v-for="(_, index) in countValue"
+            :key="index"
+            class="uvx-rate__item"
+            :style="itemStyle"
+            @tap.stop="handleClick(index + 1)"
+         >
+            <!-- 完整星图标，同时作为半星状态的底层图标 -->
+            <uvx-icon
+               :name="isFull(index) ? activeIcon : inactiveIcon"
+               :color="getIconColor(isFull(index))"
+               :size="sizeValue"
+               :u-style="$uvx.style.stringify(iconStyle)"
+            ></uvx-icon>
+            <!-- 半星显示层：外层裁切，内层保持完整星宽，避免 Web/小程序图标错位 -->
+            <view v-if="isHalf(index)" class="uvx-rate__half" :style="halfStyle">
+               <view class="uvx-rate__half-content" :style="itemStyle">
+                  <uvx-icon
+                     :name="activeIcon"
+                     :color="getIconColor(true)"
+                     :size="sizeValue"
+                     :u-style="$uvx.style.stringify(iconStyle)"
+                  ></uvx-icon>
+               </view>
+            </view>
+            <!-- 左半区域独立响应点击，避免依赖各平台 tap 事件的坐标字段 -->
+            <view
+               v-if="allowHalf"
+               class="uvx-rate__half-trigger"
+               :style="halfStyle"
+               @tap.stop="handleClick(index + 0.5)"
+            ></view>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-rate 评分
+ * @description 用于满意度调查、星型评分等场景，支持整数、半星、只读、禁用和滑动选择。
+ * @tutorial https://www.uvxui.cn/components/rate.html
+ * @property {String | Number} value 用于 v-model 双向绑定选中的星星数量
+ * @property {String | Number} modelValue 用于 v-model 双向绑定选中的星星数量
+ * @property {String | Number} count 最多可选的星星数量（默认 5）
+ * @property {Boolean} disabled 是否禁止用户操作（默认 false）
+ * @property {Boolean} readonly 是否只读（默认 false）
+ * @property {String | Number} size 星星的大小，单位 px（默认 18）
+ * @property {String} inactiveColor 未选中星星的颜色，空值时跟随主题
+ * @property {String} activeColor 选中星星的颜色，空值时跟随主题错误色
+ * @property {String | Number} gutter 星星之间的距离，单位 px（默认 4）
+ * @property {String | Number} minCount 最少选中星星的个数（默认 1）
+ * @property {Boolean} allowHalf 是否允许半星选择（默认 false）
+ * @property {String} activeIcon 选中时的图标名（默认 star-fill）
+ * @property {String} inactiveIcon 未选中时的图标名（默认 star）
+ * @property {Boolean} touchable 是否可以通过滑动手势选择评分（默认 false）
+ * @property {String} uStyle 组件的样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} change 选中的星星发生变化时触发
+ * @event {Function} input 选中的星星发生变化时触发
+ * @event {Function} update:modelValue 更新 v-model 值
+ * @example <uvx-rate v-model="value" :allow-half="true"></uvx-rate>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-rate", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: 0,
+   modelValue: 0,
+   count: 5,
+   disabled: false,
+   readonly: false,
+   size: 18,
+   inactiveColor: "",
+   activeColor: "",
+   gutter: 4,
+   minCount: 1,
+   allowHalf: false,
+   activeIcon: "star-fill",
+   inactiveIcon: "star",
+   touchable: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 评分值变化事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件实例，用于限定节点查询范围
+const instance = getCurrentInstance()!.proxy!;
+// 组件左边界，用于将页面触摸坐标换算为评分值
+const rateLeft = ref(0);
+// 当前显示的评分值
+const activeIndex = ref(0);
+// 是否发生过滑动，防止 touchend 后继续触发 tap
+const moving = ref(false);
+
+/**
+ * 将数字或数字字符串转换为数值
+ * @param value 待转换值
+ * @param fallback 转换失败时的默认值
+ * @returns 转换后的数值
+ */
+const toNumber = (value: number | string, fallback: number): number => {
+   const parsed = typeof value == "number" ? value : parseFloat(value);
+   return isNaN(parsed) ? fallback : parsed;
+};
+
+/**
+ * 星星数量
+ * @returns 大于等于 1 的整数
+ */
+const countValue = computed((): number => {
+   return Math.max(1, Math.floor(toNumber(props.count, 5)));
+});
+
+/**
+ * 星星尺寸
+ * @returns 大于等于 1 的像素值
+ */
+const sizeValue = computed((): number => {
+   return Math.max(1, toNumber(props.size, 18));
+});
+
+/**
+ * 星星间距
+ * @returns 大于等于 0 的像素值
+ */
+const gutterValue = computed((): number => {
+   return Math.max(0, toNumber(props.gutter, 4));
+});
+
+/**
+ * 最小评分
+ * @returns 位于 0 到星星数量之间的评分值
+ */
+const minCountValue = computed((): number => {
+   return Math.max(0, Math.min(countValue.value, toNumber(props.minCount, 1)));
+});
+
+/**
+ * 单个评分项宽度，包含图标两侧间距
+ * @returns 评分项宽度
+ */
+const itemWidth = computed((): number => {
+   return sizeValue.value + gutterValue.value;
+});
+
+/**
+ * 评分组件样式
+ * @returns 合并自定义样式后的组件样式
+ */
+const rateStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { "height": $uvx.format.unit(sizeValue.value) };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 单个评分项样式
+ * @returns 评分项宽高样式
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return {
+      "width": $uvx.format.unit(itemWidth.value),
+      "height": $uvx.format.unit(sizeValue.value),
+   };
+});
+
+/**
+ * 图标间距样式
+ * @returns 平分到图标两侧的间距样式
+ */
+const iconStyle = computed((): UTSJSONObject => {
+   return {
+      "padding-left": $uvx.format.unit(gutterValue.value / 2),
+      "padding-right": $uvx.format.unit(gutterValue.value / 2),
+   };
+});
+
+/**
+ * 半星裁切及点击区域样式
+ * @returns 评分项一半宽度的样式
+ */
+const halfStyle = computed((): UTSJSONObject => {
+   return { "width": $uvx.format.unit(itemWidth.value / 2) };
+});
+
+/**
+ * 判断指定位置是否显示完整选中图标
+ * @param index 星星索引
+ * @returns 是否完整选中
+ */
+const isFull = (index: number): boolean => {
+   return Math.floor(activeIndex.value) > index;
+};
+
+/**
+ * 判断指定位置是否显示半星
+ * @param index 星星索引
+ * @returns 是否显示半星
+ */
+const isHalf = (index: number): boolean => {
+   return props.allowHalf
+      && !isFull(index)
+      && activeIndex.value > index
+      && activeIndex.value < index + 1;
+};
+
+/**
+ * 获取评分图标颜色
+ * @param active 是否为选中状态
+ * @returns 当前状态对应的颜色
+ */
+const getIconColor = (active: boolean): string => {
+   if (props.disabled) return "disabled";
+   if (!active) return props.inactiveColor;
+   return $uvx.string.empty(props.activeColor) ? "error" : props.activeColor;
+};
+
+/**
+ * 查询组件左边界
+ * @returns null
+ */
+const updateRateLeft = (): void => {
+   uni.createSelectorQuery()
+      .in(instance)
+      .select(".uvx-rate")
+      .boundingClientRect()
+      .exec((result): void => {
+         if (result.length == 0 || result[0] == null) return;
+         const rect = result[0] as NodeInfo;
+         if (rect.left != null) rateLeft.value = rect.left;
+      });
+};
+
+/**
+ * 重新读取布局信息
+ * @description 评分组件位于后加载的弹层中时，在弹层显示后通过 ref 调用
+ * @returns null
+ */
+const init = (): void => {
+   nextTick((): void => {
+      updateRateLeft();
+   });
+};
+
+/**
+ * 获取触摸事件的页面横坐标
+ * @param event 触摸事件
+ * @returns 页面横坐标，无触摸点时返回 null
+ */
+const getTouchPageX = (event: UniTouchEvent): number | null => {
+   if (event.changedTouches.length > 0) return event.changedTouches[0].pageX;
+   if (event.touches.length > 0) return event.touches[0].pageX;
+   return null;
+};
+
+/**
+ * 发送评分值变化事件
+ * @returns null
+ */
+const emitChange = (): void => {
+   emit("change", activeIndex.value);
+   emit("input", activeIndex.value);
+   emit("update:modelValue", activeIndex.value);
+};
+
+/**
+ * 更新评分值并发送事件
+ * @param value 新评分值
+ * @returns null
+ */
+const setRateValue = (value: number): void => {
+   if (props.disabled || props.readonly) return;
+   activeIndex.value = Math.max(minCountValue.value, Math.min(value, countValue.value));
+   emitChange();
+};
+
+/**
+ * 根据页面横坐标更新评分
+ * @param pageX 页面横坐标
+ * @returns null
+ */
+const updateFromPoint = (pageX: number): void => {
+   if (props.disabled || props.readonly) return;
+   const distance = Math.max(0, Math.min(
+      pageX - rateLeft.value,
+      itemWidth.value * countValue.value,
+   ));
+   const itemIndex = Math.floor(distance / itemWidth.value);
+   const decimal = distance % itemWidth.value;
+   let value = itemIndex;
+   if (props.allowHalf) {
+      if (decimal > itemWidth.value / 2) value += 1;
+      else if (decimal > 0) value += 0.5;
+   } else if (decimal > itemWidth.value / 2) {
+      value += 1;
+   }
+   setRateValue(value);
+};
+
+/**
+ * 处理星星点击
+ * @param value 点击位置对应的评分值
+ * @returns null
+ */
+const handleClick = (value: number): void => {
+   if (moving.value) return;
+   setRateValue(value);
+};
+
+/**
+ * 处理滑动选择
+ * @param event 触摸移动事件
+ * @returns null
+ */
+const touchMove = (event: UniTouchEvent): void => {
+   if (!props.touchable) return;
+   const pageX = getTouchPageX(event);
+   if (pageX != null) updateFromPoint(pageX);
+   moving.value = true;
+};
+
+/**
+ * 处理滑动结束
+ * @param event 触摸结束事件
+ * @returns null
+ */
+const touchEnd = (event: UniTouchEvent): void => {
+   if (!props.touchable) return;
+   const pageX = getTouchPageX(event);
+   if (pageX != null) updateFromPoint(pageX);
+   setTimeout((): void => {
+      moving.value = false;
+   }, 10);
+};
+
+/**
+ * 判断属性值是否表示 0
+ * @param value 待判断值
+ * @returns 是否为 0
+ */
+const isZero = (value: number | string): boolean => {
+   return toNumber(value, 0) == 0;
+};
+
+/**
+ * 获取当前受控评分值
+ * @returns value 或 modelValue 对应的数值
+ */
+const getControlledValue = (): number => {
+   return !isZero(props.value) ? toNumber(props.value, 0) : toNumber(props.modelValue, 0);
+};
+
+/**
+ * 同步 value 属性变化
+ * @param value 新的 value 值
+ * @returns null
+ */
+watch((): number | string => props.value, (value: number | string): void => {
+   if (!isZero(value) || isZero(props.modelValue)) activeIndex.value = toNumber(value, 0);
+});
+
+/**
+ * 同步 v-model 属性变化
+ * @param value 新的 modelValue 值
+ * @returns null
+ */
+watch((): number | string => props.modelValue, (value: number | string): void => {
+   if (isZero(props.value)) activeIndex.value = toNumber(value, 0);
+});
+
+/**
+ * 初始化评分值及滑动计算所需的布局信息
+ * @returns null
+ */
+onMounted((): void => {
+   activeIndex.value = Math.max(0, Math.min(getControlledValue(), countValue.value));
+   init();
+});
+
+defineExpose({
+   init,
+});
+</script>
+
+<style lang="scss">
+.uvx-rate {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+
+   // 评分项容器
+   &__content {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+   }
+
+   // 单个评分项
+   &__item {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+   }
+
+   // 半星裁切层
+   &__half {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      overflow: hidden;
+   }
+
+   // 半星完整图标层
+   &__half-content {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+   }
+
+   // 半星点击区域
+   &__half-trigger {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+   }
+}
+</style>

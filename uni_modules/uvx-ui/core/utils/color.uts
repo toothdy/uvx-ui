@@ -1,0 +1,202 @@
+export type Color = {
+   r: number;
+   g: number;
+   b: number;
+   a: number;
+};
+
+export type Hsb = {
+   h: number;
+   s: number;
+   b: number;
+};
+
+/**
+ * 颜色工具
+ */
+class ColorUtils {
+   /**
+    * 限制数值范围
+    * @param value 当前值
+    * @param min 最小值
+    * @param max 最大值
+    * @returns 限制后的数值
+    */
+   private clamp(value: number, min: number, max: number): number {
+      return Math.max(min, Math.min(max, value));
+   }
+
+   /**
+    * 解析十六进制颜色
+    * @param hex 十六进制颜色
+    * @returns RGB 数值
+    */
+   private parse(hex: string): number[] {
+      let value = hex.trim();
+      if (value.charAt(0) == "#") value = value.substring(1);
+      if (value.length == 3) {
+         const red = value.charAt(0);
+         const green = value.charAt(1);
+         const blue = value.charAt(2);
+         value = red + red + green + green + blue + blue;
+      }
+      if (value.length != 6) return [0, 0, 0];
+      const red = parseInt(value.substring(0, 2), 16);
+      const green = parseInt(value.substring(2, 4), 16);
+      const blue = parseInt(value.substring(4, 6), 16);
+      if (isNaN(red) || isNaN(green) || isNaN(blue)) return [0, 0, 0];
+      return [red, green, blue];
+   }
+
+   /**
+    * 数字转两位十六进制
+    * @param value 颜色通道值
+    * @returns 两位十六进制字符串
+    */
+   private hex(value: number): string {
+      const result = value.toString(16);
+      return result.length < 2 ? `0${result}` : result;
+   }
+
+   /**
+    * 将常用角度渐变转换为 APP 支持的方向
+    * @param color 渐变颜色
+    * @returns 当前平台可用的渐变颜色
+    */
+   gradient(color: string): string {
+      let result = color;
+      // #ifdef APP
+      result = result.replace("315deg", "to top left");
+      result = result.replace("270deg", "to left");
+      result = result.replace("225deg", "to bottom left");
+      result = result.replace("180deg", "to bottom");
+      result = result.replace("135deg", "to bottom right");
+      result = result.replace("90deg", "to right");
+      result = result.replace("45deg", "to top right");
+      result = result.replace("0deg", "to top");
+      // #endif
+      return result;
+   }
+
+   /**
+    * 两个颜色按比例混合
+    * @param color1 起始色
+    * @param color2 目标色
+    * @param ratio 目标色占比
+    * @returns 混合后的十六进制颜色
+    */
+   mix(color1: string, color2: string, ratio: number): string {
+      const percent = this.clamp(ratio, 0, 1);
+      const start = this.parse(color1);
+      const end = this.parse(color2);
+      const red = Math.round(start[0] * (1 - percent) + end[0] * percent);
+      const green = Math.round(start[1] * (1 - percent) + end[1] * percent);
+      const blue = Math.round(start[2] * (1 - percent) + end[2] * percent);
+      return `#${this.hex(red)}${this.hex(green)}${this.hex(blue)}`;
+   }
+
+   /**
+    * 规范化颜色值
+    * @param color 待处理颜色
+    * @returns 规范化后的颜色
+    */
+   normalize(color: Color): Color {
+      return {
+         r: Math.round(this.clamp(color.r, 0, 255)),
+         g: Math.round(this.clamp(color.g, 0, 255)),
+         b: Math.round(this.clamp(color.b, 0, 255)),
+         a: Math.round(this.clamp(color.a, 0, 1) * 10) / 10,
+      };
+   }
+
+   /**
+    * HSB 转 RGB
+    * @param hsb HSB 颜色
+    * @returns RGB 颜色
+    */
+   hsbToRgb(hsb: Hsb): Color {
+      const hue = ((hsb.h % 360) + 360) % 360;
+      const saturation = this.clamp(hsb.s, 0, 100) / 100;
+      const brightness = this.clamp(hsb.b, 0, 100) / 100;
+      const chroma = brightness * saturation;
+      const section = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+      const offset = brightness - chroma;
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+
+      if (hue < 60) {
+         red = chroma;
+         green = section;
+      } else if (hue < 120) {
+         red = section;
+         green = chroma;
+      } else if (hue < 180) {
+         green = chroma;
+         blue = section;
+      } else if (hue < 240) {
+         green = section;
+         blue = chroma;
+      } else if (hue < 300) {
+         red = section;
+         blue = chroma;
+      } else {
+         red = chroma;
+         blue = section;
+      }
+
+      return {
+         r: Math.round((red + offset) * 255),
+         g: Math.round((green + offset) * 255),
+         b: Math.round((blue + offset) * 255),
+         a: 1,
+      };
+   }
+
+   /**
+    * RGB 转 HSB
+    * @param color RGB 颜色
+    * @returns HSB 颜色
+    */
+   rgbToHsb(color: Color): Hsb {
+      const red = this.clamp(color.r, 0, 255) / 255;
+      const green = this.clamp(color.g, 0, 255) / 255;
+      const blue = this.clamp(color.b, 0, 255) / 255;
+      const max = Math.max(red, green, blue);
+      const min = Math.min(red, green, blue);
+      const delta = max - min;
+      let hue = 0;
+
+      if (delta != 0) {
+         if (max == red) {
+            hue = 60 * ((green - blue) / delta);
+            if (hue < 0) hue += 360;
+         } else if (max == green) {
+            hue = 60 * ((blue - red) / delta + 2);
+         } else {
+            hue = 60 * ((red - green) / delta + 4);
+         }
+      }
+
+      const saturation = max == 0 ? 0 : delta / max;
+      return {
+         h: Math.round(hue),
+         s: Math.round(saturation * 100),
+         b: Math.round(max * 100),
+      };
+   }
+
+   /**
+    * RGB 转 HEX
+    * @param color RGB 颜色
+    * @returns 六位十六进制字符串
+    */
+   rgbToHex(color: Color): string {
+      const red = Math.round(this.clamp(color.r, 0, 255));
+      const green = Math.round(this.clamp(color.g, 0, 255));
+      const blue = Math.round(this.clamp(color.b, 0, 255));
+      return `${this.hex(red)}${this.hex(green)}${this.hex(blue)}`;
+   }
+}
+
+export default new ColorUtils();

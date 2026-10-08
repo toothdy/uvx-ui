@@ -1,0 +1,623 @@
+<template>
+   <view class="uvx-float-drawer" :class="[uClass]">
+      <!-- 主内容区域 -->
+      <view class="uvx-float-drawer__main">
+         <slot name="main"></slot>
+      </view>
+
+      <!-- 可拖拽的浮动面板（微信端 touch 事件用 bind：catch 系会锁死子 scroll-view 的触摸拖动滚动，实测仅滚轮可用） -->
+      <view
+         class="uvx-float-drawer__float"
+         :style="panelStyle"
+         <!-- #ifndef MP -->
+         @touchstart.stop="onTouchStart"
+         @touchmove.stop="onTouchMove"
+         @touchend.stop="onTouchEnd"
+         @touchcancel.stop="onTouchCancel"
+         <!-- #endif -->
+         <!-- #ifdef MP -->
+         @touchstart="onTouchStart"
+         @touchmove="onTouchMove"
+         @touchend="onTouchEnd"
+         @touchcancel="onTouchCancel"
+         <!-- #endif -->
+         <!-- #ifdef APP-IOS -->
+         @longpress.stop.prevent="onLongPress"
+         <!-- #endif -->
+      >
+         <!-- 拖拽手柄 -->
+         <view class="uvx-float-drawer__handle" :style="handleStyle">
+            <view v-if="showIndicator" class="uvx-float-drawer__indicator"></view>
+         </view>
+
+         <!-- 浮动内容（微信端不绑 touch 事件：同节点 catch 系会阻断原生滚动，手势由冒泡到 __float 驱动） -->
+         <scroll-view
+            class="uvx-float-drawer__content"
+            :style="contentStyle"
+            :direction="contentDirection"
+            :show-scrollbar="false"
+            <!-- #ifdef APP -->
+            :bounces="false"
+            <!-- #endif -->
+            <!-- #ifndef MP -->
+            @touchstart.stop="onTouchStart"
+            @touchmove.stop="onTouchMove"
+            @touchend.stop="onTouchEnd"
+            @touchcancel.stop="onTouchCancel"
+            <!-- #endif -->
+            @scroll="onContentScroll"
+            @scrolltoupper="onContentToUpper"
+         >
+            <slot name="float"></slot>
+         </scroll-view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-float-drawer 浮动抽屉
+ * @description 类地图应用底部抽屉，支持整面板拖动、内容滚动接管、分段吸附和明暗主题。
+ * @tutorial https://www.uvxui.cn/components/float-drawer.html
+ * @property {Number} initialHeight 初始高度及中间吸附点，单位 vh，默认 35
+ * @property {Number} maxHeight 最大高度，单位 vh，默认 70
+ * @property {Number} minHeight 最小高度，单位 vh，默认 35
+ * @property {Number} handleHeight 拖拽手柄高度，单位 px，默认 40
+ * @property {Number} damping 拖拽阻尼系数，默认 1
+ * @property {Number} inertia 速度吸附灵敏度，0 表示关闭速度吸附，默认 1
+ * @property {String} bgColor 面板背景色，空值时跟随主题
+ * @property {String | Number} radius 面板顶部圆角，单位 px，默认 15
+ * @property {Boolean} showOnTabBar 是否为 TabBar 预留底部空间，默认 false
+ * @property {Boolean} showIndicator 是否显示拖拽指示器，默认 true
+ * @property {Boolean} disabled 是否禁用拖拽，默认 false
+ * @property {Number} zIndex 层级，默认 100
+ * @property {String} uStyle 面板自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} positionChange 高度改变时触发，返回当前高度和百分比
+ * @event {Function} dragStart 抽屉开始拖动时触发
+ * @event {Function} dragEnd 抽屉拖动并吸附结束时触发
+ * @example <uvx-float-drawer><template #float><view>面板内容</view></template></uvx-float-drawer>
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-float-drawer", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   initialHeight: 35,
+   maxHeight: 70,
+   minHeight: 35,
+   handleHeight: 20,
+   damping: 1,
+   inertia: 1,
+   bgColor: "",
+   radius: 15,
+   showOnTabBar: false,
+   showIndicator: true,
+   disabled: false,
+   zIndex: 100,
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+type Direction = "none" | "vertical";
+
+const GESTURE_IDLE = "idle";
+const GESTURE_PENDING = "pending";
+const GESTURE_DRAWER = "drawer";
+const GESTURE_CONTENT = "content";
+const DRAG_THRESHOLD_PX = 4;
+// 内容离开顶部边界的判定阈值，宽容一些防止到顶附近的亚像素残留值反复翻转状态
+const SCROLL_TOP_EXIT_PX = 5;
+const FRAME_DURATION_MS = 16;
+const SNAP_DURATION_MS = 220;
+const HEIGHT_EPSILON = 0.02;
+const VELOCITY_THRESHOLD = 0.35;
+
+// 窗口高度用于把 vh 转换为跨端可用的 px
+const windowHeight = Math.max(1, uni.getWindowInfo().windowHeight);
+
+/**
+ * 规范化最小高度
+ * @returns number
+ */
+const minHeightValue = computed((): number => {
+   return Math.max(0, Math.min(100, props.minHeight));
+});
+
+/**
+ * 规范化最大高度
+ * @returns number
+ */
+const maxHeightValue = computed((): number => {
+   return Math.max(minHeightValue.value, Math.min(100, props.maxHeight));
+});
+
+/**
+ * 限制面板高度
+ * @param value 待限制的高度
+ * @returns number
+ */
+const clampHeight = (value: number): number => {
+   return Math.max(minHeightValue.value, Math.min(maxHeightValue.value, value));
+};
+
+// 当前面板高度，单位 vh
+const currentHeight = ref(clampHeight(props.initialHeight));
+// 当前手势处理模式
+const gestureMode = ref(GESTURE_IDLE);
+// 本次手势是否拖动过抽屉
+const hasDraggedDrawer = ref(false);
+// 触摸起始纵坐标
+const startY = ref(0);
+// 最近一次触摸纵坐标
+const lastY = ref(0);
+// 最近一次有效移动时间
+const lastMoveTime = ref(0);
+// 最近一次垂直速度，向上为正，单位 px/ms
+const velocity = ref(0);
+// 内容是否位于滚动顶部，滑到顶部由 scrolltoupper 置真，滚离顶部由 scroll 置假
+const isAtTop = ref(true);
+// 吸附动画定时器
+let animationTimer = 0;
+// 吸附动画是否进行中
+const isAnimating = ref(false);
+
+/**
+ * 面板是否位于最大高度
+ * @returns boolean
+ */
+const isAtMaxHeight = computed((): boolean => {
+   return Math.abs(currentHeight.value - maxHeightValue.value) <= HEIGHT_EPSILON;
+});
+
+/**
+ * 内容是否允许滚动
+ * @returns boolean
+ */
+const canContentScroll = computed((): boolean => {
+   return isAtMaxHeight.value && gestureMode.value != GESTURE_DRAWER && !props.disabled;
+});
+
+/**
+ * 内容滚动方向
+ * @returns string
+ */
+const contentDirection = computed((): Direction => {
+   return canContentScroll.value ? "vertical" : "none";
+});
+
+/**
+ * 面板高度对应的像素值
+ * @returns number
+ */
+const panelHeightPx = computed((): number => {
+   return (currentHeight.value / 100) * windowHeight;
+});
+
+/**
+ * 面板样式
+ * @returns UTSJSONObject
+ */
+const panelStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": `${panelHeightPx.value}px`,
+      "z-index": `${props.zIndex}`,
+      "border-top-left-radius": $uvx.format.unit(props.radius),
+      "border-top-right-radius": $uvx.format.unit(props.radius),
+   };
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 手柄样式
+ * @returns UTSJSONObject
+ */
+const handleStyle = computed((): UTSJSONObject => {
+   return {
+      "height": $uvx.format.unit(Math.max(20, props.handleHeight)),
+   };
+});
+
+/**
+ * 内容区域样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": `${Math.max(0, panelHeightPx.value - Math.max(20, props.handleHeight))}px`,
+      "box-sizing": "border-box",
+   };
+   if (props.showOnTabBar) {
+      style.set("padding-bottom", "calc(70px + env(safe-area-inset-bottom))");
+   }
+   return style;
+});
+
+/**
+ * 获取从小到大排列且去重的吸附点
+ * @returns number[]
+ */
+const getSnapPoints = (): number[] => {
+   const points: number[] = [minHeightValue.value];
+   const middleHeight = clampHeight(props.initialHeight);
+   if (Math.abs(middleHeight - points[points.length - 1]) > HEIGHT_EPSILON) {
+      points.push(middleHeight);
+   }
+   if (Math.abs(maxHeightValue.value - points[points.length - 1]) > HEIGHT_EPSILON) {
+      points.push(maxHeightValue.value);
+   }
+   return points;
+};
+
+/**
+ * 发布高度变化
+ * @param height 当前高度
+ * @returns null
+ */
+const emitPositionChange = (height: number): void => {
+   const range = maxHeightValue.value - minHeightValue.value;
+   const percentage = range == 0
+      ? 100
+      : ((height - minHeightValue.value) / range) * 100;
+   emit("positionChange", height, Math.round(percentage));
+};
+
+/**
+ * 更新面板高度并发布变化
+ * @param height 新的面板高度
+ * @returns null
+ */
+const setCurrentHeight = (height: number): void => {
+   const nextHeight = clampHeight(height);
+   if (Math.abs(nextHeight - currentHeight.value) <= HEIGHT_EPSILON) return;
+   currentHeight.value = nextHeight;
+   emitPositionChange(nextHeight);
+};
+
+/**
+ * 停止吸附动画
+ * @returns null
+ */
+const stopSnapAnimation = (): void => {
+   if (animationTimer != 0) {
+      clearTimeout(animationTimer);
+      animationTimer = 0;
+   }
+   isAnimating.value = false;
+};
+
+/**
+ * 获取最近吸附点
+ * @returns number
+ */
+const getNearestSnapPoint = (): number => {
+   const points = getSnapPoints();
+   let target = points[0];
+   let distance = Math.abs(currentHeight.value - target);
+   for (let index = 1; index < points.length; index++) {
+      const nextDistance = Math.abs(currentHeight.value - points[index]);
+      if (nextDistance < distance) {
+         target = points[index];
+         distance = nextDistance;
+      }
+   }
+   return target;
+};
+
+/**
+ * 根据移动方向获取相邻吸附点
+ * @param direction 移动方向，1 向上，-1 向下
+ * @returns number
+ */
+const getDirectionalSnapPoint = (direction: number): number => {
+   const points = getSnapPoints();
+   if (direction > 0) {
+      for (let index = 0; index < points.length; index++) {
+         if (points[index] > currentHeight.value + HEIGHT_EPSILON) return points[index];
+      }
+      return points[points.length - 1];
+   }
+
+   for (let index = points.length - 1; index >= 0; index--) {
+      if (points[index] < currentHeight.value - HEIGHT_EPSILON) return points[index];
+   }
+   return points[0];
+};
+
+/**
+ * 获取当前手势对应的吸附目标
+ * @returns number
+ */
+const getSnapTarget = (): number => {
+   if (props.inertia <= 0) return getNearestSnapPoint();
+   const sensitivity = Math.max(0.25, Math.min(2, props.inertia));
+   if (Math.abs(velocity.value) < VELOCITY_THRESHOLD / sensitivity) {
+      return getNearestSnapPoint();
+   }
+   return getDirectionalSnapPoint(velocity.value > 0 ? 1 : -1);
+};
+
+/**
+ * 平滑吸附到目标高度
+ * @param targetHeight 目标高度
+ * @param onComplete 动画结束回调
+ * @returns null
+ */
+const animateToHeight = (targetHeight: number, onComplete: () => void): void => {
+   stopSnapAnimation();
+   const fromHeight = currentHeight.value;
+   const distance = targetHeight - fromHeight;
+   if (Math.abs(distance) <= HEIGHT_EPSILON) {
+      setCurrentHeight(targetHeight);
+      onComplete();
+      return;
+   }
+
+   const startTime = Date.now();
+   isAnimating.value = true;
+   let runFrame: () => void = (): void => {};
+   runFrame = (): void => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / SNAP_DURATION_MS);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      setCurrentHeight(fromHeight + distance * easedProgress);
+
+      if (progress >= 1) {
+         currentHeight.value = targetHeight;
+         animationTimer = 0;
+         isAnimating.value = false;
+         onComplete();
+         return;
+      }
+
+      animationTimer = setTimeout(runFrame, FRAME_DURATION_MS);
+   };
+   runFrame();
+};
+
+/**
+ * 进入抽屉拖动模式
+ * @returns null
+ */
+const startDrawerGesture = (): void => {
+   if (gestureMode.value == GESTURE_DRAWER) return;
+   gestureMode.value = GESTURE_DRAWER;
+   hasDraggedDrawer.value = true;
+   emit("dragStart");
+};
+
+/**
+ * 处理触摸开始
+ * @param event 触摸事件
+ * @returns null
+ */
+const onTouchStart = (event: UniTouchEvent): void => {
+   if (props.disabled || event.touches.length == 0) return;
+
+   stopSnapAnimation();
+   const touch = event.touches[0];
+   startY.value = touch.clientY;
+   lastY.value = touch.clientY;
+   lastMoveTime.value = Date.now();
+   velocity.value = 0;
+   hasDraggedDrawer.value = false;
+   gestureMode.value = isAtMaxHeight.value && !isAtTop.value
+      ? GESTURE_CONTENT
+      : GESTURE_PENDING;
+};
+
+/**
+ * 处理触摸移动
+ * @param event 触摸事件
+ * @returns null
+ */
+const onTouchMove = (event: UniTouchEvent): void => {
+   if (props.disabled || gestureMode.value == GESTURE_IDLE || event.touches.length == 0) return;
+
+   const touch = event.touches[0];
+   const currentY = touch.clientY;
+   const totalMoveY = startY.value - currentY;
+
+   if (gestureMode.value == GESTURE_PENDING) {
+      if (Math.abs(totalMoveY) < DRAG_THRESHOLD_PX) return;
+      if (isAtMaxHeight.value && totalMoveY > 0) {
+         gestureMode.value = GESTURE_CONTENT;
+         return;
+      }
+      startDrawerGesture();
+      lastY.value = currentY;
+      lastMoveTime.value = Date.now();
+      return;
+   }
+
+   if (gestureMode.value == GESTURE_CONTENT) {
+      // 内容已滑到顶部（scrolltoupper 通知），继续下拉则转抽屉拖动
+      if (isAtTop.value && currentY > lastY.value) {
+         startDrawerGesture();
+         lastY.value = currentY;
+         lastMoveTime.value = Date.now();
+      } else {
+         lastY.value = currentY;
+      }
+      return;
+   }
+
+   const currentTime = Date.now();
+   const elapsed = currentTime - lastMoveTime.value;
+   if (elapsed < FRAME_DURATION_MS) return;
+
+   const moveY = lastY.value - currentY;
+   velocity.value = elapsed > 0 ? moveY / elapsed : 0;
+   lastY.value = currentY;
+   lastMoveTime.value = currentTime;
+   const damping = Math.max(0, props.damping);
+   const deltaHeight = (moveY / windowHeight) * 100 * damping;
+   setCurrentHeight(currentHeight.value + deltaHeight);
+};
+
+/**
+ * 结束当前触摸并执行吸附
+ * @param shouldSnap 是否需要执行吸附动画
+ * @returns null
+ */
+const finishGesture = (shouldSnap: boolean): void => {
+   const didDrag = hasDraggedDrawer.value;
+   gestureMode.value = GESTURE_IDLE;
+   hasDraggedDrawer.value = false;
+   if (!didDrag) return;
+
+   if (!shouldSnap) {
+      emit("dragEnd");
+      return;
+   }
+
+   const targetHeight = getSnapTarget();
+   animateToHeight(targetHeight, (): void => {
+      emit("dragEnd");
+   });
+};
+
+/**
+ * 处理触摸结束
+ * @returns null
+ */
+const onTouchEnd = (): void => {
+   if (props.disabled || gestureMode.value == GESTURE_IDLE) return;
+   finishGesture(true);
+};
+
+/**
+ * 处理触摸取消
+ * @returns null
+ */
+const onTouchCancel = (): void => {
+   if (props.disabled || gestureMode.value == GESTURE_IDLE) return;
+   finishGesture(true);
+};
+
+/**
+ * 记录内容滚动位置
+ * @param event 滚动事件
+ * @returns null
+ */
+const onContentScroll = (event: UniScrollEvent): void => {
+   isAtTop.value = event.detail.scrollTop <= SCROLL_TOP_EXIT_PX;
+};
+
+/**
+ * 内容滚动到顶部，由 scroll-view 主动通知
+ * @returns null
+ */
+const onContentToUpper = (): void => {
+   isAtTop.value = true;
+};
+
+/**
+ * 拦截 iOS 长按默认反馈
+ * @returns null
+ */
+const onLongPress = (): void => {};
+
+/**
+ * 监听外部初始高度
+ * @param value 新的初始高度
+ * @returns null
+ */
+watch((): number => props.initialHeight, (value: number): void => {
+   if (gestureMode.value != GESTURE_IDLE || isAnimating.value) return;
+   setCurrentHeight(clampHeight(value));
+});
+
+onUnmounted(stopSnapAnimation);
+</script>
+
+<style lang="scss">
+// 浮动抽屉根节点
+.uvx-float-drawer {
+   position: fixed;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
+   overflow: hidden;
+   background-color: var(--uvx-page);
+   /* #ifdef WEB */
+   // web 端 fixed 相对视口定位，需让出顶部导航栏高度，避免被遮挡
+   top: var(--window-top);
+   height: calc(100% - var(--window-top));
+   /* #endif */
+
+   // 主内容区域
+   &__main {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--uvx-page);
+   }
+
+   // 浮动面板
+   &__float {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: var(--uvx-container);
+      box-shadow: 0 -2px 10px var(--uvx-shadow);
+      /* #ifdef WEB */
+      overscroll-behavior: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      /* #endif */
+   }
+
+   // 拖拽手柄
+   &__handle {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 20px;
+   }
+
+   // 拖拽指示器
+   &__indicator {
+      width: 70px;
+      height: 4px;
+      margin: 8px 0;
+      background-color: var(--uvx-border);
+      border-radius: 10px;
+   }
+
+   // 面板内容
+   &__content {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      /* #ifdef WEB */
+      overscroll-behavior-y: contain;
+      /* #endif */
+   }
+}
+</style>

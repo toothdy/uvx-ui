@@ -1,0 +1,9 @@
+/** 垂直选项卡内容项属性 */
+export type Props = {
+   /** 内容项下标 */
+   index: string | number;
+   /** 根节点自定义样式 */
+   uStyle: string;
+   /** 根节点自定义类名 */
+   uClass: string;
+};

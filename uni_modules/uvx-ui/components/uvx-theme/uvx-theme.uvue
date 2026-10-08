@@ -1,0 +1,67 @@
+<template>
+	<!-- 主题切换悬浮按钮 -->
+	<uvx-float-view :left="20" :bottom="120" :gap="20" :size="50">
+		<view class="uvx-theme" @tap="toggleTheme()">
+			<view class="uvx-theme__inner" :class="{ 'dark': isDark }">
+					<view class="uvx-theme__icon" v-for="item in list" :key="item">
+						<uvx-icon :name="item" :color="isDark ? '#000' : '#fff'" :size="28"></uvx-icon>
+					</view>
+			</view>
+		</view>
+	</uvx-float-view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-theme 主题切换
+ * @description 提供悬浮式明暗主题切换入口。
+ * @tutorial https://www.uvxui.cn/components/theme.html
+ * @example <uvx-theme></uvx-theme>
+ */
+import { isDark, toggleTheme } from "../../core/theme";
+
+defineOptions({ name: "uvx-theme", options: { virtualHost: true } });
+
+// 明暗主题图标列表
+const list = [
+	'https://hc-e-gj-1320225163.cos.ap-guangzhou.myqcloud.com/app%2Fbase%2Fsun_7e5c3b08f0c84f1e9abb38bb4279f397.png',
+	'https://hc-e-gj-1320225163.cos.ap-guangzhou.myqcloud.com/app%2Fbase%2Fmoon_fc0328abaff2423183f47405e02f7381.png'
+]
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+.uvx-theme {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: hidden;
+	height: 100%;
+	width: 100%;
+	border-radius: 25px;
+	background-color: var(--uvx-primary);
+
+	// 主题图标滑动容器
+	&__inner {
+		display: flex;
+		flex-direction: column;
+		margin-top: 0px;
+		transition-duration: 0.3s;
+		transition-property: margin-top;
+
+		&.dark {
+			margin-top: -50px;
+		}
+	}
+
+	// 单个主题图标
+	&__icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 50px;
+		width: 50px;
+	}
+}
+</style>

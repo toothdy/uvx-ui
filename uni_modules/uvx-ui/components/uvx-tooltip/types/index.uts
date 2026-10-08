@@ -1,0 +1,24 @@
+/** Tooltip 显示方向 */
+export type Direction = "top" | "bottom";
+
+/** Tooltip 组件属性 */
+export type Props = {
+   text: string;
+   copyText: string;
+   size: string | number;
+   color: string;
+   bgColor: string;
+   direction: Direction;
+   zIndex: string | number;
+   showCopy: boolean;
+   buttons: string[];
+   overlay: boolean;
+   showToast: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** Tooltip 点击事件 */
+export type Emits = {
+   click: [index: number];
+};

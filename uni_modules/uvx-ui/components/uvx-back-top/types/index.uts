@@ -1,0 +1,18 @@
+
+export type Props = {
+   mode: string;
+   icon: string;
+   text: string;
+   duration: number;
+   scrollTop: number;
+   top: number;
+   bottom: number;
+   right: number;
+   zIndex: number;
+   iconStyle: string;
+   uStyle: string;
+};
+
+export type Emits = {
+   click: [];
+};

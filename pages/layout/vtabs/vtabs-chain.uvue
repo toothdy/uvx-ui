@@ -1,0 +1,173 @@
+<template>
+   <uvx-page direction="none">
+      <view class="vtabs-demo-page">
+         <!-- 联动垂直选项卡 -->
+         <uvx-vtabs
+            :list="tabs"
+            :height="pageHeight"
+            bar-item-badge-style="top: 8px; right: 8px;"
+            @change="handleChange"
+            @scrolltolower="handleScrollToLower"
+         >
+            <!-- 分类内容 -->
+            <uvx-vtabs-item
+               v-for="(group, groupIndex) in VTABS_CONTENTS"
+               :key="groupIndex"
+               :index="groupIndex"
+            >
+               <view class="vtabs-demo-group">
+                  <!-- 对应左侧分类的标题 -->
+                  <view class="vtabs-demo-group-header">
+                     <text class="vtabs-demo-group-header__text">{{ getGroupName(groupIndex) }}</text>
+                  </view>
+                  <view
+                     v-for="(item, itemIndex) in group"
+                     :key="itemIndex"
+                     class="vtabs-demo-item"
+                  >
+                     <text class="vtabs-demo-item__title">{{ item.title }}</text>
+                     <text class="vtabs-demo-item__description">{{ item.description }}</text>
+                  </view>
+               </view>
+               <view
+                  v-if="groupIndex < VTABS_CONTENTS.length - 1"
+                  class="vtabs-demo-divider"
+               ></view>
+            </uvx-vtabs-item>
+
+            <!-- 尾部留白确保最后一项可定位 -->
+            <view class="vtabs-demo-spacer"></view>
+         </uvx-vtabs>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Item } from "@/uni_modules/uvx-ui/components/uvx-vtabs/types/index.uts";
+import { VTABS_CONTENTS, VTABS_LIST } from "./data.uts";
+
+// 页面可用高度
+const pageHeight = uni.getWindowInfo().windowHeight;
+// 异步加载后的标签列表
+const tabs = ref<Item[]>([]);
+
+/**
+ * 获取内容分组对应的标签名称
+ * @param index 内容分组下标
+ * @returns string
+ */
+const getGroupName = (index: number): string => {
+   if (index < 0 || index >= VTABS_LIST.length) return "";
+   const name = VTABS_LIST[index].getString("name");
+   return name == null ? "" : name;
+};
+
+/** 模拟接口返回标签数据 */
+onReady((): void => {
+   uni.showLoading({ title: "加载中" });
+   setTimeout((): void => {
+      tabs.value = VTABS_LIST;
+      uni.hideLoading();
+   }, 300);
+});
+
+/**
+ * 记录激活分类变化
+ * @param index 激活分类下标
+ * @returns null
+ */
+const handleChange = (index: number): void => {
+   console.log("垂直选项卡切换：" + index.toString());
+};
+
+/**
+ * 记录内容滚动到底部
+ * @param index 当前分类下标
+ * @returns null
+ */
+const handleScrollToLower = (index: number): void => {
+   console.log("垂直选项卡滚动到底：" + index.toString());
+};
+</script>
+
+<style lang="scss">
+// 联动演示页面
+.vtabs-demo-page {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   overflow: hidden;
+}
+
+// 分类标题栏
+.vtabs-demo-group-header {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   box-sizing: border-box;
+   width: 100%;
+   height: 44px;
+   flex-shrink: 0;
+   border-bottom-width: 0.5px;
+   border-bottom-style: solid;
+   border-bottom-color: var(--uvx-border);
+}
+
+// 分类标题文字
+.vtabs-demo-group-header__text {
+   color: var(--uvx-text-main);
+   font-size: 16px;
+   font-weight: bold;
+   line-height: 1.2em;
+}
+
+// 单个分类容器
+.vtabs-demo-group {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding: 4px 16px 12px 16px;
+   box-sizing: border-box;
+   background-color: var(--uvx-container);
+}
+
+// 分类内容条目
+.vtabs-demo-item {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding: 12px 0;
+}
+
+// 分类标题
+.vtabs-demo-item__title {
+   color: var(--uvx-text-main);
+   font-size: 16px;
+   font-weight: bold;
+   line-height: 1.2em;
+}
+
+// 分类描述
+.vtabs-demo-item__description {
+   margin-top: 10px;
+   color: var(--uvx-text-content);
+   font-size: 14px;
+   line-height: 1.7em;
+}
+
+// 分类分隔区域
+.vtabs-demo-divider {
+   width: 100%;
+   height: 6px;
+   flex-shrink: 0;
+   background-color: var(--uvx-page);
+}
+
+// 尾部定位留白
+.vtabs-demo-spacer {
+   width: 100%;
+   height: 320px;
+   flex-shrink: 0;
+   background-color: var(--uvx-container);
+}
+</style>

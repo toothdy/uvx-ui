@@ -1,0 +1,58 @@
+export type Type = "info" | "primary" | "error" | "warning" | "success";
+export type Size = "large" | "normal" | "small" | "mini";
+export type Shape = "circle" | "square";
+export type LoadingMode = "spinner" | "circle" | "semicircle";
+export type FormType = "submit" | "reset" | "";
+export type Language = "zh_CN" | "zh_TW" | "en";
+export type OpenType = "feedback" | "share" | "getUserInfo" | "contact"
+   | "getPhoneNumber" | "getRealtimePhoneNumber" | "launchApp" | "openSetting"
+   | "chooseAvatar" | "agreePrivacyAuthorization" | "liveActivity" | "";
+
+export type Props = {
+   hairline: boolean;
+   type: Type;
+   size: Size;
+   shape: Shape;
+   plain: boolean;
+   disabled: boolean;
+   loading: boolean;
+   loadingText: string;
+   loadingMode: LoadingMode;
+   loadingSize: number;
+   openType: OpenType;
+   formType: FormType;
+   appParameter: string;
+   hoverStopPropagation: boolean;
+   lang: Language;
+   sessionFrom: string;
+   sendMessageTitle: string;
+   sendMessagePath: string;
+   sendMessageImg: string;
+   showMessageCard: boolean;
+   phoneNumberNoQuotaToast: boolean;
+   throttleTime: number;
+   hoverStartTime: string | number;
+   hoverStayTime: string | number;
+   text: string | number;
+   icon: string;
+   iconSize: string | number;
+   iconColor: string;
+   color: string;
+   uTextStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [];
+   getphonenumber: [event: UniEvent];
+   getuserinfo: [event: UniEvent];
+   error: [event: UniEvent];
+   opensetting: [event: UniEvent];
+   launchapp: [event: UniEvent];
+   contact: [event: UniEvent];
+   chooseavatar: [event: UniEvent];
+   agreeprivacyauthorization: [event: UniEvent];
+   getrealtimephonenumber: [event: UniEvent];
+   createliveactivity: [event: UniEvent];
+};

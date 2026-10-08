@@ -1,0 +1,31 @@
+import type { Mode } from "../../uvx-image/types/index.uts";
+
+export type Style = string;
+
+export type Props = {
+   safeAreaInsetTop: boolean;
+   placeholder: boolean;
+   fixed: boolean;
+   border: boolean;
+   leftIcon: string;
+   leftText: string;
+   rightText: string;
+   rightIcon: string;
+   title: string | number;
+   bgColor: string;
+   imgMode: Mode;
+   titleWidth: string | number;
+   height: string | number;
+   leftIconSize: string | number;
+   leftIconColor: string;
+   autoBack: boolean;
+   titleStyle: Style;
+   scrollTransparent: boolean;
+   scrollDistance: string | number;
+   initialOpacity: string | number;
+};
+
+export type Emits = {
+   leftClick: [];
+   rightClick: [];
+};

@@ -1,0 +1,83 @@
+<template>
+	<uvx-page>
+		<view class="demo">
+			<view class="demo__title"><uvx-text type="main" text="三种模式"></uvx-text></view>
+			<view class="demo__row">
+				<view class="demo__item"><uvx-loading-icon mode="spinner"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="semicircle"></uvx-loading-icon></view>
+			</view>
+
+			<view class="demo__title"><uvx-text type="main" text="不同尺寸"></uvx-text></view>
+			<view class="demo__row">
+				<view class="demo__item"><uvx-loading-icon mode="circle" :size="20"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle" :size="25"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle" :size="30"></uvx-loading-icon></view>
+			</view>
+
+			<view class="demo__title"><uvx-text type="main" text="自定义颜色"></uvx-text></view>
+			<view class="demo__row">
+				<view class="demo__item"><uvx-loading-icon mode="circle" color="#3c9cff"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle" color="#5ac725"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle" color="#f56c6c" incolor="#fde2e2"></uvx-loading-icon></view>
+			</view>
+
+			<view class="demo__title"><uvx-text type="main" text="带文字"></uvx-text></view>
+			<view class="demo__row">
+				<view class="demo__item"><uvx-loading-icon mode="spinner" text="加载中"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle" text="加载中"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="semicircle" text="加载中" textColor="#3c9cff"></uvx-loading-icon></view>
+			</view>
+
+			<view class="demo__title"><uvx-text type="main" text="自定义动画"></uvx-text></view>
+			<view class="demo__row">
+        		<view class="demo__item"><uvx-loading-icon mode="circle" easing="linear" :duration="3000"></uvx-loading-icon></view>
+        		<view class="demo__item"><uvx-loading-icon mode="circle" easing="ease" :duration="3000"></uvx-loading-icon></view>
+        		<view class="demo__item"><uvx-loading-icon mode="circle" easing="ease-in" :duration="3000"></uvx-loading-icon></view>
+			</view>
+
+			<view class="demo__title"><uvx-text type="main" text="动画周期"></uvx-text></view>
+			<view class="demo__row">
+				<view class="demo__item"><uvx-loading-icon mode="circle" :duration="500"></uvx-loading-icon></view>
+				<view class="demo__item"><uvx-loading-icon mode="circle" :duration="2000"></uvx-loading-icon></view>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script setup lang="uts">
+</script>
+
+<style lang="scss">
+.demo {
+	flex-direction: column;
+	padding: 15px;
+
+	&__title {
+		margin-top: 15px;
+		margin-bottom: 10px;
+	}
+
+	&__row {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+
+	&__item {
+		margin-right: 20px;
+		margin-bottom: 10px;
+	}
+
+	&__btn {
+		padding: 6px 12px;
+		background-color: var(--uvx-primary);
+		border-radius: 4px;
+	}
+
+	&__btn-text {
+		color: #ffffff;
+		font-size: 14px;
+	}
+}
+</style>

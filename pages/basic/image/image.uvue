@@ -1,0 +1,143 @@
+<template>
+   <uvx-page>
+      <view class="image-demo">
+         <!-- 基本案例 -->
+         <view class="image-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本案例"></uvx-text>
+            </view>
+            <view class="image-demo-content">
+               <view class="image-demo-item">
+                  <uvx-image
+                     :show-loading="true"
+                     :src="IMAGE_SRC"
+                     width="80px"
+                     height="80px"
+                     @click="handleClick"
+                  ></uvx-image>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义形状 -->
+         <view class="image-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义形状"></uvx-text>
+            </view>
+            <view class="image-demo-content">
+               <view class="image-demo-item">
+                  <uvx-image shape="circle" :src="IMAGE_SRC" width="80px" height="80px"></uvx-image>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义圆角 -->
+         <view class="image-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义圆角"></uvx-text>
+            </view>
+            <view class="image-demo-content">
+               <view class="image-demo-item">
+                  <uvx-image radius="4" :src="IMAGE_SRC" width="80px" height="80px"></uvx-image>
+               </view>
+            </view>
+         </view>
+         <!-- 图片模式 -->
+         <view class="image-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="图片模式(widthFix)"></uvx-text>
+            </view>
+            <view class="image-demo-content">
+               <view class="image-demo-item">
+                  <uvx-image :src="IMAGE_SRC" width="80px" height="80px" mode="widthFix"></uvx-image>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义加载插槽 -->
+         <view class="image-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义图片加载插槽"></uvx-text>
+            </view>
+            <view class="image-demo-content">
+               <view class="image-demo-item">
+                  <uvx-image :src="delayedSrc" width="80px" height="80px" mode="widthFix">
+                     <template v-slot:loading>
+                        <uvx-loading-icon color="red"></uvx-loading-icon>
+                     </template>
+                  </uvx-image>
+               </view>
+            </view>
+         </view>
+         <!-- 观察器懒加载 -->
+         <view class="image-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="observer 懒加载，微信小程序滑动到可视范围才加载"></uvx-text>
+            </view>
+            <view class="image-demo-content">
+               <view class="image-demo-item">
+                  <uvx-image
+                     src="https://images.xxapi.cn/images/jk/image_448_7033a4a8.jpg"
+                     width="80px"
+                     height="80px"
+                     mode="widthFix"
+                     :observe-lazy-load="true"
+                  >
+                     <template v-slot:loading>
+                        <uvx-loading-icon color="red"></uvx-loading-icon>
+                     </template>
+                  </uvx-image>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 演示图片地址
+const IMAGE_SRC = "https://images.xxapi.cn/images/jk/image_1032_2fdf55dd.jpg";
+// 延迟加载的图片地址
+const delayedSrc = ref("");
+// 延迟加载定时器
+let loadTimer: number | null = null;
+
+/**
+ * 图片点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   console.log("点击了图片");
+};
+
+onLoad((): void => {
+   loadTimer = setTimeout((): void => {
+      delayedSrc.value = IMAGE_SRC;
+      loadTimer = null;
+   }, 3000);
+});
+
+onUnload((): void => {
+   if (loadTimer != null) {
+      clearTimeout(loadTimer);
+      loadTimer = null;
+   }
+});
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 图片演示页，间距与 TS 示例一致
+.image-demo {
+   padding: 15px 15px 40px 15px;
+
+   // 示例区块
+   &-block {
+      margin-bottom: 22px;
+   }
+
+   // 示例内容
+   &-content {
+      display: flex;
+      flex-direction: column;
+   }
+}
+</style>

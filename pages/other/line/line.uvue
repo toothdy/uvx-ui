@@ -1,0 +1,74 @@
+<template>
+	<uvx-page>
+		<view class="uvx-page-demo">
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="基本案例"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line></uvx-line>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="自定义颜色"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line color="#2979ff"></uvx-line>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="自定义长度"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line length="200"></uvx-line>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="自定义方向"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line length="30" color="#2979ff" direction="col"></uvx-line>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="是否显示1px粗线条"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line :hairline="false"></uvx-line>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="线条与相邻元素的间距"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line margin="10px"></uvx-line>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="是否虚线"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-line color="#2979ff" :dashed="true"></uvx-line>
+				</view>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup></script>
+
+<style lang="scss" scoped>
+@import '@/common/demo.scss';
+</style>

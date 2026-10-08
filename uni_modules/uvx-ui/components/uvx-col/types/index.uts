@@ -1,0 +1,17 @@
+export type Justify = "flex-start" | "flex-end" | "center" | "space-around" | "space-between";
+export type Align = "top" | "center" | "bottom" | "stretch";
+export type TextAlign = "left" | "center" | "right";
+
+export type Props = {
+   span: number;
+   offset: number;
+   justify: Justify;
+   align: Align;
+   textAlign: TextAlign;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [event: Event];
+};

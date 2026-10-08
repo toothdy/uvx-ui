@@ -1,0 +1,234 @@
+<template>
+   <uvx-page direction="none">
+      <!-- 列表演示容器 -->
+      <view class="list-demo">
+         <uvx-list
+            border
+            padding="12px 16px"
+            <!-- #ifndef MP-WEIXIN -->
+            @scrolltolower="handleScrollToLower"
+            <!-- #endif -->
+         >
+         <!-- 基础列表项 -->
+         <uvx-list-item
+            title="列表文字"
+            note="列表描述信息"
+            :border="true"
+         ></uvx-list-item>
+         <uvx-list-item
+            title="列表禁用状态"
+            note="禁用后不会响应点击"
+            :disabled="true"
+            :border="true"
+         ></uvx-list-item>
+
+         <!-- 徽标与开关 -->
+         <uvx-list-item
+            title="列表右侧显示徽标"
+            right-text="未读"
+            :show-badge="true"
+            :badge="UNREAD_BADGE"
+            :border="true"
+         ></uvx-list-item>
+         <uvx-list-item
+            title="列表右侧显示开关"
+            :show-switch="true"
+            :switch-checked="isSwitchChecked"
+            :border="true"
+            @switch-change="handleSwitchChange"
+         ></uvx-list-item>
+
+         <!-- 缩略图与扩展图标 -->
+         <uvx-list-item
+            title="列表左侧带缩略图"
+            note="缩略图支持三种尺寸"
+            thumb="https://cdn.uviewui.com/uview/album/1.jpg"
+            thumb-size="lg"
+            right-text="详情"
+            :border="true"
+         ></uvx-list-item>
+         <uvx-list-item
+            title="列表左侧带扩展图标"
+            :show-extra-icon="true"
+            :extra-icon="EXTRA_ICON"
+            :border="true"
+         ></uvx-list-item>
+
+         <!-- 点击反馈与跳转 -->
+         <uvx-list-item
+            title="打开单元格演示"
+            link="navigateTo"
+            to="/pages/layout/cell/cell"
+            :border="true"
+         ></uvx-list-item>
+
+         <!-- 动态长列表 -->
+         <uvx-list-item
+            v-for="item in items"
+            :key="item.id"
+            :title="item.title"
+            :note="item.note"
+            :thumb="item.imageUrl"
+            thumb-size="base"
+            :ellipsis="2"
+            :border="true"
+         ></uvx-list-item>
+         </uvx-list>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   Badge,
+   ExtraIcon,
+} from "@/uni_modules/uvx-ui/components/uvx-list-item/types/index.uts";
+
+type ListDemoItem = {
+   id: number;
+   title: string;
+   note: string;
+   imageUrl: string;
+};
+
+// 演示徽标配置
+const UNREAD_BADGE: Badge = {
+   isDot: false,
+   value: "12",
+   max: 999,
+   type: "error",
+   showZero: false,
+   bgColor: "",
+   color: "",
+   shape: "circle",
+   numberType: "overflow",
+   inverted: false,
+};
+
+// 演示扩展图标配置
+const EXTRA_ICON: ExtraIcon = {
+   icon: "photo",
+   color: "primary",
+   size: 20,
+   customPrefix: "",
+};
+
+// 长列表头像地址
+const IMAGE_URLS: string[] = [
+   "https://cdn.uviewui.com/uview/album/1.jpg",
+   "https://cdn.uviewui.com/uview/album/2.jpg",
+   "https://cdn.uviewui.com/uview/album/3.jpg",
+   "https://cdn.uviewui.com/uview/album/4.jpg",
+   "https://cdn.uviewui.com/uview/album/5.jpg",
+];
+
+/**
+ * 创建长列表数据
+ * @param start 起始编号
+ * @param count 创建数量
+ * @returns ListDemoItem[]
+ */
+const createItems = (start: number, count: number): ListDemoItem[] => {
+   const result: ListDemoItem[] = [];
+   for (let index = 0; index < count; index++) {
+      const id = start + index;
+      result.push({
+         id,
+         title: `列表长度-${id}`,
+         note: "滚动到底部会继续追加列表项",
+         imageUrl: IMAGE_URLS[index % IMAGE_URLS.length],
+      } as ListDemoItem);
+   }
+   return result;
+};
+
+// 长列表数据
+const items = ref<ListDemoItem[]>(createItems(1, 20));
+// 开关状态
+const isSwitchChecked = ref(false);
+
+/**
+ * 处理开关变化
+ * @param value 新的开关值
+ * @returns null
+ */
+const handleSwitchChange = (value: boolean): void => {
+   isSwitchChecked.value = value;
+};
+
+/**
+ * 处理列表项点击
+ * @returns null
+ */
+const handleItemClick = (): void => {
+   console.log("list item clicked");
+};
+
+/**
+ * 追加列表数据
+ * @returns null
+ */
+const appendItems = (): void => {
+   const start = items.value.length + 1;
+   const nextItems = createItems(start, 20);
+   for (let index = 0; index < nextItems.length; index++) {
+      items.value.push(nextItems[index]);
+   }
+};
+
+// #ifndef MP-WEIXIN
+/**
+ * 处理列表容器触底
+ * @param event 滚动触底事件
+ * @returns null
+ */
+const handleScrollToLower = (_event: UniScrollToLowerEvent): void => {
+   appendItems();
+};
+// #endif
+
+// #ifdef MP-WEIXIN
+/** 处理微信页面触底 */
+onReachBottom((): void => {
+   appendItems();
+});
+// #endif
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 列表演示页
+// WEB 端 uvx-page 高度不定(仅 min-height),内部滚动组件必须由确定高度约束,
+// 且高度容器不能使用 flex: 1(百分比 basis 在不定高父级下退化为内容高度,会顶掉 height)
+.list-demo {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   /* #ifndef WEB */
+   flex: 1;
+   /* #endif */
+   /* #ifdef WEB */
+   height: calc(100vh - 44px);
+   /* #endif */
+   /* #ifdef MP */
+   height: 100vh;
+   /* #endif */
+}
+
+// 自定义列表项
+.list-demo__custom-item {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+}
+
+// 自定义列表项文字
+.list-demo__custom-text {
+   margin-left: 8px;
+   color: var(--uvx-text-content);
+   font-size: 14px;
+   line-height: 1.2em;
+}
+</style>

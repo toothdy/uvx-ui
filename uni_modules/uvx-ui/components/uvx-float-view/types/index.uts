@@ -1,0 +1,20 @@
+export type Props = {
+   size: number;
+   left: number;
+   bottom: number;
+   gap: number;
+   zIndex: number;
+   disabled: boolean;
+   noSnapping: boolean;
+};
+
+export type Position = {
+   x: number;
+   y: number;
+   isDragging: boolean;
+};
+
+export type DragState = {
+   startX: number;
+   startY: number;
+};

@@ -1,0 +1,34 @@
+export type Item = UTSJSONObject;
+
+/** 标签属性 */
+export type Props = {
+   duration: string | number;
+   list: Item[];
+   lineColor: string;
+   activeStyle: string;
+   inactiveStyle: string;
+   lineWidth: string | number;
+   lineHeight: string | number;
+   lineBgSize: string;
+   itemStyle: string;
+   scrollable: boolean;
+   current: string | number;
+   keyName: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 标签点击事件值 */
+export type Event = UTSJSONObject;
+
+/** 标签事件 */
+export type Emits = {
+   click: [event: Event];
+   change: [event: Event];
+};
+
+/** 标签布局信息 */
+export type ItemRect = {
+   left: number;
+   width: number;
+};

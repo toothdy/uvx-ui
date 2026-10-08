@@ -1,0 +1,65 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+/** 表单错误展示方式 */
+export type ErrorType = "message" | "border-bottom" | "toast" | "none";
+
+/** 标签位置 */
+export type LabelPosition = "left" | "top";
+
+/** 标签对齐方式 */
+export type LabelAlign = "left" | "center" | "right";
+
+/** 规则触发方式 */
+export type Trigger = "blur" | "change";
+
+/** 字段选择参数 */
+export type Fields = string | string[];
+
+/** 动态表单值，用于读取业务模型和规则字段 */
+export type FieldValue = any | null;
+
+/** 同步自定义校验结果 */
+export type ValidateResult = boolean | string;
+
+/** 同步自定义校验函数 */
+export type Validator = (
+   rule: UTSJSONObject,
+   value: FieldValue,
+) => ValidateResult;
+
+/** 字段校验错误 */
+export type FieldError = {
+   field: string;
+   message: string;
+};
+
+/** 表单属性 */
+export type Props = {
+   model: any;
+   rules: UTSJSONObject;
+   errorType: ErrorType;
+   borderBottom: boolean;
+   labelPosition: LabelPosition;
+   labelWidth: string | number;
+   labelAlign: LabelAlign;
+   labelStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 表单项共享配置 */
+export type Config = {
+   errorType: ErrorType;
+   borderBottom: boolean;
+   labelPosition: LabelPosition;
+   labelWidth: string | number;
+   labelAlign: LabelAlign;
+   labelStyle: string;
+};
+
+/** 表单父子通信上下文 */
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+};

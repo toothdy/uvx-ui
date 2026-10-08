@@ -1,0 +1,479 @@
+<template>
+   <view
+      class="uvx-search"
+      :class="uClass"
+      :style="rootStyle"
+      @click="handleClick"
+   >
+      <!-- 搜索输入区域 -->
+      <view
+         class="uvx-search__content"
+         :class="{
+            'uvx-search__content--round': shape == 'round',
+            'uvx-search__content--square': shape == 'square',
+         }"
+         :style="contentStyle"
+      >
+         <!-- 禁用态点击层 -->
+         <view
+            v-if="disabled"
+            class="uvx-search__disabled"
+            @click.stop="handleClick"
+         ></view>
+         <!-- 搜索图标 -->
+         <slot name="prefix">
+            <view class="uvx-search__icon" @click.stop="handleIconClick">
+               <uvx-icon
+                  :name="searchIcon"
+                  :size="searchIconSize"
+                  :color="iconColor"
+               ></uvx-icon>
+            </view>
+         </slot>
+         <!-- 搜索输入框 -->
+         <input
+            ref="inputRef"
+            class="uvx-search__input"
+            type="text"
+            confirm-type="search"
+            placeholder-class="uvx-search-placeholder"
+            :value="innerValue"
+            :disabled="disabled"
+            :focus="focus"
+            :maxlength="maxlength"
+            :placeholder="placeholder"
+            :placeholder-style="placeholderStyleText"
+            :style="nativeStyle"
+            @input="handleInput"
+            @focus="handleFocus"
+            @blur="handleBlur"
+            @confirm="handleSearch"
+         />
+         <!-- 清除按钮 -->
+         <view
+            v-show="isClearVisible"
+            @click.stop="handleClear"
+         >
+            <uvx-icon name="close-circle-fill" size="18"></uvx-icon>
+         </view>
+         <!-- 后置内容 -->
+         <view class="uvx-search__suffix">
+            <slot name="suffix"></slot>
+         </view>
+      </view>
+      <!-- 右侧操作 -->
+      <text
+         class="uvx-search__action"
+         :class="{ 'uvx-search__action--active': isActionActive }"
+         :style="actionTextStyle"
+         @click.stop="handleCustom"
+      >{{ actionText }}</text>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-search 搜索框
+ * @description 提供搜索输入、内容清除、键盘确认、右侧操作和自定义前后缀。
+ * @tutorial https://www.uvxui.cn/components/search.html
+ * @property {String} modelValue 搜索内容
+ * @property {String} shape 搜索框形状：round、square
+ * @property {String} bgColor 搜索框背景色，空值时跟随主题
+ * @property {String} placeholder 占位提示文字
+ * @property {Boolean} clearabled 是否显示清除按钮
+ * @property {Boolean} focus 是否自动聚焦
+ * @property {Boolean} showAction 是否显示右侧操作
+ * @property {String} actionStyle 右侧操作样式
+ * @property {String} actionText 右侧操作文字
+ * @property {String} inputStyle 输入框样式
+ * @property {Boolean} disabled 是否禁用输入框
+ * @property {String} borderColor 边框颜色
+ * @property {String} searchIconColor 搜索图标颜色，空值时跟随主题
+ * @property {String} color 输入文字颜色，空值时跟随主题
+ * @property {String} placeholderColor 占位文字颜色，空值时跟随主题
+ * @property {String} searchIcon 左侧图标名称或图片地址
+ * @property {String | Number} searchIconSize 搜索图标大小
+ * @property {String} margin 组件外边距
+ * @property {Boolean} animation 是否仅在聚焦时展开右侧操作
+ * @property {String | Number} maxlength 最大输入长度，-1 表示不限制
+ * @property {String | Number} height 输入框高度
+ * @property {String} boxStyle 搜索内容区域样式
+ * @property {String} uStyle 组件自定义样式
+ * @property {String} uClass 组件自定义类名
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 输入事件
+ * @event {Function} change 内容变化事件
+ * @event {Function} clear 清空事件
+ * @event {Function} search 键盘确认搜索事件
+ * @event {Function} custom 右侧操作点击事件
+ * @event {Function} focus 聚焦事件
+ * @event {Function} blur 失焦事件
+ * @event {Function} clickIcon 左侧图标点击事件
+ * @event {Function} click 禁用状态下的搜索框点击事件
+ * @example <uvx-search v-model="keyword"></uvx-search>
+ */
+
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import { t } from "../../core/i18n";
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-search", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   modelValue: "",
+   shape: "round",
+   bgColor: "",
+   placeholder: t("请输入关键字"),
+   clearabled: true,
+   focus: false,
+   showAction: true,
+   actionStyle: "",
+   actionText: t("搜索"),
+   inputStyle: "",
+   disabled: false,
+   borderColor: "transparent",
+   searchIconColor: "",
+   color: "",
+   placeholderColor: "",
+   searchIcon: "search",
+   searchIconSize: 22,
+   margin: "0",
+   animation: false,
+   maxlength: -1,
+   height: 32,
+   boxStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 搜索框事件 */
+const emit = defineEmits<Emits>();
+
+// 当前搜索内容
+const innerValue = ref("");
+// 原生输入元素
+const inputRef = ref<UniInputElement | null>(null);
+// 输入框是否聚焦
+const isFocused = ref(props.focus);
+// 动画操作区是否展开
+const isActionVisible = ref(false);
+// 聚焦修订号，避免旧失焦任务影响再次聚焦
+let focusSerial = 0;
+
+/**
+ * 合并基础样式与自定义样式
+ * @param baseStyle 基础样式
+ * @param uStyle 自定义样式
+ * @returns UTSJSONObject
+ */
+const mergeStyle = (
+   baseStyle: UTSJSONObject,
+   uStyle: string,
+): UTSJSONObject => {
+   if ($uvx.string.empty(uStyle)) return baseStyle;
+   return $uvx.object.deepMerge(
+      baseStyle,
+      $uvx.style.parse(uStyle),
+   );
+};
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { margin: props.margin };
+   return mergeStyle(style, props.uStyle);
+});
+
+/**
+ * 搜索内容区域样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { "border-color": props.borderColor };
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   return mergeStyle(style, props.boxStyle);
+});
+
+/**
+ * 输入文字颜色，优先使用 inputStyle 中的自定义值
+ * @returns string
+ */
+const inputColor = computed((): string => {
+   const style: UTSJSONObject = $uvx.style.parse(props.inputStyle);
+   const uColor = style.getString("color");
+   if (uColor != null) return uColor;
+   if (!$uvx.string.empty(props.color)) return props.color;
+   return isDark.value ? "#d8d8d8" : "#606266";
+});
+
+/**
+ * 输入框文字及尺寸样式
+ * @returns UTSJSONObject
+ */
+const nativeStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      height: $uvx.format.unit(props.height),
+      color: inputColor.value,
+   };
+   return mergeStyle(style, props.inputStyle);
+});
+
+// #ifdef APP
+/**
+ * App Vapor 下直接同步原生输入框颜色
+ * @param value 当前输入文字颜色
+ * @returns null
+ */
+watch(inputColor, (value: string): void => {
+   inputRef.value?.style.setProperty("color", value);
+});
+// #endif
+
+/**
+ * 右侧操作样式
+ * @returns UTSJSONObject
+ */
+const actionTextStyle = computed((): UTSJSONObject => {
+   return mergeStyle({}, props.actionStyle);
+});
+
+/**
+ * 搜索图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   return props.searchIconColor;
+});
+
+/**
+ * 原生占位文字样式
+ * @returns string
+ */
+const placeholderStyleText = computed((): string => {
+   if ($uvx.string.empty(props.placeholderColor)) return "";
+   return `color: ${props.placeholderColor};`;
+});
+
+/**
+ * 是否显示清除按钮
+ * @returns boolean
+ */
+const isClearVisible = computed((): boolean => {
+   return props.clearabled && isFocused.value && !$uvx.string.empty(innerValue.value) && !props.disabled;
+});
+
+/**
+ * 右侧操作是否展开
+ * @returns boolean
+ */
+const isActionActive = computed((): boolean => {
+   if (!props.showAction) return false;
+   return !props.animation || isActionVisible.value;
+});
+
+/**
+ * 同步外部搜索内容
+ * @param value 外部搜索内容
+ * @returns null
+ */
+watch((): string => props.modelValue, (value: string): void => {
+   innerValue.value = value;
+}, { immediate: true });
+
+/**
+ * 发布搜索内容变化
+ * @param value 当前搜索内容
+ * @returns null
+ */
+const emitValue = (value: string): void => {
+   emit("update:modelValue", value);
+   emit("input", value);
+   emit("change", value);
+};
+
+/**
+ * 处理输入
+ * @param event 原生输入事件
+ * @returns null
+ */
+const handleInput = (event: UniInputEvent): void => {
+   const value = event.detail.value;
+   innerValue.value = value;
+   emitValue(value);
+};
+
+/**
+ * 清空搜索内容
+ * @returns null
+ */
+const handleClear = (): void => {
+   if (!isClearVisible.value) return;
+   innerValue.value = "";
+   emitValue("");
+   emit("clear", "");
+};
+
+/**
+ * 确认搜索并收起键盘
+ * @param event 原生确认事件
+ * @returns null
+ */
+const handleSearch = (event: UniInputConfirmEvent): void => {
+   emit("search", event.detail.value);
+   uni.hideKeyboard();
+};
+
+/**
+ * 点击右侧操作并收起键盘
+ * @returns null
+ */
+const handleCustom = (): void => {
+   if (!isActionActive.value) return;
+   emit("custom", innerValue.value);
+   uni.hideKeyboard();
+};
+
+/**
+ * 处理输入框聚焦
+ * @param event 原生聚焦事件
+ * @returns null
+ */
+const handleFocus = (event: UniInputFocusEvent): void => {
+   focusSerial++;
+   isFocused.value = true;
+   if (props.animation && props.showAction) isActionVisible.value = true;
+   emit("focus", event.detail.value);
+};
+
+/**
+ * 处理输入框失焦
+ * @param event 原生失焦事件
+ * @returns null
+ */
+const handleBlur = async (event: UniInputBlurEvent): Promise<void> => {
+   const serial = ++focusSerial;
+   isActionVisible.value = false;
+   emit("blur", event.detail.value);
+   await $uvx.sleep(100);
+   if (serial == focusSerial) isFocused.value = false;
+};
+
+/**
+ * 处理禁用状态点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   if (props.disabled) emit("click");
+};
+
+/**
+ * 处理左侧图标点击
+ * @returns null
+ */
+const handleIconClick = (): void => {
+   emit("clickIcon");
+};
+
+/**
+ * 卸载后使等待中的失焦任务失效
+ * @returns null
+ */
+onUnmounted((): void => {
+   focusSerial++;
+});
+</script>
+
+<style lang="scss">
+// 搜索框整体布局
+.uvx-search {
+   display: flex;
+   flex: 1;
+   flex-direction: row;
+   align-items: center;
+
+   // 搜索输入区域
+   &__content {
+      position: relative;
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      overflow: hidden;
+      border-width: 1px;
+      border-style: solid;
+      background-color: var(--uvx-container);
+
+      &--round {
+         border-radius: 100px;
+      }
+
+      &--square {
+         border-radius: 4px;
+      }
+   }
+
+   // 左侧搜索图标
+   &__icon {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+   }
+
+   // 原生输入框
+   &__input {
+      flex: 1;
+      min-width: 0;
+      margin: 0 15px 0 5px;
+      padding: 0;
+      color: var(--uvx-text-content);
+      font-size: 14px;
+   }
+
+   // 后置插槽
+   &__suffix {
+      display: flex;
+      flex-shrink: 0;
+      flex-direction: row;
+      align-items: center;
+   }
+
+   // 禁用态点击层
+   &__disabled {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+   }
+
+   // 右侧操作
+   &__action {
+      width: 0;
+      overflow: hidden;
+      color: var(--uvx-text-main);
+      font-size: 14px;
+      text-align: center;
+      transition-duration: 0.3s;
+      transition-property: width;
+      /* #ifndef APP */
+      white-space: nowrap;
+      /* #endif */
+
+      &--active {
+         width: 40px;
+         margin-left: 5px;
+      }
+   }
+}
+
+// 默认占位文字颜色
+.uvx-search-placeholder {
+   color: var(--uvx-text-placeholder);
+}
+</style>

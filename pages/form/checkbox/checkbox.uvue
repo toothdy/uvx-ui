@@ -1,0 +1,221 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基本案例 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本案例"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="苹果、香蕉和橙子哪个最甜？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group v-model="checkboxValue1" placement="column" @change="handleChange">
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList1"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+         <!-- 自定义形状 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义形状"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="中国四大名著是？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group
+               v-model="checkboxValue2"
+               placement="column"
+               shape="circle"
+               @change="handleChange"
+            >
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList2"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+         <!-- 禁用状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="是否禁用"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="下面什么东西不能吃？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group v-model="checkboxValue3" placement="column" @change="handleChange">
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList3"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+                  :disabled="index == 0"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+         <!-- 禁止标签点击 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁止点击提示语"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="北宋四大家是谁？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group
+               v-model="checkboxValue4"
+               placement="column"
+               label-disabled
+               @change="handleChange"
+            >
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList4"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+         <!-- 卡片与自定义颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义颜色"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="哪个颜色最好看？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group
+               v-model="checkboxValue5"
+               placement="column"
+               shape="card"
+               @change="handleChange"
+            >
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList5"
+                  :key="index"
+                  :active-color="item.color"
+                  :label="item.name"
+                  :name="item.name"
+                  :disabled="item.disabled"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+         <!-- 横向排列 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="横向排列形式"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="什么东西不能飞？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group v-model="checkboxValue6" @change="handleChange">
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList6"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+         <!-- 图标右置及下边框 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="横向两端排列形式"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="什么东西不能吃？" margin="0 0 8px 0"></uvx-text>
+            <uvx-checkbox-group
+               v-model="checkboxValue7"
+               placement="column"
+               icon-placement="right"
+               border-bottom
+               @change="handleChange"
+            >
+               <uvx-checkbox
+                  v-for="(item, index) in checkboxList7"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-checkbox>
+            </uvx-checkbox-group>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type CheckboxValue = string | number | boolean;
+
+type CheckboxItem = {
+   name: string;
+};
+
+type ColorCheckboxItem = {
+   name: string;
+   disabled: boolean;
+   color: string;
+};
+
+// 基础案例
+const checkboxValue1 = ref<CheckboxValue[]>(["苹果", "橙子"]);
+const checkboxList1: CheckboxItem[] = [
+   { name: "苹果" },
+   { name: "香蕉" },
+   { name: "橙子" },
+];
+// 圆形案例
+const checkboxValue2 = ref<CheckboxValue[]>(["西游记", "红楼梦", "三国演义", "水浒传"]);
+const checkboxList2: CheckboxItem[] = [
+   { name: "西游记" },
+   { name: "红楼梦" },
+   { name: "三国演义" },
+   { name: "水浒传" },
+];
+// 禁用案例
+const checkboxValue3 = ref<CheckboxValue[]>(["傻瓜"]);
+const checkboxList3: CheckboxItem[] = [
+   { name: "冬瓜" },
+   { name: "西瓜" },
+   { name: "黄瓜" },
+   { name: "傻瓜" },
+];
+// 标签禁点案例
+const checkboxValue4 = ref<CheckboxValue[]>(["黄庭坚", "欧阳修", "王安石"]);
+const checkboxList4: CheckboxItem[] = [
+   { name: "黄庭坚" },
+   { name: "欧阳修" },
+   { name: "苏小宝" },
+   { name: "王安石" },
+];
+// 卡片颜色案例
+const checkboxValue5 = ref<CheckboxValue[]>(["红色"]);
+const checkboxList5: ColorCheckboxItem[] = [
+   { name: "红色", disabled: true, color: "#f56c6c" },
+   { name: "黄色", disabled: false, color: "#f9ae3d" },
+   { name: "绿色", disabled: false, color: "#5ac725" },
+   { name: "蓝色", disabled: false, color: "#3c9cff" },
+];
+// 横向排列案例
+const checkboxValue6 = ref<CheckboxValue[]>(["游艇", "轮船"]);
+const checkboxList6: CheckboxItem[] = [
+   { name: "小鸟" },
+   { name: "游艇" },
+   { name: "轮船" },
+   { name: "飞机" },
+   { name: "骑车" },
+   { name: "汽车" },
+   { name: "火箭" },
+];
+// 图标右置案例
+const checkboxValue7 = ref<CheckboxValue[]>(["汽车", "蒸汽机"]);
+const checkboxList7: CheckboxItem[] = [
+   { name: "汽车" },
+   { name: "蒸汽机" },
+   { name: "猪肉" },
+   { name: "抄手" },
+];
+
+/**
+ * 输出当前组的选中值
+ * @param values 选中值
+ * @returns null
+ */
+const handleChange = (values: CheckboxValue[]): void => {
+   console.log("复选框选中值：", values);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

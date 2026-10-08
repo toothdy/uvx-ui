@@ -1,0 +1,191 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch v-model="value1" @change="handleChange"></uvx-switch>
+               </view>
+               <view class="switch-item">
+                  <uvx-switch v-model="value2"></uvx-switch>
+               </view>
+            </view>
+         </view>
+         <!-- 加载状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="加载中"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch v-model="value3" loading></uvx-switch>
+               </view>
+               <view class="switch-item">
+                  <uvx-switch v-model="value4" loading></uvx-switch>
+               </view>
+            </view>
+         </view>
+         <!-- 禁用状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁用状态"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch v-model="value5" disabled></uvx-switch>
+               </view>
+               <view class="switch-item">
+                  <uvx-switch v-model="value6" disabled></uvx-switch>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义尺寸 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义尺寸"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch v-model="value7" size="28"></uvx-switch>
+               </view>
+               <view class="switch-item">
+                  <uvx-switch v-model="value8" size="20"></uvx-switch>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义颜色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch v-model="value9" active-color="#f56c6c" loading></uvx-switch>
+               </view>
+               <view class="switch-item">
+                  <uvx-switch v-model="value10" active-color="#5ac725" loading></uvx-switch>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch
+                     v-model="value11"
+                     :space="2"
+                     active-color="#f56c6c"
+                     inactive-color="rgb(230, 230, 230)"
+                  ></uvx-switch>
+               </view>
+               <view class="switch-item">
+                  <uvx-switch
+                     v-model="value12"
+                     space="2"
+                     active-color="#f9ae3d"
+                     inactive-color="rgb(230, 230, 230)"
+                  ></uvx-switch>
+               </view>
+            </view>
+         </view>
+         <!-- 异步控制 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="异步控制"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="switch-item">
+                  <uvx-switch
+                     v-model="value13"
+                     async-change
+                     @change="handleAsyncChange"
+                  ></uvx-switch>
+               </view>
+            </view>
+         </view>
+      </view>
+
+      <!-- 异步切换确认框 -->
+      <uvx-modal
+         ref="uModal"
+         :content="asyncChangeContent"
+         :show-cancel-button="true"
+         @confirm="handleAsyncConfirm"
+      ></uvx-modal>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Value } from "@/uni_modules/uvx-ui/components/uvx-switch/types/index.uts";
+
+// 基础案例
+const value1 = ref(false);
+const value2 = ref(true);
+// 加载案例
+const value3 = ref(false);
+const value4 = ref(true);
+// 禁用案例
+const value5 = ref(false);
+const value6 = ref(true);
+// 尺寸案例
+const value7 = ref(false);
+const value8 = ref(true);
+// 颜色案例
+const value9 = ref(true);
+const value10 = ref(true);
+// 样式案例
+const value11 = ref(false);
+const value12 = ref(true);
+// 异步控制案例
+const value13 = ref(true);
+// 待确认的开关值
+const pendingSwitchValue = ref<Value>(false);
+// 异步切换确认文案
+const asyncChangeContent = ref("");
+// 异步切换确认框实例
+const uModal = ref<UvxModalComponentPublicInstance | null>(null);
+
+/**
+ * 输出开关值
+ * @param value 当前值
+ * @returns null
+ */
+const handleChange = (value: Value): void => {
+   console.log("开关值：", value);
+};
+
+/**
+ * 确认后异步更新开关值
+ * @param value 目标值
+ * @returns null
+ */
+const handleAsyncChange = (value: Value): void => {
+   pendingSwitchValue.value = value;
+   asyncChangeContent.value = value == true ? "确定要打开吗" : "确定要关闭吗";
+   uModal.value?.open();
+};
+
+/**
+ * 确认异步更新开关值
+ * @returns null
+ */
+const handleAsyncConfirm = (): void => {
+   value13.value = pendingSwitchValue.value == true;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 开关演示项间距
+.switch-item {
+   margin-right: 30px;
+}
+</style>

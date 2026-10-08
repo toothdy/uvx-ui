@@ -1,0 +1,8 @@
+export type Props = {
+   title: string | number;
+   desc: string | number;
+   iconSize: string | number;
+   error: boolean;
+   uStyle: string;
+   uClass: string;
+};

@@ -1,0 +1,421 @@
+<template>
+   <view class="uvx-textarea" :class="[textareaClasses, uClass]" :style="wrapperStyle">
+      <textarea
+         ref="textareaRef"
+         class="uvx-textarea__field"
+         :value="innerValue"
+         :style="fieldStyle"
+         :placeholder="placeholder"
+         :placeholder-class="placeholderClass"
+         :placeholder-style="placeholderStyleText"
+         :disabled="disabled"
+         :focus="focus"
+         :auto-height="autoHeight"
+         :maxlength="maxLength"
+         :cursor="cursor"
+         :selection-start="selectionStart"
+         :selection-end="selectionEnd"
+         :confirm-hold="confirmHold"
+         <!-- #ifdef WEB || MP-WEIXIN || APP-IOS || APP-HARMONY -->
+         :confirm-type="confirmType"
+         <!-- #endif -->
+         <!-- #ifdef MP-WEIXIN -->
+         :fixed="fixed"
+         :show-confirm-bar="showConfirmBar"
+         :disable-default-padding="disableDefaultPadding"
+         <!-- #endif -->
+         <!-- #ifdef MP-WEIXIN || APP-ANDROID || APP-IOS -->
+         :cursor-spacing="cursorSpacing"
+         <!-- #endif -->
+         <!-- #ifdef MP-WEIXIN || APP -->
+         :adjust-position="adjustPosition"
+         <!-- #endif -->
+         <!-- #ifdef MP-WEIXIN || APP-ANDROID || APP-IOS || (APP-HARMONY && !VUE3-VAPOR) -->
+         :hold-keyboard="holdKeyboard"
+         <!-- #endif -->
+         @input="handleInput"
+         @focus="handleFocus"
+         @blur="handleBlur"
+         @linechange="handleLineChange"
+         @confirm="handleConfirm"
+         <!-- #ifdef MP-WEIXIN || APP -->
+         @keyboardheightchange="handleKeyboardHeightChange"
+         <!-- #endif -->
+      />
+      <text
+         v-if="count && maxLength != -1"
+         class="uvx-textarea__count"
+         :class="[disabled ? 'uvx-textarea__count--disabled' : '']"
+         :style="counterStyle"
+      >
+         {{ currentLength }}/{{ maxLength }}
+      </text>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-textarea 文本域
+ * @description 多行输入组件，支持双向绑定、输入格式化、自动增高、字数统计和多种边框样式。
+ * @tutorial https://www.uvxui.cn/components/textarea.html
+ * @property {String | Number} value 文本域内容
+ * @property {String | Number} modelValue v-model 值
+ * @property {String} placeholder 占位文字
+ * @property {String} placeholderClass 占位文字样式类
+ * @property {String} placeholderStyle 占位文字样式
+ * @property {String | Number} height 文本域高度
+ * @property {String} confirmType 键盘确认按钮类型，Android 固定为换行
+ * @property {Boolean} confirmHold 确认后保持键盘
+ * @property {Boolean} disabled 是否禁用
+ * @property {Boolean} count 是否显示字数统计
+ * @property {Boolean} focus 是否自动聚焦
+ * @property {Boolean} autoHeight 是否自动增高
+ * @property {Boolean} fixed 是否位于 fixed 区域，仅微信小程序支持
+ * @property {Number} cursorSpacing 光标与键盘的距离，Web 与 HarmonyOS 不支持
+ * @property {Number} cursor 聚焦时的光标位置
+ * @property {Boolean} showConfirmBar 是否显示键盘上方完成栏，仅微信小程序支持
+ * @property {Number} selectionStart 选区起点
+ * @property {Number} selectionEnd 选区终点
+ * @property {Boolean} adjustPosition 键盘弹出时是否上推页面，Web 不支持
+ * @property {Boolean} disableDefaultPadding 是否移除 iOS 默认内边距，仅微信小程序支持
+ * @property {Boolean} holdKeyboard 点击页面时是否保持键盘，Web 与 HarmonyOS Vapor 不支持
+ * @property {Number} maxlength 最大输入长度，负数表示不限制
+ * @property {String} border 边框：surround、bottom、none
+ * @property {Function} formatter 输入格式化函数，小程序使用 setFormatter
+ * @property {String} textStyle 文本样式
+ * @property {String} countStyle 字数统计样式
+ * @property {String} uStyle 自定义容器样式
+ * @property {String} uClass 自定义类名
+ * @method setFormatter 设置输入格式化函数
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 输入事件，参数为格式化后的文本
+ * @event {Function} change 内容变化事件，参数为格式化后的文本
+ * @event {Function} focus 聚焦事件
+ * @event {Function} blur 失焦事件
+ * @event {Function} linechange 行数变化事件
+ * @event {Function} confirm 键盘确认事件
+ * @event {Function} keyboardheightchange 键盘高度变化事件，Web 不支持
+ */
+
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import type { Props, Formatter, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-textarea", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: "",
+   modelValue: "",
+   placeholder: "",
+   placeholderClass: "uvx-textarea-placeholder",
+   placeholderStyle: "",
+   height: 70,
+   confirmType: "done",
+   confirmHold: false,
+   disabled: false,
+   count: false,
+   focus: false,
+   autoHeight: false,
+   fixed: false,
+   cursorSpacing: 0,
+   cursor: -1,
+   showConfirmBar: true,
+   selectionStart: -1,
+   selectionEnd: -1,
+   adjustPosition: true,
+   disableDefaultPadding: false,
+   holdKeyboard: false,
+   maxlength: 140,
+   border: "surround",
+   formatter: null,
+   textStyle: "",
+   countStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 文本域事件 */
+const emit = defineEmits<Emits>();
+
+// 实际显示的输入内容
+const innerValue = ref("");
+// 原生文本域元素
+const textareaRef = ref<UniTextareaElement | null>(null);
+// 通过实例设置的格式化函数
+let localFormatter: Formatter | null = null;
+// 输入修订号，避免延迟格式化覆盖外部更新
+let revision = 0;
+
+/**
+ * 生成边框及禁用类名
+ * @returns string[]
+ */
+const textareaClasses = computed((): string[] => {
+   const values: UTSJSONObject = { border: props.border, disabled: props.disabled };
+   return $uvx.style.bem("textarea", values, ["border"], ["disabled"]);
+});
+
+/**
+ * 规范最大输入长度
+ * @returns number
+ */
+const maxLength = computed((): number => {
+   return props.maxlength < 0 ? -1 : props.maxlength;
+});
+
+/**
+ * 当前字数，不超过 maxlength
+ * @returns number
+ */
+const currentLength = computed((): number => {
+   if (maxLength.value == -1) return innerValue.value.length;
+   return Math.min(innerValue.value.length, maxLength.value);
+});
+
+/**
+ * 转换原生占位样式为字符串
+ * @returns string
+ */
+const placeholderStyleText = computed((): string => {
+   return props.placeholderStyle;
+});
+
+/**
+ * 文本颜色，优先使用 textStyle 中的自定义值
+ * @returns string
+ */
+const fieldColor = computed((): string => {
+   const style: UTSJSONObject = $uvx.style.parse(props.textStyle);
+   const color = style.getString("color");
+   if (color != null) return color;
+   return isDark.value ? "#f5f5f5" : "#303133";
+});
+
+/**
+ * 文本域原生样式
+ * @returns UTSJSONObject
+ */
+const fieldStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = { "color": fieldColor.value };
+   if (!props.autoHeight) style.set("height", $uvx.format.unit(props.height));
+   if ($uvx.string.empty(props.textStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.textStyle));
+});
+
+/**
+ * 外层容器样式
+ * @returns UTSJSONObject
+ */
+const wrapperStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 字数统计样式
+ * @returns UTSJSONObject
+ */
+const counterStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if ($uvx.string.empty(props.countStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.countStyle));
+});
+
+// #ifdef APP
+/**
+ * App Vapor 下直接同步原生文本域颜色
+ * @param value 当前文本颜色
+ * @returns null
+ */
+watch(fieldColor, (value: string): void => {
+   textareaRef.value?.style.setProperty("color", value);
+});
+// #endif
+
+/**
+ * 外部输入值，v-model 优先于 value，数字 0 不作为空值
+ * @returns string
+ */
+const externalValue = computed((): string => {
+   if (!$uvx.string.unset(props.modelValue) || $uvx.string.unset(props.value)) return props.modelValue.toString();
+   return props.value.toString();
+});
+
+/**
+ * 外部更新只同步显示，不回发事件
+ * @param value 外部输入值
+ * @returns null
+ */
+watch(externalValue, (value: string): void => {
+   revision++;
+   innerValue.value = value;
+}, { immediate: true });
+
+/**
+ * 发布格式化后的输入值
+ * @param value 当前输入值
+ * @returns null
+ */
+const emitValue = (value: string): void => {
+   emit("update:modelValue", value);
+   emit("input", value);
+   emit("change", value);
+};
+
+/**
+ * 格式化输入并同步原生显示
+ * @param event 原生输入事件
+ * @returns null
+ */
+const handleInput = (event: UniInputEvent): void => {
+   if (props.disabled) return;
+   revision++;
+   const currentRevision = revision;
+   const raw = event.detail.value;
+   let value = raw;
+   if (localFormatter != null) {
+      value = localFormatter(raw);
+   } else if (props.formatter != null) {
+      value = props.formatter(raw);
+   }
+   innerValue.value = raw;
+   if (raw == value) {
+      emitValue(value);
+      return;
+   }
+   // 原生 textarea 需先接收原值，再在下一帧写回格式化值。
+   nextTick((): void => {
+      if (revision != currentRevision) return;
+      innerValue.value = value;
+      emitValue(value);
+   });
+};
+
+/**
+ * 转发聚焦事件
+ * @param event 原生聚焦事件
+ * @returns null
+ */
+const handleFocus = (event: UniTextareaFocusEvent): void => {
+   emit("focus", event);
+};
+
+/**
+ * 转发失焦事件
+ * @param event 原生失焦事件
+ * @returns null
+ */
+const handleBlur = (event: UniTextareaBlurEvent): void => {
+   emit("blur", event);
+};
+
+/**
+ * 转发行数变化事件
+ * @param event 原生行数变化事件
+ * @returns null
+ */
+const handleLineChange = (event: UniTextareaLineChangeEvent): void => {
+   emit("linechange", event);
+};
+
+/**
+ * 转发确认事件
+ * @param event 原生确认事件
+ * @returns null
+ */
+const handleConfirm = (event: UniInputConfirmEvent): void => {
+   emit("confirm", event);
+};
+
+/**
+ * 转发键盘高度变化事件
+ * @param event 原生键盘事件
+ * @returns null
+ */
+const handleKeyboardHeightChange = (event: UniInputKeyboardHeightChangeEvent): void => {
+   emit("keyboardheightchange", event);
+};
+
+/**
+ * 设置实例格式化函数
+ * @param formatter 格式化函数
+ * @returns null
+ */
+const setFormatter = (formatter: Formatter): void => {
+   localFormatter = formatter;
+};
+
+defineExpose({ setFormatter });
+
+/**
+ * 卸载后使等待中的格式化任务失效
+ * @returns null
+ */
+onUnmounted((): void => {
+   revision++;
+});
+</script>
+
+<style lang="scss">
+// 文本域容器及边框
+.uvx-textarea {
+   position: relative;
+   display: flex;
+   flex-direction: row;
+   flex: 1;
+   padding: 9px;
+   border-radius: 4px;
+
+   &--surround {
+      border-width: 1px;
+      border-style: solid;
+      border-color: var(--uvx-border);
+   }
+
+   &--bottom {
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+      border-radius: 0;
+   }
+
+   &--none {
+      padding: 0;
+   }
+
+   &--disabled {
+      background-color: var(--uvx-disabled);
+   }
+
+   // 原生文本域必须直接声明尺寸和文字样式
+   &__field {
+      flex: 1;
+      width: 100%;
+      padding: 0;
+      font-size: 15px;
+      line-height: 20px;
+   }
+
+   // 字数统计固定在容器右下角
+   &__count {
+      position: absolute;
+      right: 5px;
+      bottom: 2px;
+      padding: 1px 4px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--uvx-text-tips);
+      background-color: var(--uvx-container);
+
+      &--disabled {
+         background-color: transparent;
+      }
+   }
+}
+
+// 默认占位文字颜色
+.uvx-textarea-placeholder {
+   color: var(--uvx-text-placeholder);
+}
+</style>

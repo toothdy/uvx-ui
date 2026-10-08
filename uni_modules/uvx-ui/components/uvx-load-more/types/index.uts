@@ -1,0 +1,32 @@
+import type { Mode } from "../../uvx-loading-icon/types/index.uts";
+
+export type Status = "loadmore" | "loading" | "nomore";
+
+/** 加载更多属性 */
+export type Props = {
+   status: Status;
+   bgColor: string;
+   icon: boolean;
+   fontSize: string | number;
+   iconSize: string | number;
+   color: string;
+   loadingIcon: Mode;
+   loadmoreText: string;
+   loadingText: string;
+   nomoreText: string;
+   isDot: boolean;
+   iconColor: string;
+   marginTop: string | number;
+   marginBottom: string | number;
+   height: string | number;
+   line: boolean;
+   lineColor: string;
+   dashed: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 加载更多事件 */
+export type Emits = {
+   loadmore: [];
+};

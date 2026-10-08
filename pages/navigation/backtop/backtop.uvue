@@ -1,0 +1,141 @@
+<template>
+   <uvx-page :scroll-top="pageScrollTop" @scroll="handleScroll">
+      <view class="uvx-page-demo backtop-demo">
+         <!-- 自定义返回顶部 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义返回顶部"></uvx-text>
+            </view>
+            <uvx-text
+               type="tips"
+               text="勾选选项自定义按钮,滚动页面即可在右下角看到返回顶部按钮"
+               margin="0 0 8px 0"
+            ></uvx-text>
+            <view class="backtop-demo__item">
+               <uvx-checkbox-group v-model="checkboxValue" placement="column" @change="handleChange">
+                  <uvx-checkbox
+                     v-for="(item, index) in checkboxList"
+                     :key="index"
+                     :label="item.name"
+                     :name="item.name"
+                     u-style="margin-bottom: 8px"
+                  ></uvx-checkbox>
+               </uvx-checkbox-group>
+            </view>
+         </view>
+      </view>
+      <!-- 返回顶部按钮 -->
+      <uvx-back-top
+         :scroll-top="scrollTop"
+         :mode="backTopMode"
+         :icon="backTopIcon"
+         :bottom="backTopBottom"
+         :right="backTopRight"
+         :duration="backTopDuration"
+         :u-style="backTopUStyle"
+         @click="handleBackTop"
+      ></uvx-back-top>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type CheckboxValue = string | number | boolean;
+
+type BacktopOption = {
+   name: string;
+};
+
+// 当前滚动距离
+const scrollTop = ref(0);
+// 绑定给 uvx-page 的滚动位置(APP 端回顶用)
+const pageScrollTop = ref(0);
+// 勾选的自定义选项
+const checkboxValue = ref<CheckboxValue[]>([]);
+// 按钮形状
+const backTopMode = ref('circle');
+// 按钮图标
+const backTopIcon = ref('arrow-upward');
+// 距底部距离
+const backTopBottom = ref(100);
+// 距右侧距离
+const backTopRight = ref(20);
+// 回顶动画时长 ms
+const backTopDuration = ref(300);
+// 按钮自定义样式
+const backTopUStyle = ref('');
+
+// 自定义选项列表
+const checkboxList: BacktopOption[] = [
+   { name: "显示方形" },
+   { name: "自定义图标" },
+   { name: "自定义距离" },
+   { name: "自定义样式" },
+   { name: "自定义返回顶部滚动时间" },
+];
+
+/**
+ * 勾选变化时更新按钮配置
+ * @param values 选中的选项名
+ * @returns null
+ */
+const handleChange = (values: CheckboxValue[]): void => {
+   backTopMode.value = values.includes("显示方形") ? "square" : "circle";
+   backTopIcon.value = values.includes("自定义图标") ? "arrow-up" : "arrow-upward";
+   if (values.includes("自定义距离")) {
+      backTopBottom.value = 300;
+   } else {
+      backTopBottom.value = 100;
+   }
+   backTopUStyle.value = values.includes("自定义样式") ? "background-color: #3c9cff;" : "";
+   backTopDuration.value = values.includes("自定义返回顶部滚动时间") ? 1500 : 300;
+};
+
+/**
+ * 页面滚动事件(APP 端经 uvx-page 上报)
+ * @param e 滚动事件对象
+ * @returns null
+ */
+const handleScroll = (e: UniScrollEvent): void => {
+   scrollTop.value = e.detail.scrollTop;
+};
+
+/**
+ * 点击返回顶部
+ * @returns null
+ */
+const handleBackTop = (): void => {
+   // #ifdef APP
+   // 先同步当前值再置 0,避免"绑定值未变不触发"
+   pageScrollTop.value = scrollTop.value;
+   nextTick(() => {
+      pageScrollTop.value = 0;
+   });
+   // #endif
+   // #ifndef APP
+   uni.pageScrollTo({ scrollTop: 0, duration: backTopDuration.value });
+   // #endif
+};
+
+// #ifndef APP
+/**
+ * 页面滚动事件(非 APP 平台原生滚动)
+ */
+onPageScroll((e) => {
+   scrollTop.value = e.scrollTop;
+});
+// #endif
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+.backtop-demo {
+   // 固定高度,保证页面内容超出屏幕可滚动
+   height: 1200px;
+
+   // 选项列表
+   &__item {
+      margin-top: 10px;
+   }
+}
+</style>

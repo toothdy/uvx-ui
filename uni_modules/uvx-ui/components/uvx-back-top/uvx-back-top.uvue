@@ -1,0 +1,120 @@
+<template>
+	<uvx-transition mode="fade" :show="show" :duration="300" :u-style="$uvx.style.stringify(wrapStyle)">
+		<slot>
+			<view class="uvx-back-top" :style="contentStyle" @click="onClick">
+				<uvx-icon :name="icon" color="#fff" :u-style="iconStyle"></uvx-icon>
+				<text v-if="!$uvx.string.empty(text)" class="uvx-back-top__text">{{ text }}</text>
+			</view>
+		</slot>
+	</uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-back-top 返回顶部
+ * @description 长页面滑动一定距离后出现的返回顶部按钮。显隐由父页传入 scrollTop 决定,点击只触发 click 事件,实际回顶由页面处理(APP 经 uvx-page 的 scroll-top)。
+ * @tutorial https://www.uvxui.cn/components/back-top.html
+ * @property {String} mode 形状:circle 圆形 / square 方形 (默认 'circle')
+ * @property {String} icon 图标名或图片路径 (默认 'arrow-upward')
+ * @property {String} text 提示文字 (默认 '')
+ * @property {Number} duration 回顶动画时长 ms(供页面回顶使用) (默认 100)
+ * @property {Number} scrollTop 当前滚动距离(父页传入) (默认 0)
+ * @property {Number} top 超过该距离显示,单位 px (默认 400)
+ * @property {Number} bottom 距底部距离,单位 px (默认 100)
+ * @property {Number} ight 距右侧距离,单位 px (默认 20)
+ * @property {Number} zIndex 层级 (默认 9)
+ * @property {String} iconStyle 图标样式,透传给 uvx-icon 的 u-style
+ * @property {String} uStyle 外层自定义样式
+ *
+ * @event {Function} click 点击按钮触发(页面据此执行回顶)
+ * @example <uvx-back-top :scroll-top="scrollTop" @click="onBackTop"></uvx-back-top>
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Props, Emits } from './types/index.uts';
+
+defineOptions({ name: 'uvx-back-top', options: { virtualHost: true } });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	mode: 'circle',
+	icon: 'arrow-upward',
+	text: '',
+	duration: 100,
+	scrollTop: 0,
+	top: 400,
+	bottom: 100,
+	right: 20,
+	zIndex: 9,
+	iconStyle: "",
+	uStyle: ""
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/**
+ * 是否显示
+ * @returns boolean
+ */
+const show = computed(() : boolean => {
+	return props.scrollTop > props.top;
+});
+
+/**
+ * 外层 fixed 定位样式(透传给 uvx-transition 的 u-style)
+ * @returns UTSJSONObject
+ */
+const wrapStyle = computed(() : UTSJSONObject => {
+	const style : UTSJSONObject = {};
+	style.set('position', 'fixed');
+	style.set('bottom', $uvx.format.unit(props.bottom));
+	style.set('right', $uvx.format.unit(props.right));
+	style.set('width', '40px');
+	style.set('height', '40px');
+	style.set('z-index', props.zIndex);
+	return style;
+});
+
+/**
+ * 按钮内容样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed(() : UTSJSONObject => {
+	const radius = props.mode == 'circle' ? '100px' : '4px';
+	const style : UTSJSONObject = {};
+	style.set('border-top-left-radius', radius);
+	style.set('border-top-right-radius', radius);
+	style.set('border-bottom-left-radius', radius);
+	style.set('border-bottom-right-radius', radius);
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 点击(完全解耦,只通知页面)
+ * @returns null
+ */
+const onClick = () : void => {
+	emit('click');
+};
+</script>
+
+<style lang="scss">
+.uvx-back-top {
+	flex: 1;
+	height: 100%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--uvx-disabled);
+
+	&__text {
+		font-size: 12px;
+		transform: scale(0.8);
+	}
+}
+</style>

@@ -1,0 +1,125 @@
+<template>
+   <uvx-transition
+      mode="fade"
+      :show="show"
+      :duration="duration"
+      :u-style="$uvx.style.stringify(overlayStyle)"
+      :u-class="overlayClass"
+      @click="handleClick"
+   >
+      <!-- 遮罩内容 -->
+      <view
+         class="uvx-overlay__content"
+         <!-- #ifdef APP-HARMONY -->
+         @touchmove.stop="handleTouchMove"
+         <!-- #else -->
+         @touchmove.stop.prevent="handleTouchMove"
+         <!-- #endif -->
+      >
+         <slot></slot>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-overlay 遮罩层
+ * @description 全屏遮罩组件，用于突出弹层内容并阻止操作下层页面。
+ * @tutorial https://www.uvxui.cn/components/overlay.html
+ * @property {Boolean} show 是否显示遮罩，默认 false
+ * @property {String | Number} zIndex 遮罩层级，默认使用全局弹层基础层级
+ * @property {Number} duration 淡入淡出时长，单位毫秒，默认 300
+ * @property {String | Number} opacity 遮罩透明度，默认 0.5
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击遮罩时触发
+ * @example <uvx-overlay :show="show" @click="show = false"></uvx-overlay>
+ */
+
+import { $uvx } from "../../index.uts";
+import { config } from "../../core/config.uts";
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-overlay", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   show: false,
+   zIndex: config.zIndex,
+   duration: 300,
+   opacity: 0.5,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 遮罩点击事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 遮罩透明度
+ * @returns number
+ */
+const opacityValue = computed((): number => {
+   const value = parseFloat(props.opacity.toString());
+   if (Number.isNaN(value)) return 0.5;
+   return Math.max(0, Math.min(1, value));
+});
+
+/**
+ * 遮罩层级
+ * @returns number
+ */
+const zIndexValue = computed((): number => {
+   const parsedValue = parseInt(props.zIndex.toString());
+   return Number.isNaN(parsedValue) ? config.zIndex : parsedValue;
+});
+
+/**
+ * 遮罩样式
+ * @returns UTSJSONObject
+ */
+const overlayStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "position": "fixed",
+      "top": "0",
+      "right": "0",
+      "bottom": "0",
+      "left": "0",
+      "z-index": zIndexValue.value,
+      "background-color": `rgba(0, 0, 0, ${opacityValue.value})`,
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 遮罩类名
+ * @returns string
+ */
+const overlayClass = computed((): string => {
+   return !$uvx.string.empty(props.uClass) ? `uvx-overlay ${props.uClass}` : "uvx-overlay";
+});
+
+/**
+ * 发送遮罩点击事件
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click");
+};
+
+/**
+ * 阻止触摸移动穿透
+ * @returns null
+ */
+const handleTouchMove = (): void => {};
+</script>
+
+<style lang="scss">
+// 遮罩内容容器
+.uvx-overlay__content {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   height: 100%;
+}
+</style>

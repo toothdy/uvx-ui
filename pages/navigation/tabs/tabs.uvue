@@ -1,0 +1,238 @@
+<template>
+   <uvx-page ref="uPage">
+      <view class="uvx-page-demo tabs-demo">
+         <!-- 基础演示 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础演示"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs
+                  :list="BASIC_LIST"
+                  :current="3"
+                  @click="handleTabClick"
+               ></uvx-tabs>
+            </view>
+         </view>
+
+         <!-- 显示徽标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="显示徽标"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs :list="BADGE_LIST"></uvx-tabs>
+            </view>
+         </view>
+
+         <!-- 禁止滚动 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁止滚动"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs
+                  :list="SHORT_LIST"
+                  :scrollable="false"
+               ></uvx-tabs>
+            </view>
+         </view>
+
+         <!-- 禁用标签 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁用标签"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs
+                  :list="DISABLED_LIST"
+                  @click="handleTabClick"
+               ></uvx-tabs>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs
+                  :list="CUSTOM_LIST"
+                  line-width="30"
+                  line-color="#f56c6c"
+                  active-style="color: #303133; font-weight: bold; transform: scale(1.05);"
+                  inactive-style="color: #606266; transform: scale(1);"
+                  item-style="padding-left: 15px; padding-right: 15px; height: 34px;"
+               ></uvx-tabs>
+            </view>
+         </view>
+
+         <!-- 滑块背景图 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="滑块设置背景图"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs
+                  :list="CUSTOM_LIST"
+                  line-width="20"
+                  line-height="7"
+                  :line-color="LINE_BACKGROUND"
+                  active-style="font-weight: bold; transform: scale(1.05);"
+                  inactive-style="transform: scale(1);"
+                  item-style="padding-left: 15px; padding-right: 15px; height: 34px;"
+               ></uvx-tabs>
+            </view>
+         </view>
+
+         <!-- 右侧插槽 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="右侧自定义插槽"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tabs-demo__content">
+               <uvx-tabs :list="BASIC_LIST">
+                  <template #right>
+                     <view
+                        class="tabs-demo__right"
+                        @tap="handleSlotClick"
+                     >
+                        <uvx-icon name="list" size="21"></uvx-icon>
+                     </view>
+                  </template>
+               </uvx-tabs>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   Event,
+   Item,
+} from "@/uni_modules/uvx-ui/components/uvx-tabs/types/index.uts";
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+// 滑块背景图片
+const LINE_BACKGROUND = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAOCAYAAABdC15GAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAFxSURBVHgBzZNRTsJAEIb/WTW+lpiY+FZPIDew3ABP4GJ8hxsI9zBpOYHeQDwBPQI+mRiRvpLojtPdYhCorQqF/6GdbGd2vvwzBXZcNAt4oj1ANeUoAT5iqkUjbEFLHNmhD1YPEvpZ3ghkGlVDCkc94/BmHMq998I5ONiY1ZBfpKAyuOtgAc5yOEDmYEWNh32BHF91sGHZHmwW4azciN9aQwnz3SJEgOmte+R2tdLprTYoa50mvuomlLpD4Y3oQZnov6D2RzCqI93bWOHaEmAGqQUyRBlZR1WfarcD/EJ2z8DtzDGvsMCwpm8XOCfDUsVOCYhiqRxI/CTQo4UOvjzO7Pow18vfywneuUHHUUxLn55lLw5JFpZ8bEUcY8oXdOLWiHLTxvoGpLqoUmy6dBT15o/ox3znpoycAmxUsiJTbs1cmxeVKp+0zmFIS7bGWiVghC7Vwse8jFKAX9eljh4ggKLLv7uaQvG9/F59Oo2SouxPu7OTCxN/s8wAAAAASUVORK5CYII=) 100% 100%";
+
+// 基础标签
+const BASIC_LIST: Item[] = [
+   { name: "关注" },
+   { name: "推荐" },
+   { name: "电影" },
+   { name: "科技" },
+   { name: "音乐" },
+   { name: "美食" },
+   { name: "文化" },
+   { name: "财经" },
+   { name: "手工" },
+];
+
+// 带徽标标签
+const BADGE_LIST: Item[] = [
+   { name: "关注" },
+   {
+      name: "推荐",
+      badge: { isDot: true },
+   },
+   {
+      name: "电影",
+      badge: { value: 5 },
+   },
+   { name: "科技" },
+   { name: "音乐" },
+   { name: "美食" },
+   { name: "文化" },
+   { name: "财经" },
+   { name: "手工" },
+];
+
+// 等分标签
+const SHORT_LIST: Item[] = [
+   { name: "关注" },
+   { name: "推荐" },
+   { name: "电影" },
+   { name: "科技" },
+];
+
+// 带禁用项标签
+const DISABLED_LIST: Item[] = [
+   { name: "关注" },
+   { name: "推荐" },
+   { name: "电影", disabled: true },
+   { name: "科技" },
+   { name: "音乐" },
+   { name: "美食" },
+   { name: "文化" },
+   { name: "财经" },
+   { name: "手工" },
+];
+
+// 自定义案例标签
+const CUSTOM_LIST: Item[] = [
+   { name: "关注" },
+   {
+      name: "推荐",
+      badge: { isDot: true },
+   },
+   { name: "电影" },
+   { name: "科技" },
+   { name: "音乐" },
+   { name: "美食" },
+   { name: "文化" },
+   { name: "财经" },
+   { name: "手工" },
+];
+
+/**
+ * 显示标签点击结果
+ * @param event 标签事件值
+ * @returns null
+ */
+const handleTabClick = (event: Event): void => {
+   const name = event.getString("name");
+   const index = event.getNumber("index");
+   const message = (name == null ? "" : name) + "，索引 " + (index == null ? "0" : index.toString());
+   uPage.value?.toast({ message, icon: false });
+};
+
+/**
+ * 显示插槽点击结果
+ * @returns null
+ */
+const handleSlotClick = (): void => {
+   uPage.value?.toast({ message: "插槽被点击", icon: false });
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 标签演示页
+.tabs-demo {
+   // 标签演示内容
+   &__content {
+      width: 100%;
+      overflow: visible;
+   }
+
+   // 右侧插槽
+   &__right {
+      display: flex;
+      position: relative;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      width: 36px;
+      height: 44px;
+      overflow: visible;
+      background-color: var(--uvx-page);
+   }
+}
+</style>

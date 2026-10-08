@@ -1,0 +1,17 @@
+/** 滚动列表属性 */
+export type Props = {
+   indicatorWidth: string | number;
+   indicatorBarWidth: string | number;
+   indicator: boolean;
+   indicatorColor: string;
+   indicatorActiveColor: string;
+   indicatorStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 滚动列表事件 */
+export type Emits = {
+   left: [];
+   right: [];
+};

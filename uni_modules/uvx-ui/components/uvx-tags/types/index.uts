@@ -1,0 +1,33 @@
+export type Type = "primary" | "success" | "warning" | "error" | "info";
+export type Size = "mini" | "medium" | "large";
+export type Shape = "square" | "circle";
+export type Value = string | number;
+
+/** 标签属性 */
+export type Props = {
+   type: Type;
+   disabled: boolean;
+   size: Size;
+   shape: Shape;
+   text: Value;
+   bgColor: string;
+   color: string;
+   borderColor: string;
+   name: Value;
+   plainFill: boolean;
+   plain: boolean;
+   closable: boolean;
+   closeColor: string;
+   show: boolean;
+   icon: string;
+   iconColor: string;
+   cellChild: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 标签事件 */
+export type Emits = {
+   click: [name: Value];
+   close: [name: Value];
+};

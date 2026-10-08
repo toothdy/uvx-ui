@@ -1,0 +1,190 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo progress-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content progress-demo__content">
+               <uvx-line-progress :percentage="basicPercentage"></uvx-line-progress>
+            </view>
+         </view>
+
+         <!-- 隐藏百分比 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="不显示百分比"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content progress-demo__content">
+               <uvx-line-progress
+                  :percentage="hiddenTextPercentage"
+                  :show-text="false"
+               ></uvx-line-progress>
+            </view>
+         </view>
+
+         <!-- 自定义高度 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义高度"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content progress-demo__content">
+               <uvx-line-progress
+                  :percentage="heightPercentage"
+                  :show-text="false"
+                  :height="15"
+               ></uvx-line-progress>
+            </view>
+         </view>
+
+         <!-- 自定义颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义颜色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content progress-demo__content">
+               <uvx-line-progress
+                  active-color="#19be6b"
+                  inactive-color="#f3f4f6"
+                  :percentage="colorPercentage"
+                  :show-text="false"
+               ></uvx-line-progress>
+            </view>
+         </view>
+
+         <!-- 自定义轨道内容 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content progress-demo__content">
+               <uvx-line-progress
+                  active-color="#3c9cff"
+                  inactive-color="#f3f4f6"
+                  :percentage="slotPercentage"
+                  :show-text="false"
+                  :height="10"
+               >
+                  <text class="progress-demo__slot">{{ slotPercentage }}%</text>
+               </uvx-line-progress>
+            </view>
+         </view>
+
+         <!-- 手动控制 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="手动加减"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content progress-demo__content">
+               <uvx-line-progress
+                  active-color="#3c9cff"
+                  inactive-color="#f3f4f6"
+                  :percentage="manualPercentage"
+                  :height="10"
+               ></uvx-line-progress>
+               <view class="progress-demo__actions">
+                  <view
+                     class="progress-demo__action"
+                     hover-class="uvx-hover-class"
+                     @click="handleDecrease"
+                  >
+                     <text class="progress-demo__action-text">减少</text>
+                  </view>
+                  <view
+                     class="progress-demo__action"
+                     hover-class="uvx-hover-class"
+                     @click="handleIncrease"
+                  >
+                     <text class="progress-demo__action-text">增加</text>
+                  </view>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+
+// 基础示例进度
+const basicPercentage = ref<number>(100);
+// 隐藏文字示例进度
+const hiddenTextPercentage = ref<number>(40);
+// 自定义高度示例进度
+const heightPercentage = ref<number>(50);
+// 自定义颜色示例进度
+const colorPercentage = ref<number>(60);
+// 自定义插槽示例进度
+const slotPercentage = ref<number>(70);
+// 手动控制示例进度
+const manualPercentage = ref<number>(50);
+
+/**
+ * 减少手动进度
+ * @returns null
+ */
+const handleDecrease = (): void => {
+   manualPercentage.value = Math.max(0, manualPercentage.value - 10);
+};
+
+/**
+ * 增加手动进度
+ * @returns null
+ */
+const handleIncrease = (): void => {
+   manualPercentage.value = Math.min(100, manualPercentage.value + 10);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 进度条演示页面
+.progress-demo {
+   // 进度条内容区域
+   &__content {
+      flex-direction: column;
+      align-items: stretch;
+   }
+
+   // 自定义轨道内容
+   &__slot {
+      padding: 1px 5px;
+      margin-right: -5px;
+      border-radius: 100px;
+      background-color: var(--uvx-warning);
+      color: #ffffff;
+      font-size: 10px;
+      line-height: 1.2em;
+   }
+
+   // 手动操作区域
+   &__actions {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 手动操作按钮
+   &__action {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      margin: 30px;
+      border-radius: 100px;
+      background-color: #dbfbdb;
+   }
+
+   // 手动操作文字
+   &__action-text {
+      color: rgb(25, 190, 107);
+      font-size: 13px;
+      line-height: 1.2em;
+   }
+}
+</style>

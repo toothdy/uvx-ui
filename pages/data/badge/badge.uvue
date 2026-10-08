@@ -1,0 +1,115 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo badge-demo">
+         <!-- 直角边形状 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="直角边形状"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content badge-demo__content">
+               <view class="badge-demo__item">
+                  <uvx-badge :value="1500" shape="horn"></uvx-badge>
+               </view>
+            </view>
+         </view>
+
+         <!-- 徽标数显示方式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="徽标数显示方式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content badge-demo__content">
+               <view class="badge-demo__item">
+                  <uvx-badge :value="5132" number-type="ellipsis"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="1011" number-type="overflow"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="1500" number-type="limit"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="45187" number-type="limit"></uvx-badge>
+               </view>
+            </view>
+         </view>
+
+         <!-- 显示圆点 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="显示圆点"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content badge-demo__content">
+               <view class="badge-demo__item">
+                  <uvx-badge :value="1011" number-type="overflow" :is-dot="true"></uvx-badge>
+               </view>
+            </view>
+         </view>
+
+         <!-- 自定义主题 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义主题"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content badge-demo__content">
+               <view class="badge-demo__item">
+                  <uvx-badge :value="9" type="error"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="9" type="warning"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="9" type="success"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="9" type="primary"></uvx-badge>
+               </view>
+            </view>
+         </view>
+
+         <!-- 反转色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="反转色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content badge-demo__content">
+               <view class="badge-demo__item">
+                  <uvx-badge :value="9" type="error" :inverted="true"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="1532" type="warning" :inverted="true"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="12" type="success" :inverted="true"></uvx-badge>
+               </view>
+               <view class="badge-demo__item">
+                  <uvx-badge :value="999" type="primary" :inverted="true"></uvx-badge>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 徽标演示页面
+.badge-demo {
+   // 徽标演示内容
+   &__content {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+   }
+
+   // 徽标演示项
+   &__item {
+      margin-top: 10px;
+      margin-right: 40px;
+   }
+}
+</style>

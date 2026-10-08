@@ -1,0 +1,636 @@
+<template>
+   <uvx-popup
+      ref="uPopup"
+      mode="bottom"
+      :round="round"
+      :close-on-click-overlay="closeOnClickOverlay"
+      @change="handlePopupChange"
+   >
+      <view class="uvx-picker" :class="uClass" :style="pickerRootStyle">
+         <!-- 顶部操作栏 -->
+         <uvx-toolbar
+            v-if="showToolbar"
+            :cancel-color="cancelColor"
+            :confirm-color="confirmColor"
+            :cancel-text="cancelText"
+            :confirm-text="confirmText"
+            :title="title"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-toolbar>
+
+         <!-- 滚轮选择区域 -->
+         <view class="uvx-picker__view-wrap">
+            <picker-view
+               class="uvx-picker__view"
+               :indicator-style="indicatorStyle"
+               <!-- #ifdef WEB || MP-WEIXIN -->
+               indicator-class="uvx-picker__indicator"
+               :mask-style="maskStyle"
+               <!-- #endif -->
+               <!-- #ifdef APP -->
+               :mask-top-style="maskTopStyle"
+               :mask-bottom-style="maskBottomStyle"
+               <!-- #endif -->
+               :value="innerIndex"
+               :style="pickerViewStyle"
+               @change="handleChange"
+            >
+               <picker-view-column
+                  v-for="(column, columnIndex) in innerColumns"
+                  :key="columnIndex"
+                  class="uvx-picker__column"
+               >
+                  <view
+                     v-for="(item, itemIndex) in column"
+                     :key="itemIndex"
+                     class="uvx-picker__item"
+                     :style="itemStyle"
+                  >
+                     <text
+                        class="uvx-picker__item-text uvx-line-1"
+                        :style="getItemTextStyle(columnIndex, itemIndex)"
+                     >
+                        {{ getItemText(item) }}
+                     </text>
+                  </view>
+               </picker-view-column>
+            </picker-view>
+
+            <!-- #ifdef APP -->
+            <!-- App 原生指示线会被选项背景遮挡，使用独立指示框保持可见。 -->
+            <view
+               class="uvx-picker__indicator-app"
+               :style="pickerIndicatorStyle"
+            ></view>
+            <!-- #endif -->
+         </view>
+
+         <!-- 加载遮罩 -->
+         <view
+            v-if="loading"
+            class="uvx-picker__loading"
+            :style="loadingStyle"
+            @click.stop="handleLoadingTouch"
+            <!-- #ifdef APP-HARMONY -->
+            @touchmove.stop="handleLoadingTouch"
+            <!-- #else -->
+            @touchmove.stop.prevent="handleLoadingTouch"
+            <!-- #endif -->
+         >
+            <uvx-loading-icon mode="circle"></uvx-loading-icon>
+         </view>
+      </view>
+   </uvx-popup>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-picker 选择器
+ * @description 弹出式多列滚轮选择器，支持对象选项、联动更新和加载状态。
+ * @tutorial https://www.uvxui.cn/components/picker.html
+ * @property {Boolean} showToolbar 是否显示顶部操作栏，默认 true
+ * @property {String} title 顶部标题
+ * @property {String | Number} round 弹窗圆角，单位 px，默认 0
+ * @property {Array} columns 每列选项数据
+ * @property {Boolean} loading 是否显示加载状态，默认 false
+ * @property {Number} itemHeight 单个选项高度，单位 px，默认 44
+ * @property {String} cancelText 取消按钮文字，默认 取消
+ * @property {String} confirmText 确认按钮文字，默认 确定
+ * @property {String} cancelColor 取消按钮颜色，默认跟随主题
+ * @property {String} confirmColor 确认按钮颜色，默认跟随主题
+ * @property {String} color 选项文字颜色
+ * @property {String} activeColor 选中文字颜色
+ * @property {Number} visibleItemCount 每列可见选项数量，默认 5
+ * @property {String} keyName 对象选项的显示字段，默认 text
+ * @property {Boolean} closeOnClickOverlay 是否允许点击遮罩关闭，默认 true
+ * @property {Boolean} closeOnClickConfirm 是否在确认后关闭，默认 true
+ * @property {Array} defaultIndex 每列默认索引
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @method open 打开选择器
+ * @method close 关闭选择器
+ * @method setIndexs 设置每列索引
+ * @method setLastIndex 设置上一次索引
+ * @method setColumnValues 设置指定列数据
+ * @method getColumnValues 获取指定列数据
+ * @method getValues 获取当前选中项
+ * @method getIndexs 获取当前索引
+ * @event {Function} close 关闭选择器时触发
+ * @event {Function} cancel 点击取消时触发
+ * @event {Function} change 选择项变化时触发
+ * @event {Function} confirm 点击确定时触发
+ * @example <uvx-picker ref="picker" :columns="columns" @confirm="handleConfirm"></uvx-picker>
+ */
+
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import { t } from "../../core/i18n";
+import type { ChangeEvent as PopupChangeEvent } from "../uvx-popup/types/index.uts";
+import type {
+   Props,
+   Item,
+   Column,
+   Columns,
+   Emits,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-picker", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   showToolbar: true,
+   title: "",
+   round: 0,
+   columns: () => [] as Columns,
+   loading: false,
+   itemHeight: 44,
+   cancelText: t("取消"),
+   confirmText: t("确定"),
+   cancelColor: "",
+   confirmColor: "",
+   color: "",
+   activeColor: "",
+   visibleItemCount: 5,
+   keyName: "text",
+   closeOnClickOverlay: true,
+   closeOnClickConfirm: true,
+   defaultIndex: () => [] as number[],
+   uStyle: "",
+   uClass: "",
+});
+
+/** 选择器事件 */
+const emit = defineEmits<Emits>();
+// 弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+// 上一次选择索引
+const lastIndex = ref<number[]>([]);
+// 当前选择索引
+const innerIndex = ref<number[]>([]);
+// 当前列数据
+const innerColumns = ref<Columns>([]);
+
+/**
+ * 有效选项高度
+ * @returns number
+ */
+const itemHeightValue = computed((): number => {
+   return props.itemHeight > 0 ? props.itemHeight : 44;
+});
+
+/**
+ * 有效可见数量
+ * @returns number
+ */
+const visibleItemCountValue = computed((): number => {
+   return props.visibleItemCount > 0 ? props.visibleItemCount : 5;
+});
+
+/**
+ * 选择指示器样式
+ * @returns string
+ */
+const indicatorStyle = computed((): string => {
+   const height = $uvx.format.unit(itemHeightValue.value);
+   return `height: ${height};`;
+});
+
+/**
+ * Web 与微信小程序滚轮蒙层样式
+ * @returns string
+ */
+const maskStyle = computed((): string => {
+   const startColor = isDark.value ? "rgba(31, 31, 31, 0.95)" : "rgba(255, 255, 255, 0.95)";
+   const endColor = isDark.value ? "rgba(31, 31, 31, 0.6)" : "rgba(255, 255, 255, 0.6)";
+   return `background-image: linear-gradient(to bottom, ${startColor}, ${endColor}), linear-gradient(to top, ${startColor}, ${endColor});`;
+});
+
+/**
+ * App 滚轮顶部蒙层样式
+ * @returns string
+ */
+const maskTopStyle = computed((): string => {
+   const startColor = isDark.value ? "rgba(31, 31, 31, 0.95)" : "rgba(255, 255, 255, 0.95)";
+   const endColor = isDark.value ? "rgba(31, 31, 31, 0.6)" : "rgba(255, 255, 255, 0.6)";
+   return `background-image: linear-gradient(to bottom, ${startColor}, ${endColor});`;
+});
+
+/**
+ * App 滚轮底部蒙层样式
+ * @returns string
+ */
+const maskBottomStyle = computed((): string => {
+   const startColor = isDark.value ? "rgba(31, 31, 31, 0.95)" : "rgba(255, 255, 255, 0.95)";
+   const endColor = isDark.value ? "rgba(31, 31, 31, 0.6)" : "rgba(255, 255, 255, 0.6)";
+   return `background-image: linear-gradient(to top, ${startColor}, ${endColor});`;
+});
+
+/**
+ * 滚轮区域样式
+ * @returns UTSJSONObject
+ */
+const pickerViewStyle = computed((): UTSJSONObject => {
+   return {
+      "height": $uvx.format.unit(visibleItemCountValue.value * itemHeightValue.value),
+   };
+});
+
+/**
+ * App 选中指示框样式
+ * @returns UTSJSONObject
+ */
+const pickerIndicatorStyle = computed((): UTSJSONObject => {
+   const offsetTop = (visibleItemCountValue.value - 1) * itemHeightValue.value / 2;
+   const borderColor = isDark.value ? "#3a3a3a" : "#ebedf0";
+   return {
+      "top": $uvx.format.unit(offsetTop),
+      "height": $uvx.format.unit(itemHeightValue.value),
+      "border-top-color": borderColor,
+      "border-bottom-color": borderColor,
+   };
+});
+
+/**
+ * 选择器根样式
+ * @returns UTSJSONObject
+ */
+const pickerRootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 选项容器样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return {
+      "height": $uvx.format.unit(itemHeightValue.value),
+      "width": "100%",
+   };
+});
+
+/**
+ * 获取选项文字样式
+ * @param columnIndex 列索引
+ * @param itemIndex 选项索引
+ * @returns UTSJSONObject
+ */
+const getItemTextStyle = (columnIndex: number, itemIndex: number): UTSJSONObject => {
+   const isActive = innerIndex.value[columnIndex] == itemIndex;
+   const style: UTSJSONObject = {
+      "width": "100%",
+      "line-height": $uvx.format.unit(itemHeightValue.value),
+      "text-align": "center",
+      "font-weight": isActive ? "bold" : "normal",
+   };
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   if (isActive && !$uvx.string.empty(props.activeColor)) style.set("color", props.activeColor);
+   return style;
+};
+
+/**
+ * 加载遮罩样式
+ * @returns UTSJSONObject
+ */
+const loadingStyle = computed((): UTSJSONObject => {
+   return {
+      "top": props.showToolbar ? "44px" : "0",
+   };
+});
+
+/**
+ * 获取选项显示文字
+ * @param item 选项
+ * @returns string
+ */
+const getItemText = (item: Item): string => {
+   if (typeof item == "string") return item;
+   if (typeof item == "number") return item.toString();
+   const text = item.getString(props.keyName);
+   if (text != null) return text;
+   const number = item.getNumber(props.keyName);
+   return number == null ? "" : number.toString();
+};
+
+/**
+ * 归一化每列索引
+ * @param indexs 待处理索引
+ * @returns number[]
+ */
+const normalizeIndexs = (indexs: number[]): number[] => {
+   const result: number[] = [];
+   for (let i = 0; i < innerColumns.value.length; i++) {
+      const column = innerColumns.value[i];
+      let index = i < indexs.length ? indexs[i] : 0;
+      if (column.length == 0) {
+         index = 0;
+      } else {
+         index = Math.max(0, Math.min(column.length - 1, index));
+      }
+      result.push(index);
+   }
+   return result;
+};
+
+/**
+ * 获取当前选中项
+ * @returns Item[]
+ */
+const getSelectedValues = (): Item[] => {
+   const result: Item[] = [];
+   for (let i = 0; i < innerColumns.value.length; i++) {
+      const column = innerColumns.value[i];
+      if (column.length > 0) result.push(column[innerIndex.value[i]]);
+   }
+   return result;
+};
+
+/**
+ * 记录上一次索引
+ * @param indexs 各列索引
+ * @returns null
+ */
+const setLastIndex = (indexs: number[]): void => {
+   lastIndex.value = indexs.slice();
+};
+
+/**
+ * 设置各列索引
+ * @param indexs 各列索引
+ * @param shouldSetLastIndex 是否同步记录上一次索引
+ * @returns null
+ */
+const setIndexs = (indexs: number[], shouldSetLastIndex?: boolean): void => {
+   const values = normalizeIndexs(indexs);
+   innerIndex.value = values;
+   if (shouldSetLastIndex == true) setLastIndex(values);
+};
+
+/**
+ * 设置指定列数据
+ * @param columnIndex 列索引
+ * @param values 新列数据
+ * @returns null
+ */
+const setColumnValues = (columnIndex: number, values: Column): void => {
+   if (columnIndex < 0 || columnIndex >= innerColumns.value.length) return;
+   innerColumns.value.splice(columnIndex, 1, $uvx.object.deepClone(values));
+   const indexs = innerIndex.value.slice();
+   for (let i = columnIndex + 1; i < innerColumns.value.length; i++) indexs[i] = 0;
+   setIndexs(indexs);
+};
+
+/**
+ * 获取指定列数据
+ * @param columnIndex 列索引
+ * @returns Column
+ */
+const getColumnValues = (columnIndex: number): Column => {
+   if (columnIndex < 0 || columnIndex >= innerColumns.value.length) return [];
+   return $uvx.object.deepClone(innerColumns.value[columnIndex]);
+};
+
+/**
+ * 获取当前索引
+ * @returns number[]
+ */
+const getIndexs = (): number[] => {
+   return innerIndex.value.slice();
+};
+
+/**
+ * 获取当前选中项
+ * @returns Item[]
+ */
+const getValues = (): Item[] => {
+   return $uvx.object.deepClone(getSelectedValues());
+};
+
+/**
+ * 设置所有列数据
+ * @param columns 新列数据
+ * @returns null
+ */
+const setColumns = (columns: Columns): void => {
+   innerColumns.value = $uvx.object.deepClone(columns);
+   setIndexs(innerIndex.value.length == 0 ? props.defaultIndex : innerIndex.value, true);
+};
+
+/**
+ * 打开选择器
+ * @returns null
+ */
+const open = (): void => {
+   uPopup.value?.open();
+};
+
+/**
+ * 关闭选择器
+ * @returns null
+ */
+const close = (): void => {
+   uPopup.value?.close();
+};
+
+/**
+ * 转发弹层关闭事件
+ * @param event 弹层状态
+ * @returns null
+ */
+const handlePopupChange = (event: PopupChangeEvent): void => {
+   if (!event.show) emit("close");
+};
+
+/**
+ * 取消选择并关闭
+ * @returns null
+ */
+const handleCancel = (): void => {
+   emit("cancel");
+   close();
+};
+
+/**
+ * 确认当前选择
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   emit("confirm", {
+      indexs: getIndexs(),
+      innerIndex: getValues(),
+      values: $uvx.object.deepClone(innerColumns.value),
+   });
+   if (props.closeOnClickConfirm) close();
+};
+
+/**
+ * 处理滚轮变化
+ * @param event 原生选择器事件
+ * @returns null
+ */
+const handleChange = (event: UniPickerViewChangeEvent): void => {
+   const indexs = normalizeIndexs(event.detail.value);
+   let changedColumnIndex = 0;
+   let changedIndex = indexs.length > 0 ? indexs[0] : 0;
+   for (let i = 0; i < indexs.length; i++) {
+      const previous = i < lastIndex.value.length ? lastIndex.value[i] : 0;
+      if (indexs[i] != previous) {
+         changedColumnIndex = i;
+         changedIndex = indexs[i];
+         break;
+      }
+   }
+   setIndexs(indexs);
+   setLastIndex(indexs);
+   emit("change", {
+      value: getValues(),
+      index: changedIndex,
+      indexs: getIndexs(),
+      values: $uvx.object.deepClone(innerColumns.value),
+      columnIndex: changedColumnIndex,
+   });
+};
+
+/**
+ * 阻止加载层交互穿透
+ * @returns null
+ */
+const handleLoadingTouch = (): void => {};
+
+/**
+ * 外部默认索引变化时同步内部状态
+ * @param value 默认索引列表
+ * @returns null
+ */
+watch((): number[] => props.defaultIndex, (value: number[]): void => {
+   setIndexs(value, true);
+}, { immediate: true, deep: true });
+
+/**
+ * 外部列数据变化时同步内部状态
+ * @param value 列数据
+ * @returns null
+ */
+watch((): Columns => props.columns, (value: Columns): void => {
+   setColumns(value);
+}, { immediate: true, deep: true });
+
+defineExpose({
+   open,
+   close,
+   setIndexs,
+   setLastIndex,
+   setColumnValues,
+   getColumnValues,
+   getValues,
+   getIndexs,
+});
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 选择器容器
+.uvx-picker {
+   position: relative;
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   background-color: var(--uvx-container);
+
+   // 滚轮区域
+   &__view-wrap {
+      position: relative;
+      width: 100%;
+      background-color: var(--uvx-container);
+   }
+
+   // 滚轮主体
+   &__view {
+      width: 100%;
+      background-color: var(--uvx-container);
+   }
+
+   /* #ifdef WEB || MP-WEIXIN */
+   // Web 与微信小程序选中指示线，App UCSS 不支持伪元素。
+   &__indicator {
+      &::before {
+         border-top-color: var(--uvx-border) !important;
+      }
+
+      &::after {
+         border-bottom-color: var(--uvx-border) !important;
+      }
+   }
+   /* #endif */
+
+   /* #ifdef APP */
+   // App 选中指示框
+   &__indicator-app {
+      position: absolute;
+      z-index: 1;
+      right: 0;
+      left: 0;
+      box-sizing: border-box;
+      border-top-width: 1px;
+      border-top-style: solid;
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      pointer-events: none;
+   }
+   /* #endif */
+
+   // 单列容器
+   &__column {
+      flex: 1;
+      /* #ifdef APP */
+      background-color: var(--uvx-container);
+      /* #endif */
+   }
+
+   // 单个选项
+   &__item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 0 8px;
+      /* #ifdef APP */
+      background-color: var(--uvx-container);
+      /* #endif */
+
+      &-text {
+         width: 100%;
+         color: var(--uvx-text-main);
+         font-size: 16px;
+         text-align: center;
+      }
+   }
+
+   // 加载遮罩
+   &__loading {
+      position: absolute;
+      z-index: 2;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--uvx-container);
+      opacity: 0.9;
+   }
+}
+
+/* #ifdef APP-ANDROID */
+// Android 原生列内部滚动层的回弹背景
+.uni-picker-view-group,
+.uni-picker-view-content,
+.uni-picker-view-mask {
+   background-color: var(--uvx-container);
+}
+/* #endif */
+</style>

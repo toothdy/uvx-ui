@@ -1,0 +1,259 @@
+<template>
+   <view class="uvx-calendar-body">
+      <!-- 月份导航 -->
+      <view class="uvx-calendar-body__header">
+         <view
+            class="uvx-calendar-body__month"
+            hover-class="uvx-hover-class"
+            @click="handleMonthClick"
+         >
+            <text class="uvx-calendar-body__month-text">
+               {{ `${viewDate.year} / ${viewDate.month}` }}
+            </text>
+            <view class="uvx-calendar-body__month-icon">
+               <uvx-icon name="arrow-down" :size="12"></uvx-icon>
+            </view>
+         </view>
+         <view
+            class="uvx-calendar-body__today"
+            hover-class="uvx-hover-class"
+            @click="handleToday"
+         >
+            <text class="uvx-calendar-body__today-text">{{ todayText }}</text>
+         </view>
+      </view>
+
+      <!-- 星期标题 -->
+      <view class="uvx-calendar-body__week-row">
+         <view
+            v-for="(name, index) in weekNames"
+            :key="index"
+            class="uvx-calendar-body__week-item"
+         >
+            <text class="uvx-calendar-body__week-text">{{ name }}</text>
+         </view>
+      </view>
+
+      <!-- 日期轮播 -->
+      <swiper
+         class="uvx-calendar-body__swiper"
+         :current="swiperCurrent"
+         :duration="300"
+         :circular="true"
+         @change="handleSwiperChange"
+      >
+         <swiper-item
+            v-for="(page, pageIndex) in physicalPages"
+            :key="pageIndex"
+            class="uvx-calendar-body__swiper-item"
+         >
+            <CalendarMonth
+               :days="page.days"
+               :view-date="page.viewDate"
+               :lunar="lunar"
+               :show-month="showMonth"
+               :color="color"
+               :start-text="startText"
+               :end-text="endText"
+               :today-text="todayText"
+               @day-click="handleDayClick"
+            ></CalendarMonth>
+         </swiper-item>
+      </swiper>
+   </view>
+</template>
+
+<script lang="uts" setup>
+import type {
+   BodyEmits,
+   BodyPage,
+   BodyProps,
+   Day,
+} from "./types/index.uts";
+import CalendarMonth from "./uvx-calendar-month.uvue";
+
+defineOptions({ name: "uvx-calendar-body" });
+
+const props = defineProps<BodyProps>();
+const emit = defineEmits<BodyEmits>();
+
+// 轮播页数量
+const PAGE_COUNT = 3;
+// 初始物理索引
+const INITIAL_INDEX = 1;
+
+// 当前轮播物理索引
+const swiperCurrent = ref(INITIAL_INDEX);
+
+/**
+ * 按当前物理索引排列三个轮播槽位
+ * @returns BodyPage[]
+ */
+const physicalPages = computed((): BodyPage[] => {
+   if (swiperCurrent.value == 0) {
+      return [props.days[1], props.days[2], props.days[0]];
+   }
+   if (swiperCurrent.value == 2) {
+      return [props.days[2], props.days[0], props.days[1]];
+   }
+   return [props.days[0], props.days[1], props.days[2]];
+});
+
+/**
+ * 选择日期
+ * @param day 日期格
+ * @returns null
+ */
+const handleDayClick = (day: Day): void => {
+   emit("dayClick", day);
+};
+
+/**
+ * 处理月份轮播
+ * @param event 轮播切换事件
+ * @returns null
+ */
+const handleSwiperChange = (event: UniSwiperChangeEvent): void => {
+   const current = event.detail.current;
+   const previous = swiperCurrent.value;
+   if (current == previous) return;
+   swiperCurrent.value = current;
+   if ((previous + 1) % PAGE_COUNT == current) {
+      emit("next");
+   } else if ((previous + PAGE_COUNT - 1) % PAGE_COUNT == current) {
+      emit("pre");
+   }
+};
+
+/**
+ * 回到今天
+ * @returns null
+ */
+const handleToday = (): void => {
+   emit("today");
+};
+
+/**
+ * 打开月份选择
+ * @returns null
+ */
+const handleMonthClick = (): void => {
+   emit("monthClick");
+};
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 日历主体
+.uvx-calendar-body {
+   width: 100%;
+   background-color: var(--uvx-container);
+
+   // 月份导航
+   &__header {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      width: 100%;
+      height: 48px;
+      border-bottom-width: 0.5px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+   }
+
+   // 月份入口
+   &__month {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 100%;
+      height: 48px;
+      padding: 0 74px;
+   }
+
+   // 月份文字
+   &__month-text {
+      color: var(--uvx-text-main);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 月份选择图标
+   &__month-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 12px;
+      height: 18px;
+      margin-left: 4px;
+   }
+
+   // 回到今天
+   &__today {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 28px;
+      border-radius: 14px;
+      background-color: var(--uvx-hover);
+   }
+
+   // 今天文字
+   &__today-text {
+      color: var(--uvx-text-content);
+      font-size: 12px;
+      line-height: 1.2em;
+   }
+
+   // 星期行
+   &__week-row {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: 40px;
+      border-bottom-width: 0.5px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+   }
+
+   // 星期项
+   &__week-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 14.28%;
+      height: 40px;
+   }
+
+   // 星期文字
+   &__week-text {
+      color: var(--uvx-text-content);
+      font-size: 13px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 日期轮播
+   &__swiper {
+      width: 100%;
+      height: 336px;
+      background-color: var(--uvx-container);
+   }
+
+   // 日期轮播项
+   &__swiper-item {
+      width: 100%;
+      height: 336px;
+   }
+}
+</style>

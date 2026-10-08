@@ -1,0 +1,316 @@
+import type { ErrorCorrectLevel, Matrix, Options } from "./types/index.uts";
+
+type RsBlock = { totalCount: number; dataCount: number; };
+type InternalMatrix = Array<Array<boolean | null>>;
+
+const MODE_8BIT_BYTE: number = 4;
+const PAD0: number = 236;
+const PAD1: number = 17;
+const G15: number = 1335;
+const G18: number = 7973;
+const G15_MASK: number = 21522;
+const PATTERN_POSITION_TABLE: number[][] = [
+   [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50],
+   [6, 30, 54], [6, 32, 58], [6, 34, 62], [6, 26, 46, 66], [6, 26, 48, 70], [6, 26, 50, 74], [6, 30, 54, 78],
+   [6, 30, 56, 82], [6, 30, 58, 86], [6, 34, 62, 90], [6, 28, 50, 72, 94], [6, 26, 50, 74, 98], [6, 30, 54, 78, 102],
+   [6, 28, 54, 80, 106], [6, 32, 58, 84, 110], [6, 30, 58, 86, 114], [6, 34, 62, 90, 118], [6, 26, 50, 74, 98, 122],
+   [6, 30, 54, 78, 102, 126], [6, 26, 52, 78, 104, 130], [6, 30, 56, 82, 108, 134], [6, 34, 60, 86, 112, 138],
+   [6, 30, 58, 86, 114, 142], [6, 34, 62, 90, 118, 146], [6, 30, 54, 78, 102, 126, 150], [6, 24, 50, 76, 102, 128, 154],
+   [6, 28, 54, 80, 106, 132, 158], [6, 32, 58, 84, 110, 136, 162], [6, 26, 54, 82, 110, 138, 166], [6, 30, 58, 86, 114, 142, 170],
+];
+
+// QR Code 1-40 的 RS 数据表，低版本覆盖日常文本和 URL 场景。
+const RS_BLOCK_TABLE: number[][] = [
+   [1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9], [1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16],
+   [1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13], [1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9],
+   [1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12], [2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15],
+   [2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14], [2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15],
+   [2, 146, 116], [3, 58, 36, 2, 59, 37], [4, 36, 16, 4, 37, 17], [4, 36, 12, 4, 37, 13], [2, 86, 68, 2, 87, 69], [4, 69, 43, 1, 70, 44], [6, 43, 19, 2, 44, 20], [6, 43, 15, 2, 44, 16],
+   [4, 101, 81], [1, 80, 50, 4, 81, 51], [4, 50, 22, 4, 51, 23], [3, 36, 12, 8, 37, 13], [2, 116, 92], [6, 58, 36, 2, 59, 37], [4, 46, 20, 6, 47, 21], [7, 42, 14, 4, 43, 15],
+   [4, 133, 107], [8, 59, 37, 1, 60, 38], [8, 44, 20, 4, 45, 21], [12, 33, 11, 4, 34, 12], [3, 145, 115, 1, 146, 116], [4, 64, 40, 5, 65, 41], [11, 36, 16, 5, 37, 17], [11, 36, 12, 5, 37, 13],
+   [5, 109, 87, 1, 110, 88], [5, 65, 41, 5, 66, 42], [5, 54, 24, 7, 55, 25], [11, 36, 12], [5, 122, 98, 1, 123, 99], [7, 73, 45, 3, 74, 46], [15, 43, 19, 2, 44, 20], [3, 45, 15, 13, 46, 16],
+   [1, 135, 107, 5, 136, 108], [10, 74, 46, 1, 75, 47], [1, 50, 22, 15, 51, 23], [2, 42, 14, 17, 43, 15], [5, 150, 120, 1, 151, 121], [9, 69, 43, 4, 70, 44], [17, 50, 22, 1, 51, 23], [2, 42, 14, 19, 43, 15],
+   [3, 141, 113, 4, 142, 114], [3, 70, 44, 11, 71, 45], [17, 47, 21, 4, 48, 22], [9, 39, 13, 16, 40, 14], [3, 135, 107, 5, 136, 108], [3, 67, 41, 13, 68, 42], [15, 54, 24, 5, 55, 25], [15, 43, 15, 10, 44, 16],
+   [4, 144, 116, 4, 145, 117], [17, 68, 42], [17, 50, 22, 6, 51, 23], [19, 46, 16, 6, 47, 17], [2, 139, 111, 7, 140, 112], [17, 74, 46], [7, 54, 24, 16, 55, 25], [34, 37, 13],
+   [4, 151, 121, 5, 152, 122], [4, 75, 47, 14, 76, 48], [11, 54, 24, 14, 55, 25], [16, 45, 15, 14, 46, 16], [6, 147, 117, 4, 148, 118], [6, 73, 45, 14, 74, 46], [11, 54, 24, 16, 55, 25], [30, 46, 16, 2, 47, 17],
+   [8, 132, 106, 4, 133, 107], [8, 75, 47, 13, 76, 48], [7, 54, 24, 22, 55, 25], [22, 45, 15, 13, 46, 16], [10, 142, 114, 2, 143, 115], [19, 74, 46, 4, 75, 47], [28, 50, 22, 6, 51, 23], [33, 46, 16, 4, 47, 17],
+   [8, 152, 122, 4, 153, 123], [22, 73, 45, 3, 74, 46], [8, 53, 23, 26, 54, 24], [12, 45, 15, 28, 46, 16], [3, 147, 117, 10, 148, 118], [3, 73, 45, 23, 74, 46], [4, 54, 24, 31, 55, 25], [11, 45, 15, 31, 46, 16],
+   [7, 146, 116, 7, 147, 117], [21, 73, 45, 7, 74, 46], [1, 53, 23, 37, 54, 24], [19, 45, 15, 26, 46, 16], [5, 145, 115, 10, 146, 116], [19, 75, 47, 10, 76, 48], [15, 54, 24, 25, 55, 25], [23, 45, 15, 25, 46, 16],
+   [13, 145, 115, 3, 146, 116], [2, 74, 46, 29, 75, 47], [42, 54, 24, 1, 55, 25], [23, 45, 15, 28, 46, 16], [17, 145, 115], [10, 74, 46, 23, 75, 47], [10, 54, 24, 35, 55, 25], [19, 45, 15, 35, 46, 16],
+   [17, 145, 115, 1, 146, 116], [14, 74, 46, 21, 75, 47], [29, 54, 24, 19, 55, 25], [11, 45, 15, 46, 46, 16], [13, 145, 115, 6, 146, 116], [14, 74, 46, 23, 75, 47], [44, 54, 24, 7, 55, 25], [59, 46, 16, 1, 47, 17],
+   [12, 151, 121, 7, 152, 122], [12, 75, 47, 26, 76, 48], [39, 54, 24, 14, 55, 25], [22, 45, 15, 41, 46, 16], [6, 151, 121, 14, 152, 122], [6, 75, 47, 34, 76, 48], [46, 54, 24, 10, 55, 25], [2, 45, 15, 64, 46, 16],
+   [17, 152, 122, 4, 153, 123], [29, 74, 46, 14, 75, 47], [49, 54, 24, 10, 55, 25], [24, 45, 15, 46, 46, 16], [4, 152, 122, 18, 153, 123], [13, 74, 46, 32, 75, 47], [48, 54, 24, 14, 55, 25], [42, 45, 15, 32, 46, 16],
+   [20, 147, 117, 4, 148, 118], [40, 75, 47, 7, 76, 48], [43, 54, 24, 22, 55, 25], [10, 45, 15, 67, 46, 16], [19, 148, 118, 6, 149, 119], [18, 75, 47, 31, 76, 48], [34, 54, 24, 34, 55, 25], [20, 45, 15, 61, 46, 16],
+];
+
+const EXP_TABLE: number[] = [];
+const LOG_TABLE: number[] = [];
+for (let index = 0; index < 8; index++) EXP_TABLE[index] = 1 << index;
+for (let index = 8; index < 256; index++) EXP_TABLE[index] = EXP_TABLE[index - 4] ^ EXP_TABLE[index - 5] ^ EXP_TABLE[index - 6] ^ EXP_TABLE[index - 8];
+for (let index = 0; index < 255; index++) LOG_TABLE[EXP_TABLE[index]] = index;
+
+/** 规范化纠错等级。 */
+export const normalizeErrorLevel = (value: ErrorCorrectLevel | null): ErrorCorrectLevel => {
+   if (value == "L" || value == "M" || value == "Q" || value == "H") return value;
+   return "H";
+};
+
+/** 将字符串编码成 UTF-8 字节。 */
+const toUtf8Bytes = (value: string): number[] => {
+   const bytes: number[] = [];
+   for (let index = 0; index < value.length; index++) {
+      const code = value.charCodeAt(index);
+      if (code < 0x80) bytes.push(code);
+      else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+      else bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+   }
+   return bytes;
+};
+
+/** 获取有限域指数。 */
+const gexp = (value: number): number => {
+   let current = value;
+   while (current < 0) current += 255;
+   while (current >= 256) current -= 255;
+   return EXP_TABLE[current];
+};
+
+/** 获取有限域对数。 */
+const glog = (value: number): number => {
+   if (value < 1) throw new Error("glog requires a positive value");
+   return LOG_TABLE[value];
+};
+
+class BitBuffer {
+   buffer: number[] = [];
+   length: number = 0;
+
+   /** 写入固定长度的整数位。 */
+   put(value: number, bitCount: number): void {
+      for (let index = 0; index < bitCount; index++) this.putBit(((value >> (bitCount - index - 1)) & 1) == 1);
+   }
+
+   /** 写入单个位。 */
+   putBit(value: boolean): void {
+      const index = Math.floor(this.length / 8);
+      while (this.buffer.length <= index) this.buffer.push(0);
+      if (value) this.buffer[index] |= 0x80 >> (this.length % 8);
+      this.length++;
+   }
+}
+
+/** 获取版本对应的 RS 数据块。 */
+const getRsBlocks = (version: number, level: ErrorCorrectLevel): RsBlock[] => {
+   const levelIndex = level == "L" ? 0 : level == "M" ? 1 : level == "Q" ? 2 : 3;
+   const row = RS_BLOCK_TABLE[(version - 1) * 4 + levelIndex];
+   if (row == null) throw new Error("unsupported QR version");
+   const blocks: RsBlock[] = [];
+   for (let index = 0; index < row.length; index += 3) for (let count = 0; count < row[index]; count++) blocks.push({ totalCount: row[index + 1], dataCount: row[index + 2] });
+   return blocks;
+};
+
+/** 生成 RS 纠错多项式。 */
+const getErrorPolynomial = (length: number): number[] => {
+   let result: number[] = [1];
+   for (let index = 0; index < length; index++) {
+      const next: number[] = [];
+      for (let position = 0; position < result.length + 1; position++) next.push(0);
+      for (let position = 0; position < result.length; position++) {
+         next[position] ^= result[position];
+         next[position + 1] ^= result[position] == 0 ? 0 : gexp(glog(result[position]) + index);
+      }
+      result = next;
+   }
+   return result;
+};
+
+/** 生成多项式余数。 */
+const modPolynomial = (source: number[], divisor: number[]): number[] => {
+   let offset = 0;
+   while (offset < source.length && source[offset] == 0) offset++;
+   if (source.length - offset < divisor.length) return source.slice(offset);
+   const result = source.slice(offset);
+   const ratio = glog(result[0]) - glog(divisor[0]);
+   for (let index = 0; index < divisor.length; index++) if (divisor[index] != 0) result[index] ^= gexp(glog(divisor[index]) + ratio);
+   return modPolynomial(result, divisor);
+};
+
+/** 生成交错后的数据和纠错字节。 */
+const createBytes = (buffer: BitBuffer, blocks: RsBlock[]): number[] => {
+   let dataCount = 0;
+   for (const block of blocks) dataCount += block.dataCount;
+   if (buffer.length > dataCount * 8) throw new Error("code length overflow");
+   if (buffer.length + 4 <= dataCount * 8) buffer.put(0, 4);
+   while (buffer.length % 8 != 0) buffer.putBit(false);
+   while (buffer.length < dataCount * 8) buffer.put(buffer.length % 16 == 0 ? PAD0 : PAD1, 8);
+   const dataBlocks: number[][] = [];
+   const errorBlocks: number[][] = [];
+   let offset = 0;
+   let maxData = 0;
+   let maxError = 0;
+   for (const block of blocks) {
+      const data = buffer.buffer.slice(offset, offset + block.dataCount);
+      offset += block.dataCount;
+      const errorCount = block.totalCount - block.dataCount;
+      const raw = data.slice();
+      for (let index = 0; index < errorCount; index++) raw.push(0);
+      const remainder = modPolynomial(raw, getErrorPolynomial(errorCount));
+      const errors: number[] = [];
+      for (let index = 0; index < errorCount; index++) {
+         const remainderIndex = index + remainder.length - errorCount;
+         errors.push(remainderIndex >= 0 ? remainder[remainderIndex] : 0);
+      }
+      dataBlocks.push(data); errorBlocks.push(errors);
+      maxData = Math.max(maxData, data.length); maxError = Math.max(maxError, errors.length);
+   }
+   const result: number[] = [];
+   for (let index = 0; index < maxData; index++) for (const block of dataBlocks) if (index < block.length) result.push(block[index]);
+   for (let index = 0; index < maxError; index++) for (const block of errorBlocks) if (index < block.length) result.push(block[index]);
+   return result;
+};
+
+/** 计算整数的位数。 */
+const getBchDigit = (value: number): number => {
+   let current = value;
+   let digit = 0;
+   while (current != 0) { digit++; current >>>= 1; }
+   return digit;
+};
+
+/** 生成 BCH 编码。 */
+const getBch = (value: number, generator: number, shift: number): number => {
+   let current = value << shift;
+   const generatorBits = getBchDigit(generator);
+   while (getBchDigit(current) - generatorBits >= 0) current ^= generator << (getBchDigit(current) - generatorBits);
+   return (value << shift) | current;
+};
+
+/** 应用掩码。 */
+const getMask = (mask: number, row: number, column: number): boolean => {
+   if (mask == 0) return (row + column) % 2 == 0;
+   if (mask == 1) return row % 2 == 0;
+   if (mask == 2) return column % 3 == 0;
+   if (mask == 3) return (row + column) % 3 == 0;
+   if (mask == 4) return (Math.floor(row / 2) + Math.floor(column / 3)) % 2 == 0;
+   if (mask == 5) return row * column % 2 + row * column % 3 == 0;
+   if (mask == 6) return (row * column % 2 + row * column % 3) % 2 == 0;
+   return (row * column % 3 + (row + column) % 2) % 2 == 0;
+};
+
+/** 创建空矩阵。 */
+const createEmptyMatrix = (size: number): InternalMatrix => {
+   const matrix: InternalMatrix = [];
+   for (let row = 0; row < size; row++) {
+      const line: Array<boolean | null> = [];
+      for (let column = 0; column < size; column++) line.push(null);
+      matrix.push(line);
+   }
+   return matrix;
+};
+
+/** 写入定位、对齐和时序图案。 */
+const setupPatterns = (matrix: InternalMatrix, version: number): void => {
+   const drawFinder = (row: number, column: number): void => {
+      for (let offsetRow = -1; offsetRow <= 7; offsetRow++) for (let offsetColumn = -1; offsetColumn <= 7; offsetColumn++) {
+         const targetRow = row + offsetRow;
+         const targetColumn = column + offsetColumn;
+         if (targetRow < 0 || targetRow >= matrix.length || targetColumn < 0 || targetColumn >= matrix.length) continue;
+         matrix[targetRow][targetColumn] = (offsetRow >= 0 && offsetRow <= 6 && (offsetColumn == 0 || offsetColumn == 6)) || (offsetColumn >= 0 && offsetColumn <= 6 && (offsetRow == 0 || offsetRow == 6)) || (offsetRow >= 2 && offsetRow <= 4 && offsetColumn >= 2 && offsetColumn <= 4);
+      }
+   };
+   drawFinder(0, 0); drawFinder(matrix.length - 7, 0); drawFinder(0, matrix.length - 7);
+   const positions = PATTERN_POSITION_TABLE[version - 1];
+   for (const row of positions) for (const column of positions) if (matrix[row][column] == null) for (let offsetRow = -2; offsetRow <= 2; offsetRow++) for (let offsetColumn = -2; offsetColumn <= 2; offsetColumn++) matrix[row + offsetRow][column + offsetColumn] = Math.abs(offsetRow) == 2 || Math.abs(offsetColumn) == 2 || (offsetRow == 0 && offsetColumn == 0);
+   for (let index = 8; index < matrix.length - 8; index++) {
+      if (matrix[index][6] == null) matrix[index][6] = index % 2 == 0;
+      if (matrix[6][index] == null) matrix[6][index] = index % 2 == 0;
+   }
+};
+
+/** 写入格式和版本信息。 */
+const setupTypeInfo = (matrix: InternalMatrix, version: number, level: ErrorCorrectLevel, mask: number, test: boolean): void => {
+   const levelCode = level == "L" ? 1 : level == "Q" ? 3 : level == "H" ? 2 : 0;
+   const bits = getBch((levelCode << 3) | mask, G15, 10) ^ G15_MASK;
+   for (let index = 0; index < 15; index++) {
+      const mod = !test && ((bits >> index) & 1) == 1;
+      if (index < 6) matrix[index][8] = mod; else if (index < 8) matrix[index + 1][8] = mod; else matrix[matrix.length - 15 + index][8] = mod;
+   }
+   for (let index = 0; index < 15; index++) {
+      const mod = !test && ((bits >> index) & 1) == 1;
+      if (index < 8) matrix[8][matrix.length - index - 1] = mod; else if (index < 9) matrix[8][15 - index] = mod; else matrix[8][15 - index - 1] = mod;
+   }
+   matrix[matrix.length - 8][8] = !test;
+   if (version < 7) return;
+   const versionBits = getBch(version, G18, 12);
+   for (let index = 0; index < 18; index++) {
+      const mod = !test && ((versionBits >> index) & 1) == 1;
+      matrix[Math.floor(index / 3)][index % 3 + matrix.length - 11] = mod;
+      matrix[index % 3 + matrix.length - 11][Math.floor(index / 3)] = mod;
+   }
+};
+
+/** 映射数据位。 */
+const mapData = (matrix: InternalMatrix, bytes: number[], mask: number): void => {
+   let row = matrix.length - 1; let direction = -1; let bitIndex = 7; let byteIndex = 0;
+   for (let column = matrix.length - 1; column > 0; column -= 2) {
+      if (column == 6) column--;
+      while (true) {
+         for (let offset = 0; offset < 2; offset++) {
+            const targetColumn = column - offset;
+            if (matrix[row][targetColumn] != null) continue;
+            let dark = byteIndex < bytes.length && ((bytes[byteIndex] >> bitIndex) & 1) == 1;
+            if (getMask(mask, row, targetColumn)) dark = !dark;
+            matrix[row][targetColumn] = dark;
+            bitIndex--; if (bitIndex == -1) { byteIndex++; bitIndex = 7; }
+         }
+         row += direction;
+         if (row < 0 || row >= matrix.length) { row -= direction; direction = -direction; break; }
+      }
+   }
+};
+
+/** 计算掩码评分。 */
+const getLostPoint = (matrix: InternalMatrix): number => {
+   const size = matrix.length; let lostPoint = 0;
+   for (let row = 0; row < size; row++) for (let column = 0; column < size; column++) {
+      const dark = matrix[row][column] == true; let sameCount = 0;
+      for (let offsetRow = -1; offsetRow <= 1; offsetRow++) for (let offsetColumn = -1; offsetColumn <= 1; offsetColumn++) {
+         if (offsetRow == 0 && offsetColumn == 0) continue;
+         const checkRow = row + offsetRow; const checkColumn = column + offsetColumn;
+         if (checkRow >= 0 && checkRow < size && checkColumn >= 0 && checkColumn < size && dark == (matrix[checkRow][checkColumn] == true)) sameCount++;
+      }
+      if (sameCount > 5) lostPoint += 3 + sameCount - 5;
+   }
+   for (let row = 0; row < size - 1; row++) for (let column = 0; column < size - 1; column++) {
+      let count = 0; if (matrix[row][column] == true) count++; if (matrix[row + 1][column] == true) count++; if (matrix[row][column + 1] == true) count++; if (matrix[row + 1][column + 1] == true) count++; if (count == 0 || count == 4) lostPoint += 3;
+   }
+   for (let row = 0; row < size; row++) for (let column = 0; column < size - 6; column++) if (matrix[row][column] == true && matrix[row][column + 1] == false && matrix[row][column + 2] == true && matrix[row][column + 3] == true && matrix[row][column + 4] == true && matrix[row][column + 5] == false && matrix[row][column + 6] == true) lostPoint += 40;
+   for (let column = 0; column < size; column++) for (let row = 0; row < size - 6; row++) if (matrix[row][column] == true && matrix[row + 1][column] == false && matrix[row + 2][column] == true && matrix[row + 3][column] == true && matrix[row + 4][column] == true && matrix[row + 5][column] == false && matrix[row + 6][column] == true) lostPoint += 40;
+   let darkCount = 0; for (const line of matrix) for (const cell of line) if (cell == true) darkCount++;
+   return lostPoint + 10 * Math.abs((100 * darkCount) / size / size - 50) / 5;
+};
+
+/** 创建二维码矩阵。 */
+export const createMatrix = (value: string, options: Options): Matrix => {
+   const level = normalizeErrorLevel(options.errorCorrectLevel == null ? null : options.errorCorrectLevel);
+   const bytes: number[] = toUtf8Bytes(value);
+   let version = options.typeNumber == null ? 0 : options.typeNumber;
+   if (version < 1) version = 0;
+   if (version == 0) {
+      for (let candidate = 1; candidate <= 40; candidate++) {
+         let capacity = 0; for (const block of getRsBlocks(candidate, level)) capacity += block.dataCount;
+         if (4 + (candidate < 10 ? 8 : 16) + bytes.length * 8 <= capacity * 8) { version = candidate; break; }
+      }
+   }
+   if (version < 1 || version > 40) throw new Error("QR version must be between 1 and 40");
+   const buffer = new BitBuffer(); buffer.put(MODE_8BIT_BYTE, 4); buffer.put(bytes.length, version < 10 ? 8 : 16); for (const byte of bytes) buffer.put(byte, 8);
+   const data = createBytes(buffer, getRsBlocks(version, level));
+   let bestMatrix: InternalMatrix | null = null; let bestLostPoint = 0;
+   for (let mask = 0; mask < 8; mask++) {
+      const matrix = createEmptyMatrix(version * 4 + 17); setupPatterns(matrix, version); setupTypeInfo(matrix, version, level, mask, false); mapData(matrix, data, mask); const lostPoint = getLostPoint(matrix);
+      if (bestMatrix == null || lostPoint < bestLostPoint) { bestMatrix = matrix; bestLostPoint = lostPoint; }
+   }
+   if (bestMatrix == null) throw new Error("QR matrix generation failed");
+   const cells: boolean[][] = []; for (const line of bestMatrix) { const output: boolean[] = []; for (const cell of line) output.push(cell == true); cells.push(output); }
+   return { cells, size: cells.length };
+};

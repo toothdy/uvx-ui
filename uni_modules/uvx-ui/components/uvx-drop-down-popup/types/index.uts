@@ -1,0 +1,41 @@
+import type {
+   Sign,
+   Value,
+} from "../../uvx-drop-down/types/index.uts";
+
+/** 下拉筛选弹层菜单数据 */
+export type Menu = {
+   label?: string;
+   value?: Value;
+   activeIndex: number;
+   color?: string;
+   activeColor?: string;
+   size?: string | number;
+   activeSize?: string | number;
+   itemCustomStyle?: string;
+   itemActiveCustomStyle?: string;
+   child: UTSJSONObject[];
+};
+
+/** 下拉筛选弹层属性 */
+export type Props = {
+   sign: Sign;
+   zIndex: string | number;
+   opacity: string | number;
+   clickOverlayOnClose: boolean;
+   currentDropItem: Menu;
+   keyName: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 下拉筛选弹层状态 */
+export type ChangeEvent = {
+   show: boolean;
+};
+
+/** 下拉筛选弹层事件 */
+export type Emits = {
+   clickItem: [item: UTSJSONObject];
+   popupChange: [event: ChangeEvent];
+};

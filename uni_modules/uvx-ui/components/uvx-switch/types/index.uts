@@ -1,0 +1,22 @@
+export type Value = string | number | boolean;
+
+export type Props = {
+   modelValue: Value;
+   loading: boolean;
+   disabled: boolean;
+   size: string | number;
+   activeColor: string;
+   inactiveColor: string;
+   activeValue: Value;
+   inactiveValue: Value;
+   asyncChange: boolean;
+   space: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [value: Value];
+   input: [value: Value];
+   change: [value: Value];
+};

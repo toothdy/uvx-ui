@@ -1,0 +1,22 @@
+export type Props = {
+   initialHeight: number;
+   maxHeight: number;
+   minHeight: number;
+   handleHeight: number;
+   damping: number;
+   inertia: number;
+   bgColor: string;
+   radius: string | number;
+   showOnTabBar: boolean;
+   showIndicator: boolean;
+   disabled: boolean;
+   zIndex: number;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   positionChange: [height: number, percentage: number];
+   dragStart: [];
+   dragEnd: [];
+};

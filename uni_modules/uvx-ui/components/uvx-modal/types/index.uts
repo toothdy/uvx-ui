@@ -1,0 +1,33 @@
+/** Modal 正文对齐方式 */
+export type Align = "left" | "center" | "right";
+
+/** Modal 组件属性 */
+export type Props = {
+   title: string;
+   content: string;
+   confirmText: string;
+   cancelText: string;
+   showConfirmButton: boolean;
+   showCancelButton: boolean;
+   showCloseIcon: boolean;
+   confirmColor: string;
+   cancelColor: string;
+   buttonReverse: boolean;
+   zoom: boolean;
+   zIndex: string | number;
+   asyncClose: boolean;
+   closeOnClickOverlay: boolean;
+   negativeTop: string | number;
+   width: string | number;
+   align: Align;
+   textStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** Modal 组件事件 */
+export type Emits = {
+   confirm: [];
+   cancel: [];
+   close: [];
+};

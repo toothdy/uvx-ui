@@ -1,0 +1,21 @@
+import type { LabelPosition } from "../../uvx-form/types/index.uts";
+
+/** 表单项属性 */
+export type Props = {
+   label: string;
+   prop: string;
+   borderBottom: boolean;
+   labelPosition: LabelPosition | "";
+   labelWidth: string | number;
+   rightIcon: string;
+   leftIcon: string;
+   required: boolean;
+   leftIconStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 表单项事件 */
+export type Emits = {
+   click: [];
+};

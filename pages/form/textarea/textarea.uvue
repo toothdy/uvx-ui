@@ -1,0 +1,72 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <uvx-textarea v-model="basicValue" placeholder="请输入内容"></uvx-textarea>
+         </view>
+         <!-- 字数统计 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="字数统计"></uvx-text>
+            </view>
+            <uvx-textarea
+               v-model="countValue"
+               placeholder="请输入内容"
+               :maxlength="200"
+               count
+            ></uvx-textarea>
+         </view>
+         <!-- 自动增高 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自动增高"></uvx-text>
+            </view>
+            <uvx-textarea v-model="autoHeightValue" placeholder="请输入内容" auto-height></uvx-textarea>
+         </view>
+         <!-- 禁用状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁用状态"></uvx-text>
+            </view>
+            <uvx-textarea
+               v-model="disabledValue"
+               placeholder="文本域已被禁用"
+               disabled
+               count
+            ></uvx-textarea>
+         </view>
+         <!-- 下划线模式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="下划线模式"></uvx-text>
+            </view>
+            <uvx-textarea
+               v-model="bottomValue"
+               placeholder="请输入内容"
+               border="bottom"
+            ></uvx-textarea>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基础示例内容
+const basicValue = ref("");
+// 字数统计示例内容
+const countValue = ref("统计字数");
+// 自动增高示例内容
+const autoHeightValue = ref("");
+// 禁用示例内容
+const disabledValue = ref("");
+// 下划线示例内容
+const bottomValue = ref("");
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

@@ -1,0 +1,287 @@
+/**
+ * 路由配置类型
+ */
+type RouterConfig = {
+	type?: 'navigateTo' | 'redirectTo' | 'reLaunch' | 'switchTab' | 'navigateBack';
+	url?: string;
+	delta?: number;
+	params?: UTSJSONObject;
+	animationType?: 'slide-in-right' | 'slide-in-left' | 'slide-in-top' | 'slide-in-bottom' | 'pop-in' | 'fade-in' | 'zoom-out' | 'zoom-fade-out' | 'none';
+	animationDuration?: number;
+	intercept?: boolean | ((config: RouterConfig, resolve: (value: boolean) => void) => void);
+	events?: UTSJSONObject;
+}
+
+/**
+ * 合并 RouterConfig 配置
+ */
+function mergeRouterConfig(target: RouterConfig, source: RouterConfig): RouterConfig {
+	return {
+		type: source.type != null ? source.type : target.type,
+		url: source.url != null ? source.url : target.url,
+		delta: source.delta != null ? source.delta : target.delta,
+		params: source.params != null ? source.params : target.params,
+		animationType: source.animationType != null ? source.animationType : target.animationType,
+		animationDuration: source.animationDuration != null ? source.animationDuration : target.animationDuration,
+		intercept: source.intercept != null ? source.intercept : target.intercept,
+		events: source.events != null ? source.events : target.events
+	};
+}
+
+/**
+ * 路由工具：封装 uni 路由跳转，带参数拼接与路由拦截
+ */
+class Router {
+	config: RouterConfig;
+
+	constructor() {
+		this.config = {
+			type: 'navigateTo',
+			url: '',
+			delta: 1,
+			params: {},
+			animationType: 'pop-in',
+			animationDuration: 300,
+			intercept: false,
+			events: {}
+		};
+	}
+
+	/**
+	 * 获取当前页面路径(不含参数)
+	 */
+	page(): string {
+		const pages = getCurrentPages();
+		const route = pages[pages.length - 1]?.route;
+		return route ?? '';
+	}
+
+	/**
+	 * 对象转 url 查询参数
+	 * @param data 参数对象，null 时返回空串；值为 null 或空字符串的字段会被跳过
+	 * @param isPrefix 是否自动加 "?" 前缀，默认 true
+	 * @param arrayFormat 数组字段的序列化格式，默认 'brackets'：
+	 * - 'indices'  → key[0]=a&key[1]=b
+	 * - 'brackets' → key[]=a&key[]=b
+	 * - 'repeat'   → key=a&key=b
+	 * - 'comma'    → key=a,b
+	 * @returns 查询参数字符串，无有效字段时返回空串
+	 * @example queryParams({a: 1, b: 2}) // => '?a=1&b=2'
+	 */
+	queryParams(
+		data: UTSJSONObject | null,
+		isPrefix: boolean = true,
+		arrayFormat: 'indices' | 'brackets' | 'repeat' | 'comma' = 'brackets'
+	): string {
+		if (data == null) {
+			return '';
+		}
+
+		const prefix = isPrefix ? '?' : '';
+		const result: string[] = [];
+		const keys = UTSJSONObject.keys(data);
+		const len = keys.length;
+
+		// 数组元素统一转字符串：字符串原样返回，其它类型 toString
+		const toStr = (v: any): string => {
+			return typeof v == 'string' ? (v as string) : v.toString();
+		};
+
+		for (let i = 0; i < len; i++) {
+			const key = keys[i];
+			const value = data[key];
+
+			if (value == null || (typeof value == 'string' && value.length == 0)) {
+				continue;
+			}
+
+			const encKey = encodeURIComponent(key);
+
+			if (value instanceof Array) {
+				const arr = value as any[];
+				const arrLen = arr.length;
+
+				if (arrayFormat == 'comma') {
+					// comma：整个数组拼成一个值，如 key=a,b,c
+					let commaStr = '';
+					for (let j = 0; j < arrLen; j++) {
+						if (commaStr.length > 0) {
+							commaStr += ',';
+						}
+						commaStr += toStr(arr[j]);
+					}
+					if (commaStr.length > 0) {
+						result.push(`${encKey}=${encodeURIComponent(commaStr)}`);
+					}
+				} else {
+					// indices：key[0]=a；repeat：key=a；brackets(默认)：key[]=a
+					for (let j = 0; j < arrLen; j++) {
+						const encValue = encodeURIComponent(toStr(arr[j]));
+						if (arrayFormat == 'indices') {
+							result.push(`${encKey}[${j}]=${encValue}`);
+						} else if (arrayFormat == 'repeat') {
+							result.push(`${encKey}=${encValue}`);
+						} else {
+							result.push(`${encKey}[]=${encValue}`);
+						}
+					}
+				}
+			} else {
+				result.push(`${encKey}=${encodeURIComponent(toStr(value))}`);
+			}
+		}
+
+		return result.length > 0 ? prefix + result.join('&') : '';
+	}
+
+	/**
+	 * 路由跳转主方法
+	 * @param options 跳转配置或 url 字符串
+	 * @param params  参数对象
+	 */
+	async route(options: string | UTSJSONObject, params: UTSJSONObject = {}): Promise<void> {
+		let mergeConfig: RouterConfig;
+
+		if (typeof options == 'string') {
+			mergeConfig = mergeRouterConfig(this.config, {
+				type: 'navigateTo',
+				url: this.mixinParam(options, params),
+				params: params
+			});
+		} else {
+			const optionsParams = options['params'] != null ? options['params'] as UTSJSONObject : {};
+			const optionsUrl = options['url'] != null ? options['url'] as string : null;
+			const url = optionsUrl != null ? this.mixinParam(optionsUrl, optionsParams) : null;
+
+			const sourceConfig: RouterConfig = {
+				type: options['type'] != null ? options['type'] as 'navigateTo' | 'redirectTo' | 'reLaunch' | 'switchTab' | 'navigateBack' : null,
+				url: url,
+				delta: options['delta'] != null ? options['delta'] as number : null,
+				params: options['params'] != null ? options['params'] as UTSJSONObject : params,
+				animationType: options['animationType'] != null ? options['animationType'] as 'slide-in-right' | 'slide-in-left' | 'slide-in-top' | 'slide-in-bottom' | 'pop-in' | 'fade-in' | 'zoom-out' | 'zoom-fade-out' | 'none' : null,
+				animationDuration: options['animationDuration'] != null ? options['animationDuration'] as number : null,
+				intercept: options['intercept'] != null ? options['intercept'] as boolean | ((config: RouterConfig, resolve: (value: boolean) => void) => void) : null,
+				events: options['events'] != null ? options['events'] as UTSJSONObject : null
+			};
+
+			mergeConfig = mergeRouterConfig(this.config, sourceConfig);
+		}
+
+		// 检查是否是当前页面
+		if (mergeConfig.url != null && mergeConfig.url == this.page()) return;
+
+		// 处理拦截器
+		if (typeof mergeConfig.intercept == 'function') {
+			const interceptFunc = mergeConfig.intercept as (config: RouterConfig, resolve: (value: boolean) => void) => void;
+			const isNext = await new Promise<boolean>((resolve: (value: boolean) => void) => {
+				interceptFunc(mergeConfig, resolve);
+			});
+			if (isNext) {
+				this.openPage(mergeConfig);
+			}
+		} else {
+			this.openPage(mergeConfig);
+		}
+	}
+
+	/**
+	 * 拼接根路径，防止 url 跳转路径错误
+	 */
+	addRootPath(url: string): string {
+		if (url.length > 0 && url.substring(0, 1) == '/') {
+			return url;
+		}
+		return `/${url}`;
+	}
+
+	/**
+	 * 将参数对象混入 url，如 {a:1} 拼到 /page/index 后 => "/page/index?a=1"
+	 */
+	mixinParam(url: string, params: UTSJSONObject | null): string {
+		if (url.length > 0) {
+			url = this.addRootPath(url);
+		} else {
+			url = '';
+		}
+
+		if (params == null) {
+			return url;
+		}
+
+		const keys = UTSJSONObject.keys(params);
+		if (keys.length == 0) {
+			return url;
+		}
+
+		const hasQuery = /\?.*=/.test(url);
+		const query = this.queryParams(params, !hasQuery, 'brackets');
+
+		if (query.length > 0) {
+			if (hasQuery) {
+				return url + '&' + query.substring(1);
+			} else {
+				return url + query;
+			}
+		}
+
+		return url;
+	}
+
+	/**
+	 * 打开页面(内部方法)
+	 */
+	openPage(config: RouterConfig): void {
+		if (config.type == null || config.url == null) {
+			return;
+		}
+
+		switch (config.type) {
+			case 'navigateTo':
+				uni.navigateTo({
+					url: config.url,
+					animationType: config.animationType,
+					animationDuration: config.animationDuration,
+					events: config.events,
+					fail: (err: any) => {
+						console.error('[uvx-ui] navigateTo 失败:', err);
+					}
+				});
+				break;
+			case 'redirectTo':
+				uni.redirectTo({
+					url: config.url,
+					fail: (err: any) => {
+						console.error('[uvx-ui] redirectTo 失败:', err);
+					}
+				});
+				break;
+			case 'switchTab':
+				uni.switchTab({
+					url: config.url,
+					fail: (err: any) => {
+						console.error('[uvx-ui] switchTab 失败:', err);
+					}
+				});
+				break;
+			case 'reLaunch':
+				uni.reLaunch({
+					url: config.url,
+					fail: (err: any) => {
+						console.error('[uvx-ui] reLaunch 失败:', err);
+					}
+				});
+				break;
+			case 'navigateBack':
+				uni.navigateBack({
+					delta: config.delta,
+					animationDuration: config.animationDuration,
+					fail: (err: any) => {
+						console.error('[uvx-ui] navigateBack 失败:', err);
+					}
+				});
+				break;
+		}
+	}
+}
+
+export default new Router();

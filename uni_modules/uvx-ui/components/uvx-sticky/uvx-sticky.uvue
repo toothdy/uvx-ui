@@ -1,0 +1,246 @@
+<template>
+   <view
+      ref="anchor"
+      class="uvx-sticky"
+      :class="props.uClass"
+      :style="anchorStyle"
+   >
+      <!-- 吸顶内容 -->
+      <view
+         class="uvx-sticky__content"
+         :class="isFixed ? 'uvx-sticky__content--fixed' : ''"
+         :style="contentStyle"
+      >
+         <slot></slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-sticky 吸顶
+ * @description 内容滚动到指定位置后固定在顶部，禁用时恢复普通布局。
+ * @tutorial https://www.uvxui.cn/components/sticky.html
+ * @property {String | Number} offsetTop 吸顶时距顶部的距离，单位 px，默认 0
+ * @property {String | Number} customNavHeight 自定义导航栏高度，Web 默认 44，其他平台默认 0
+ * @property {Boolean} disabled 是否禁用吸顶，默认 false
+ * @property {String} bgColor 背景颜色，空值时跟随主题
+ * @property {String | Number} zIndex 吸顶层级，默认 970
+ * @property {String | Number} index 自定义标识，默认空字符串
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @slot default 吸顶内容
+ * @example <uvx-sticky><uvx-button text="吸顶区域"></uvx-button></uvx-sticky>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-sticky",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+// #ifdef WEB
+const DEFAULT_NAV_HEIGHT = 44;
+// #endif
+// #ifndef WEB
+const DEFAULT_NAV_HEIGHT = 0;
+// #endif
+
+const props = withDefaults(defineProps<Props>(), {
+   offsetTop: 0,
+   customNavHeight: DEFAULT_NAV_HEIGHT,
+   disabled: false,
+   bgColor: "",
+   zIndex: 970,
+   index: "",
+   uStyle: "",
+   uClass: "",
+});
+
+// 吸顶占位节点
+const anchor = ref<UniElement | null>(null);
+// 是否已经吸顶
+const isFixed = ref(false);
+// 占位节点高度
+const anchorHeight = ref(0);
+// 吸顶内容左侧位置
+const contentLeft = ref(0);
+// 吸顶内容宽度
+const contentWidth = ref(0);
+// #ifdef MP
+// 组件实例，用于限定观察器作用范围
+const instance = getCurrentInstance()!.proxy!;
+// 吸顶观察器实例
+let observer: IntersectionObserver | null = null;
+// #endif
+
+/**
+ * 将偏移量换算为 px
+ * @param value 数字、px 或 rpx 值
+ * @returns number
+ */
+const getPixelValue = (value: string | number): number => {
+   const text = value.toString().trim();
+   const numberValue = parseFloat(text);
+   if (isNaN(numberValue)) return 0;
+   if (text.endsWith("rpx")) {
+      return numberValue * uni.getWindowInfo().windowWidth / 750;
+   }
+   return numberValue;
+};
+
+/**
+ * 吸顶位置
+ * @returns number
+ */
+const stickyTop = computed((): number => {
+   return getPixelValue(props.offsetTop) + getPixelValue(props.customNavHeight);
+});
+
+/**
+ * 占位节点样式
+ * @returns UTSJSONObject
+ */
+const anchorStyle = computed((): UTSJSONObject => {
+   const style = $uvx.style.parse(props.uStyle);
+   // 吸顶时占位保持原高度，避免页面跳动
+   if (isFixed.value && anchorHeight.value > 0) {
+      style.set("height", anchorHeight.value.toString() + "px");
+   }
+   if (!$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   return style;
+});
+
+/**
+ * 内容节点样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (isFixed.value) {
+      style.set("top", stickyTop.value.toString() + "px");
+      style.set("left", contentLeft.value.toString() + "px");
+      style.set("width", contentWidth.value.toString() + "px");
+      style.set("z-index", props.zIndex.toString());
+   }
+   if (!$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   return style;
+});
+
+// #ifdef MP
+/**
+ * 重建吸顶观察器：参照区域为下移吸顶距离后的视口，越过阈值时按回调坐标刷新状态
+ * @returns null
+ */
+const resetObserver = (): void => {
+   if (observer != null) {
+      observer.disconnect();
+      observer = null;
+   }
+   observer = uni.createIntersectionObserver(instance);
+   observer.relativeToViewport({ top: -(stickyTop.value) });
+   observer.observe(".uvx-sticky", (result: ObserveResult): void => {
+      const rect = result.boundingClientRect;
+      const width = rect.right - rect.left;
+      const height = rect.bottom - rect.top;
+      if (height > 0 && !isFixed.value) anchorHeight.value = height;
+      if (width > 0) {
+         contentLeft.value = rect.left;
+         contentWidth.value = width;
+      }
+      isFixed.value = !props.disabled && rect.top <= stickyTop.value;
+   });
+};
+// #endif
+
+/**
+ * 更新吸顶位置
+ * @returns null
+ */
+const init = (): void => {
+   // #ifdef MP
+   resetObserver();
+   // #endif
+   // #ifdef APP || WEB
+   const element = anchor.value;
+   if (element == null) return;
+   const rect = element.getBoundingClientRect();
+   if (rect.height > 0 && !isFixed.value) anchorHeight.value = rect.height;
+   if (rect.width > 0) {
+      contentLeft.value = rect.left;
+      contentWidth.value = rect.width;
+   }
+   isFixed.value = !props.disabled && rect.top <= stickyTop.value;
+   // #endif
+};
+
+// #ifdef WEB
+/**
+ * Web 滚动回调：同时响应页面和内部滚动容器
+ * @returns null
+ */
+const handleWindowScroll = (): void => {
+   init();
+};
+// #endif
+
+/** 挂载后读取初始位置并监听滚动 */
+onMounted((): void => {
+   nextTick((): void => {
+      init();
+   });
+   // #ifdef WEB
+   window.addEventListener("scroll", handleWindowScroll);
+   document.addEventListener("scroll", handleWindowScroll, true);
+   // #endif
+});
+
+// #ifdef WEB
+/** 卸载时移除 window 滚动监听 */
+onUnmounted((): void => {
+   window.removeEventListener("scroll", handleWindowScroll);
+   document.removeEventListener("scroll", handleWindowScroll, true);
+});
+// #endif
+
+// #ifdef MP
+/** 卸载时断开吸顶观察器 */
+onUnmounted((): void => {
+   if (observer != null) {
+      observer.disconnect();
+      observer = null;
+   }
+});
+// #endif
+
+/** 禁用状态和吸顶距离变化时刷新位置 */
+watch((): boolean => props.disabled, init);
+watch(stickyTop, init);
+
+defineExpose({ init });
+</script>
+
+<style lang="scss">
+// 吸顶占位节点
+.uvx-sticky {
+   width: 100%;
+   background-color: var(--uvx-container);
+}
+
+// 吸顶内容
+.uvx-sticky__content {
+   width: 100%;
+   background-color: var(--uvx-container);
+
+   &--fixed {
+      position: fixed;
+   }
+}
+</style>

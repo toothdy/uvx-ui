@@ -1,0 +1,69 @@
+import type { ComponentPublicInstance } from "vue";
+
+/** 垂直选项卡数据项 */
+export type Item = UTSJSONObject;
+
+/** 垂直选项卡属性 */
+export type Props = {
+   /** 标签数据 */
+   list: Item[];
+   /** 标签文字字段名 */
+   keyName: string;
+   /** 当前标签下标 */
+   current: string | number;
+   /** 内容区域头部占位高度 */
+   hdHeight: string | number;
+   /** 是否启用左右联动 */
+   chain: boolean;
+   /** 组件高度 */
+   height: string | number;
+   /** 左侧导航宽度 */
+   barWidth: string | number;
+   /** 左侧导航是否允许滚动 */
+   barScrollable: boolean;
+   /** 左侧导航背景颜色 */
+   barBgColor: string;
+   /** 左侧导航自定义样式 */
+   barStyle: string;
+   /** 标签项自定义样式 */
+   barItemStyle: string;
+   /** 激活标签项自定义样式 */
+   barItemActiveStyle: string;
+   /** 激活线自定义样式 */
+   barItemActiveLineStyle: string;
+   /** 徽标容器自定义样式 */
+   barItemBadgeStyle: string;
+   /** 右侧内容区域自定义样式 */
+   contentStyle: string;
+   /** 根节点自定义样式 */
+   uStyle: string;
+   /** 根节点自定义类名 */
+   uClass: string;
+};
+
+/** 垂直选项卡事件 */
+export type Emits = {
+   change: [index: number];
+   scrolltolower: [index: number];
+};
+
+/** 内容项布局 */
+export type ItemLayout = {
+   top: number;
+   height: number;
+   isReady: boolean;
+};
+
+/** 左侧标签布局 */
+export type BarItemRect = {
+   top: number;
+   height: number;
+};
+
+/** 垂直选项卡父子通信上下文 */
+export type Context = {
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   updateLayout: (child: ComponentPublicInstance, top: number, height: number) => void;
+   init: () => void;
+};

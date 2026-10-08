@@ -1,0 +1,70 @@
+<template>
+   <uvx-page>
+      <!-- 无网络提示组件：断网时自动全屏展示 -->
+      <uvx-no-network
+         @disconnected="handleDisconnected"
+         @connected="handleConnected"
+         @retry="handleRetry"
+      ></uvx-no-network>
+
+      <!-- 网络正常演示内容 -->
+      <view class="no-network-demo__content">
+         <uvx-icon name="checkmark-circle-fill" color="success" :size="80"></uvx-icon>
+         <uvx-text
+            type="success"
+            :size="15"
+            margin="15px 0 0"
+            align="center"
+            text="网络正常"
+         ></uvx-text>
+         <uvx-text
+            type="tips"
+            :size="13"
+            margin="15px 0 0"
+            align="center"
+            text="请您断开设备的网络，即可看到效果"
+         ></uvx-text>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+/**
+ * 网络断开回调
+ * @returns null
+ */
+const handleDisconnected = (): void => {
+   console.log('disconnected');
+};
+
+/**
+ * 网络恢复回调
+ * @returns null
+ */
+const handleConnected = (): void => {
+   console.log('connected');
+};
+
+/**
+ * 点击重试回调
+ * @returns null
+ */
+const handleRetry = (): void => {
+   console.log('retry');
+};
+</script>
+
+<style lang="scss">
+@import '@/common/demo.scss';
+
+.no-network-demo {
+   // 网络正常演示内容区
+   &__content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 150px 60px 0;
+   }
+}
+</style>

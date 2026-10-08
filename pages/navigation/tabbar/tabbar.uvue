@@ -1,0 +1,373 @@
+<template>
+   <uvx-page ref="uPage">
+      <view class="uvx-page-demo tabbar-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value1"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               @change="handleChange1"
+            >
+               <uvx-tabbar-item
+                  text="首页"
+                  icon="home"
+                  @click="handleItemClick"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="放映厅"
+                  icon="photo"
+                  @click="handleItemClick"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="直播"
+                  icon="play-right"
+                  @click="handleItemClick"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="我的"
+                  icon="account"
+                  @click="handleItemClick"
+               ></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 显示徽标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="显示徽标"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value2"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               @change="handleChange2"
+            >
+               <uvx-tabbar-item
+                  text="首页"
+                  icon="home"
+                  dot
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="放映厅"
+                  icon="photo"
+                  badge="3"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item text="直播" icon="play-right"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 使用名称匹配 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="匹配标签的名称"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value3"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               @change="handleChange3"
+            >
+               <uvx-tabbar-item
+                  text="首页"
+                  icon="home"
+                  name="home"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="放映厅"
+                  icon="photo"
+                  name="photo"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="直播"
+                  icon="play-right"
+                  name="play-right"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="我的"
+                  icon="account"
+                  name="account"
+               ></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 自定义图标和颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义图标/颜色"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value4"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               active-color="#d81e06"
+               @change="handleChange4"
+            >
+               <uvx-tabbar-item text="首页">
+                  <template #active-icon>
+                     <image
+                        class="tabbar-demo__slot-icon"
+                        src="https://cdn.uviewui.com/uview/common/bell-selected.png"
+                     ></image>
+                  </template>
+                  <template #inactive-icon>
+                     <image
+                        class="tabbar-demo__slot-icon"
+                        src="https://cdn.uviewui.com/uview/common/bell.png"
+                     ></image>
+                  </template>
+               </uvx-tabbar-item>
+               <uvx-tabbar-item text="放映厅" icon="photo"></uvx-tabbar-item>
+               <uvx-tabbar-item text="直播" icon="play-right"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 拦截切换 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="拦截切换事件（点击第二个标签）"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value5"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               @change="handleChange5"
+            >
+               <uvx-tabbar-item text="首页" icon="home"></uvx-tabbar-item>
+               <uvx-tabbar-item text="放映厅" icon="photo"></uvx-tabbar-item>
+               <uvx-tabbar-item text="直播" icon="play-right"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 去除上边框 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="去除上边框"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value6"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               :border="false"
+               @change="handleChange6"
+            >
+               <uvx-tabbar-item text="首页" icon="home"></uvx-tabbar-item>
+               <uvx-tabbar-item text="放映厅" icon="photo"></uvx-tabbar-item>
+               <uvx-tabbar-item text="直播" icon="play-right"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 自定义图标大小 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义图标大小"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value7"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               :icon-size="30"
+               @change="handleChange7"
+            >
+               <uvx-tabbar-item text="首页" icon="home"></uvx-tabbar-item>
+               <uvx-tabbar-item text="放映厅" icon="photo"></uvx-tabbar-item>
+               <uvx-tabbar-item text="直播" icon="play-right"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 凸起按钮 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="凸起按钮"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value9"
+               :fixed="false"
+               :placeholder="false"
+               :safe-area-inset-bottom="false"
+               @change="handleChange9"
+            >
+               <uvx-tabbar-item text="首页" icon="home"></uvx-tabbar-item>
+               <uvx-tabbar-item text="发现" icon="search"></uvx-tabbar-item>
+               <uvx-tabbar-item
+                  text="发布"
+                  icon="plus-circle-fill"
+                  :icon-size="38"
+                  raised
+                  @click="handleItemClick"
+               ></uvx-tabbar-item>
+               <uvx-tabbar-item text="消息" icon="chat"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+
+         <!-- 固定在底部 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="固定在底部（固定在屏幕最下方）"></uvx-text>
+            </view>
+            <uvx-tabbar
+               :value="value8"
+               :fixed="true"
+               :placeholder="true"
+               :safe-area-inset-bottom="true"
+               @change="handleChange8"
+            >
+               <uvx-tabbar-item text="首页" icon="home"></uvx-tabbar-item>
+               <uvx-tabbar-item text="放映厅" icon="photo"></uvx-tabbar-item>
+               <uvx-tabbar-item text="直播" icon="play-right"></uvx-tabbar-item>
+               <uvx-tabbar-item text="我的" icon="account"></uvx-tabbar-item>
+            </uvx-tabbar>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Value } from "@/uni_modules/uvx-ui/components/uvx-tabbar/types/index.uts";
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+// 基础功能选中项
+const value1 = ref<Value>(0);
+// 徽标案例选中项
+const value2 = ref<Value>(1);
+// 名称匹配案例选中项
+const value3 = ref<Value>("play-right");
+// 自定义案例选中项
+const value4 = ref<Value>(0);
+// 拦截案例选中项
+const value5 = ref<Value>(0);
+// 无边框案例选中项
+const value6 = ref<Value>(3);
+// 图标大小案例选中项
+const value7 = ref<Value>(3);
+// 固定定位案例选中项
+const value8 = ref<Value>(0);
+// 凸起按钮案例选中项
+const value9 = ref<Value>(0);
+
+/**
+ * 更新基础功能选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange1 = (value: Value): void => {
+   value1.value = value;
+};
+
+/**
+ * 更新徽标案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange2 = (value: Value): void => {
+   value2.value = value;
+};
+
+/**
+ * 更新名称匹配案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange3 = (value: Value): void => {
+   value3.value = value;
+};
+
+/**
+ * 更新自定义案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange4 = (value: Value): void => {
+   value4.value = value;
+};
+
+/**
+ * 拦截需要登录的导航项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange5 = (value: Value): void => {
+   if (typeof value == "number" && value == 1) {
+      uPage.value?.toast({ message: "请您先登录", icon: false });
+      return;
+   }
+   value5.value = value;
+};
+
+/**
+ * 更新无边框案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange6 = (value: Value): void => {
+   value6.value = value;
+};
+
+/**
+ * 更新图标大小案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange7 = (value: Value): void => {
+   value7.value = value;
+};
+
+/**
+ * 更新固定定位案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange8 = (value: Value): void => {
+   value8.value = value;
+};
+
+/**
+ * 更新凸起按钮案例选中项
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleChange9 = (value: Value): void => {
+   value9.value = value;
+};
+
+/**
+ * 输出导航项点击值
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const handleItemClick = (value: Value): void => {
+   console.log("点击导航项：", value);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 演示页为固定导航栏预留额外滚动空间
+.tabbar-demo {
+   padding-bottom: 20px;
+}
+
+// 自定义插槽图标
+.tabbar-demo__slot-icon {
+   width: 17px;
+   height: 17px;
+}
+</style>

@@ -1,0 +1,93 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo notice-bar-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="基础功能"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar text="这是一个消息通知"></uvx-notice-bar>
+            </view>
+         </view>
+
+         <!-- 可关闭 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="可关闭"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar text="这是一个消息通知" mode="closable"></uvx-notice-bar>
+            </view>
+         </view>
+
+         <!-- 自定义横向滚动速度 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义横向滚动速度"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar text="这是一个消息通知" :speed="250" mode="closable"></uvx-notice-bar>
+            </view>
+         </view>
+
+         <!-- 可跳转 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="可跳转(点击右箭头)"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar
+                  text="这是一个消息通知"
+                  mode="link"
+                  url="/pages/data/tags/tags"
+               ></uvx-notice-bar>
+            </view>
+         </view>
+
+         <!-- 横向步进滚动 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="横向步进滚动"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar :text="notices" step @click="handleClick"></uvx-notice-bar>
+            </view>
+         </view>
+
+         <!-- 纵向滚动 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="纵向滚动"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar :text="notices" direction="column" @click="handleClick"></uvx-notice-bar>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义样式"></uvx-text></view>
+            <view class="uvx-demo-block__content notice-bar-demo__content">
+               <uvx-notice-bar text="这是一个消息通知" color="#ffffff" bg-color="#f56c6c"></uvx-notice-bar>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 步进和纵向轮播的通知内容
+const notices: string[] = [
+   "这是一个消息通知",
+   "这是一个消息通知1",
+   "这是一个消息通知2,这是一个消息通知3",
+];
+
+/**
+ * 处理通知点击
+ * @param index 当前轮播项索引
+ * @returns null
+ */
+const handleClick = (index: number | null): void => {
+   console.log("notice-bar click", index);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 滚动通知演示内容
+.notice-bar-demo__content {
+   flex-direction: column;
+   align-items: stretch;
+}
+</style>

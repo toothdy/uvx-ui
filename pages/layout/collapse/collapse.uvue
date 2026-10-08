@@ -1,0 +1,176 @@
+<template>
+   <uvx-page>
+      <!-- #ifdef APP -->
+      <scroll-view class="collapse-page-scroll">
+      <!-- #endif -->
+         <view class="collapse-page">
+            <!-- 基础功能 -->
+            <view class="uvx-page__item">
+               <view class="uvx-page__item__title">
+                  <uvx-text type="main" text="基础功能"></uvx-text>
+               </view>
+               <uvx-collapse @change="handleChange" @close="handleClose" @open="handleOpen">
+                  <uvx-collapse-item title="文档指南" name="Docs guide">
+                     <text class="collapse-page__content">涵盖 uni-app 各个方面，给开发者方向指导和设计理念，让您快速掌握开发方式。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="组件全面" name="Variety components">
+                     <text class="collapse-page__content">众多组件覆盖开发过程中的常见需求，支持快速集成和跨端使用。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="众多利器" name="Numerous tools">
+                     <text class="collapse-page__content">丰富的工具能力可以减少重复工作，让开发过程更加高效。</text>
+                  </uvx-collapse-item>
+               </uvx-collapse>
+            </view>
+
+            <!-- 展开和禁用 -->
+            <view class="uvx-page__item">
+               <view class="uvx-page__item__title">
+                  <uvx-text type="main" text="展开和禁用"></uvx-text>
+               </view>
+               <uvx-collapse :value="DEFAULT_OPEN_NAMES">
+                  <uvx-collapse-item title="文档指南">
+                     <text class="collapse-page__content">默认未展开的折叠面板内容。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="组件全面" disabled>
+                     <text class="collapse-page__content">禁用状态下不能切换折叠状态。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item name="2" title="众多利器">
+                     <text class="collapse-page__content">通过 value 和 name 设置默认展开项。</text>
+                  </uvx-collapse-item>
+               </uvx-collapse>
+            </view>
+
+            <!-- 手风琴模式 -->
+            <view class="uvx-page__item">
+               <view class="uvx-page__item__title">
+                  <uvx-text type="main" text="手风琴模式"></uvx-text>
+               </view>
+               <uvx-collapse accordion>
+                  <uvx-collapse-item title="文档指南">
+                     <text class="collapse-page__content">手风琴模式每次只展开一个面板。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="组件全面">
+                     <text class="collapse-page__content">展开当前面板时会自动收起其他面板。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="众多利器">
+                     <text class="collapse-page__content">再次点击已展开的面板可以将其收起。</text>
+                  </uvx-collapse-item>
+               </uvx-collapse>
+            </view>
+
+            <!-- 移除边框 -->
+            <view class="uvx-page__item">
+               <view class="uvx-page__item__title">
+                  <uvx-text type="main" text="移除边框"></uvx-text>
+               </view>
+               <uvx-collapse accordion :border="false">
+                  <uvx-collapse-item title="文档指南">
+                     <text class="collapse-page__content">父级关闭 border 后不显示分隔线。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="组件全面">
+                     <text class="collapse-page__content">适合嵌入已有卡片或自定义容器。</text>
+                  </uvx-collapse-item>
+               </uvx-collapse>
+            </view>
+
+            <!-- 自定义标题和内容 -->
+            <view class="uvx-page__item">
+               <view class="uvx-page__item__title">
+                  <uvx-text type="main" text="自定义标题和内容"></uvx-text>
+               </view>
+               <uvx-collapse accordion>
+                  <uvx-collapse-item>
+                     <template #title>
+                        <text class="collapse-page__slot-title">文档指南</text>
+                     </template>
+                     <text class="collapse-page__content">通过 title 插槽自定义标题内容。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="组件全面">
+                     <template #icon>
+                        <uvx-icon name="tags-fill" size="20"></uvx-icon>
+                     </template>
+                     <text class="collapse-page__content">通过 icon 插槽自定义左侧图标。</text>
+                  </uvx-collapse-item>
+                  <uvx-collapse-item title="众多利器">
+                     <template #value>
+                        <text class="collapse-page__slot-title">自定义内容</text>
+                     </template>
+                     <text class="collapse-page__content">通过 value 插槽自定义标题右侧内容。</text>
+                  </uvx-collapse-item>
+               </uvx-collapse>
+            </view>
+         </view>
+      <!-- #ifdef APP -->
+      </scroll-view>
+      <!-- #endif -->
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   ChangeItem,
+   Name,
+} from "@/uni_modules/uvx-ui/components/uvx-collapse/types/index.uts";
+
+// 默认展开项
+const DEFAULT_OPEN_NAMES: Name[] = ["2"];
+
+/**
+ * 输出全部面板状态
+ * @param items 面板状态列表
+ * @returns null
+ */
+const handleChange = (items: ChangeItem[]): void => {
+   console.log("collapse change", items);
+};
+
+/**
+ * 输出关闭面板名称
+ * @param name 面板名称
+ * @returns null
+ */
+const handleClose = (name: Name): void => {
+   console.log("collapse close", name);
+};
+
+/**
+ * 输出打开面板名称
+ * @param name 面板名称
+ * @returns null
+ */
+const handleOpen = (name: Name): void => {
+   console.log("collapse open", name);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// App 页面滚动容器
+.collapse-page-scroll {
+   flex: 1;
+}
+
+// 折叠面板演示页
+.collapse-page {
+   padding-bottom: 20px;
+
+   // 面板正文
+   &__content {
+      color: var(--uvx-text-content);
+      font-size: 14px;
+      line-height: 20px;
+   }
+
+   // 自定义标题文字
+   &__slot-title {
+      color: var(--uvx-primary);
+      font-size: 14px;
+   }
+}
+
+// 演示区标题
+.uvx-page__item__title {
+   padding: 15px;
+}
+</style>

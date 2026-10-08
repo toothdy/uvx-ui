@@ -1,0 +1,81 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基本案例 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本案例"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线"></uvx-divider>
+            </view>
+         </view>
+
+         <!-- 是否虚线 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="是否虚线"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线" :dashed="true"></uvx-divider>
+            </view>
+         </view>
+
+         <!-- 是否细线 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="是否细线"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线" :hairline="true"></uvx-divider>
+            </view>
+         </view>
+
+         <!-- 是否以点代替文字 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="是否以点代替文字"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线" :dot="true"></uvx-divider>
+            </view>
+         </view>
+
+         <!-- 文本内容靠左 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="文本内容靠左"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线" text-position="left"></uvx-divider>
+            </view>
+         </view>
+
+         <!-- 文本内容靠右 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="文本内容靠右"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线" text-position="right"></uvx-divider>
+            </view>
+         </view>
+
+         <!-- 自定义文本颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义文本颜色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-divider text="分割线" text-color="#2979ff" line-color="#2979ff"></uvx-divider>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup></script>
+
+<style lang="scss" scoped>
+@import "@/common/demo.scss";
+</style>

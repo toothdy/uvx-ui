@@ -1,0 +1,274 @@
+<template>
+   <!-- 徽标主体 -->
+   <view
+      v-if="isVisible"
+      class="uvx-badge"
+      :class="[badgeClasses, uClass]"
+      :style="badgeStyle"
+   >
+      <text
+         v-if="!isDot"
+         class="uvx-badge__text"
+         :class="badgeTextClasses"
+         :style="badgeTextStyle"
+      >{{ displayValue }}</text>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-badge 徽标数
+ * @description 用于展示未读数量、状态圆点或简短提示。
+ * @tutorial https://www.uvxui.cn/components/badge.html
+ * @property {Boolean} isDot 是否显示为圆点
+ * @property {String | Number} value 显示内容
+ * @property {Boolean} show 是否显示徽标
+ * @property {String | Number} max 最大值
+ * @property {String} type 主题类型
+ * @property {Boolean} showZero 数值为 0 时是否显示
+ * @property {String} bgColor 自定义背景颜色
+ * @property {String} color 自定义文字颜色
+ * @property {String} shape 徽标形状
+ * @property {String} numberType 数字显示方式
+ * @property {Array} offset 绝对定位时的 top、right 偏移
+ * @property {Boolean} inverted 是否反转背景和文字样式
+ * @property {Boolean} absolute 是否使用绝对定位
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props, Value } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-badge",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   isDot: false,
+   value: "",
+   show: true,
+   max: 999,
+   type: "error",
+   showZero: false,
+   bgColor: "",
+   color: "",
+   shape: "circle",
+   numberType: "overflow",
+   offset: () => [] as Value[],
+   inverted: false,
+   absolute: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 是否显示徽标
+ * @returns boolean
+ */
+const isVisible = computed((): boolean => {
+   if (!props.show) return false;
+   if (props.isDot) return true;
+   const numberValue = Number(props.value);
+   return Number.isNaN(numberValue) || numberValue != 0 || props.showZero;
+});
+
+/**
+ * 格式化缩略数字
+ * @param value 数值
+ * @returns string
+ */
+const getLimitValue = (value: number): string => {
+   if (Number.isNaN(value)) return props.value.toString();
+   if (value < 1000) return props.value.toString();
+   const divisor = value >= 9999 ? 10000 : 1000;
+   const suffix = value >= 9999 ? "w" : "k";
+   return (Math.floor(value / divisor * 100) / 100).toString() + suffix;
+};
+
+/**
+ * 徽标显示内容
+ * @returns string
+ */
+const displayValue = computed((): string => {
+   const value = Number(props.value);
+   const max = Number(props.max);
+   if (props.numberType == "limit") return getLimitValue(value);
+   if (!Number.isNaN(value) && !Number.isNaN(max) && value > max) {
+      return props.numberType == "ellipsis" ? "..." : props.max.toString() + "+";
+   }
+   return props.value.toString();
+});
+
+/**
+ * 徽标状态类
+ * @returns string[]
+ */
+const badgeClasses = computed((): string[] => {
+   const classes: string[] = [];
+   classes.push(props.isDot ? "uvx-badge--dot" : "uvx-badge--content");
+   if (!props.inverted) classes.push("uvx-badge--" + props.type);
+   if (props.inverted) classes.push("uvx-badge--inverted");
+   if (props.shape == "horn") classes.push("uvx-badge--horn");
+   if (props.absolute) classes.push("uvx-badge--absolute");
+   return classes;
+});
+
+/**
+ * 徽标文字状态类
+ * @returns string[]
+ */
+const badgeTextClasses = computed((): string[] => {
+   const classes: string[] = [];
+   if (!props.inverted) return classes;
+   classes.push("uvx-badge__text--inverted");
+   classes.push("uvx-badge__text--" + props.type + "-inverted");
+   return classes;
+});
+
+/**
+ * 徽标动态样式
+ * @returns UTSJSONObject
+ */
+const badgeStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.bgColor) && !props.inverted) {
+      style.set("background-color", props.bgColor);
+   }
+   if (props.absolute && props.offset.length > 0) {
+      const top = props.offset[0];
+      const right = props.offset.length > 1 ? props.offset[1] : top;
+      style.set("top", $uvx.format.unit(top));
+      style.set("right", $uvx.format.unit(right));
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 徽标文字动态样式
+ * @returns UTSJSONObject
+ */
+const badgeTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   if ($uvx.string.empty(props.uStyle)) return style;
+   const customColor = $uvx.style.parse(props.uStyle).getString("color");
+   if (customColor != null) style.set("color", customColor);
+   return style;
+});
+</script>
+
+<style lang="scss">
+// 徽标主体
+.uvx-badge {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   border-radius: 100px;
+   overflow: visible;
+}
+
+/* #ifdef APP-ANDROID */
+// Android 为圆角背景预留绘制空间
+.uvx-badge {
+   margin: 1px;
+}
+/* #endif */
+
+// 徽标文字
+.uvx-badge__text {
+   color: #ffffff;
+   font-size: 11px;
+   line-height: 15px;
+   text-align: center;
+}
+
+// 圆点徽标
+.uvx-badge--dot {
+   width: 8px;
+   height: 8px;
+   flex-shrink: 0;
+}
+
+// 文字徽标
+.uvx-badge--content {
+   min-width: 16px;
+   min-height: 15px;
+   padding: 0 5px;
+}
+
+// 反转徽标
+.uvx-badge--inverted {
+   background-color: transparent;
+}
+
+// 反转徽标文字
+.uvx-badge__text--inverted {
+   font-size: 13px;
+}
+
+// 号角形徽标
+.uvx-badge--horn {
+   border-bottom-left-radius: 0;
+}
+
+// 绝对定位徽标
+.uvx-badge--absolute {
+   position: absolute;
+}
+
+// 主色徽标
+.uvx-badge--primary {
+   background-color: var(--uvx-primary);
+}
+
+// 错误徽标
+.uvx-badge--error {
+   background-color: var(--uvx-error);
+}
+
+// 成功徽标
+.uvx-badge--success {
+   background-color: var(--uvx-success);
+}
+
+// 信息徽标
+.uvx-badge--info {
+   background-color: var(--uvx-info);
+}
+
+// 警告徽标
+.uvx-badge--warning {
+   background-color: var(--uvx-warning);
+}
+
+// 反转主色徽标
+.uvx-badge__text--primary-inverted {
+   color: var(--uvx-primary);
+}
+
+// 反转错误徽标
+.uvx-badge__text--error-inverted {
+   color: var(--uvx-error);
+}
+
+// 反转成功徽标
+.uvx-badge__text--success-inverted {
+   color: var(--uvx-success);
+}
+
+// 反转信息徽标
+.uvx-badge__text--info-inverted {
+   color: var(--uvx-info);
+}
+
+// 反转警告徽标
+.uvx-badge__text--warning-inverted {
+   color: var(--uvx-warning);
+}
+</style>

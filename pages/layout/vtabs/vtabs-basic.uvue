@@ -1,0 +1,152 @@
+<template>
+   <uvx-page direction="none">
+      <view class="vtabs-basic-page">
+         <!-- 非联动垂直选项卡 -->
+         <uvx-vtabs
+            :list="tabs"
+            :height="pageHeight"
+            :chain="false"
+            bar-item-badge-style="top: 8px; right: 8px;"
+            @change="handleChange"
+            @scrolltolower="handleScrollToLower"
+         >
+            <!-- 当前分类内容 -->
+            <uvx-vtabs-item :index="activeIndex">
+               <view class="vtabs-basic-content">
+                  <text class="vtabs-basic-content__heading">{{ activeName }}</text>
+                  <view
+                     v-for="(item, itemIndex) in activeContents"
+                     :key="itemIndex"
+                     class="vtabs-basic-item"
+                  >
+                     <text class="vtabs-basic-item__title">{{ item.title }}</text>
+                     <text class="vtabs-basic-item__description">{{ item.description }}</text>
+                  </view>
+                  <view class="vtabs-basic-spacer"></view>
+               </view>
+            </uvx-vtabs-item>
+         </uvx-vtabs>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Item } from "@/uni_modules/uvx-ui/components/uvx-vtabs/types/index.uts";
+import type { DemoContent } from "./data.uts";
+import { VTABS_CONTENTS, VTABS_LIST } from "./data.uts";
+
+// 页面可用高度
+const pageHeight = uni.getWindowInfo().windowHeight;
+// 异步加载后的标签列表
+const tabs = ref<Item[]>([]);
+// 当前分类下标
+const activeIndex = ref(0);
+
+/**
+ * 当前分类名称
+ * @returns string
+ */
+const activeName = computed((): string => {
+   if (activeIndex.value < 0 || activeIndex.value >= tabs.value.length) return "";
+   const value = tabs.value[activeIndex.value].getString("name");
+   return value == null ? "" : value;
+});
+
+/**
+ * 当前分类内容
+ * @returns DemoContent[]
+ */
+const activeContents = computed((): DemoContent[] => {
+   if (activeIndex.value < 0 || activeIndex.value >= VTABS_CONTENTS.length) return [];
+   return VTABS_CONTENTS[activeIndex.value];
+});
+
+/** 模拟接口返回标签数据 */
+onReady((): void => {
+   uni.showLoading({ title: "加载中" });
+   setTimeout((): void => {
+      tabs.value = VTABS_LIST;
+      uni.hideLoading();
+   }, 300);
+});
+
+/**
+ * 切换当前分类内容
+ * @param index 激活分类下标
+ * @returns null
+ */
+const handleChange = (index: number): void => {
+   activeIndex.value = index;
+};
+
+/**
+ * 记录内容滚动到底部
+ * @param index 当前分类下标
+ * @returns null
+ */
+const handleScrollToLower = (index: number): void => {
+   console.log("非联动内容滚动到底：" + index.toString());
+};
+</script>
+
+<style lang="scss">
+// 非联动演示页面
+.vtabs-basic-page {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   overflow: hidden;
+}
+
+// 非联动内容容器
+.vtabs-basic-content {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding: 16px;
+   box-sizing: border-box;
+   background-color: var(--uvx-container);
+}
+
+// 当前分类标题
+.vtabs-basic-content__heading {
+   color: var(--uvx-text-main);
+   font-size: 18px;
+   font-weight: bold;
+   line-height: 1.2em;
+}
+
+// 内容条目
+.vtabs-basic-item {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding: 18px 0;
+   border-bottom-width: 0.5px;
+   border-bottom-style: solid;
+   border-bottom-color: var(--uvx-border);
+}
+
+// 内容标题
+.vtabs-basic-item__title {
+   color: var(--uvx-text-main);
+   font-size: 16px;
+   font-weight: bold;
+   line-height: 1.2em;
+}
+
+// 内容描述
+.vtabs-basic-item__description {
+   margin-top: 10px;
+   color: var(--uvx-text-content);
+   font-size: 14px;
+   line-height: 1.7em;
+}
+
+// 内容滚动占位
+.vtabs-basic-spacer {
+   width: 100%;
+   height: 560px;
+   flex-shrink: 0;
+}
+</style>

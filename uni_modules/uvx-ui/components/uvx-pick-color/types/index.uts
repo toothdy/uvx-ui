@@ -1,0 +1,54 @@
+import type {
+   Color as ColorValue,
+   Hsb as HsbValue,
+} from "../../../core/utils/color.uts";
+
+export type Color = ColorValue;
+export type Hsb = HsbValue;
+
+export type ColorRect = {
+   left: number;
+   top: number;
+   width: number;
+   height: number;
+};
+
+export type RgbaItem = {
+   label: string;
+   value: number;
+};
+
+export type TouchPoint = {
+   x: number;
+   y: number;
+};
+
+export type Props = {
+   color: Color;
+   prefabColor: Color[];
+   closeOnClickOverlay: boolean;
+   title: string;
+   cancelText: string;
+   confirmText: string;
+   cancelColor: string;
+   confirmColor: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type ConfirmEvent = {
+   rgba: Color;
+   hex: string;
+};
+
+export type ColorChangeEvent = {
+   rgba: Color;
+   hex: string;
+};
+
+export type Emits = {
+   confirm: [event: ConfirmEvent];
+   cancel: [];
+   close: [];
+   change: [event: ColorChangeEvent];
+};

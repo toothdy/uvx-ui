@@ -1,0 +1,868 @@
+<template>
+   <uvx-popup
+      ref="uPopup"
+      mode="bottom"
+      :close-on-click-overlay="closeOnClickOverlay"
+      @change="handlePopupChange"
+   >
+      <view class="uvx-pick-color" :class="uClass" :style="rootStyle">
+         <!-- 顶部操作栏 -->
+         <uvx-toolbar
+            :show="showToolbar"
+            :cancel-color="cancelColor"
+            :confirm-color="confirmColor"
+            :cancel-text="cancelText"
+            :confirm-text="confirmText"
+            :title="title"
+            :show-border="true"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-toolbar>
+
+         <!-- 饱和度和亮度选择区域 -->
+         <view class="uvx-pick-color__panel">
+            <view
+               ref="surfaceRef"
+               class="uvx-pick-color__surface"
+               :style="panelStyle"
+               @touchstart.stop.prevent="handleTouchStart($event, 0)"
+               @touchmove.stop.prevent="handleTouchMove($event, 0)"
+            >
+               <view class="uvx-pick-color__surface-saturation"></view>
+               <view class="uvx-pick-color__surface-mask"></view>
+               <view class="uvx-pick-color__surface-pointer" :style="surfacePointerStyle"></view>
+            </view>
+         </view>
+
+         <!-- 色相、透明度和当前颜色预览 -->
+         <view class="uvx-pick-color__controls">
+            <view class="uvx-pick-color__preview">
+               <view class="uvx-pick-color__checkerboard">
+                  <view class="uvx-pick-color__checker-row">
+                     <view class="uvx-pick-color__checker-cell uvx-pick-color__checker-cell--gray"></view>
+                     <view class="uvx-pick-color__checker-cell"></view>
+                  </view>
+                  <view class="uvx-pick-color__checker-row">
+                     <view class="uvx-pick-color__checker-cell"></view>
+                     <view class="uvx-pick-color__checker-cell uvx-pick-color__checker-cell--gray"></view>
+                  </view>
+               </view>
+               <view class="uvx-pick-color__preview-color" :style="previewStyle"></view>
+            </view>
+            <view class="uvx-pick-color__bars">
+               <view class="uvx-pick-color__bar">
+                  <view
+                     ref="hueRef"
+                     class="uvx-pick-color__bar-track"
+                     @touchstart.stop.prevent="handleTouchStart($event, 1)"
+                     @touchmove.stop.prevent="handleTouchMove($event, 1)"
+                  >
+                     <view class="uvx-pick-color__hue-gradient"></view>
+                     <view class="uvx-pick-color__bar-thumb" :style="hueThumbStyle"></view>
+                  </view>
+               </view>
+               <view class="uvx-pick-color__bar">
+                  <view
+                     ref="alphaRef"
+                     class="uvx-pick-color__bar-track"
+                     @touchstart.stop.prevent="handleTouchStart($event, 2)"
+                     @touchmove.stop.prevent="handleTouchMove($event, 2)"
+                  >
+                     <view class="uvx-pick-color__checkerboard">
+                        <view class="uvx-pick-color__checker-row">
+                           <view
+                              v-for="cellIndex in 24"
+                              :key="cellIndex"
+                              class="uvx-pick-color__checker-cell"
+                              :class="{ 'uvx-pick-color__checker-cell--gray': cellIndex % 2 == 0 }"
+                           ></view>
+                        </view>
+                        <view class="uvx-pick-color__checker-row">
+                           <view
+                              v-for="cellIndex in 24"
+                              :key="cellIndex"
+                              class="uvx-pick-color__checker-cell"
+                              :class="{ 'uvx-pick-color__checker-cell--gray': cellIndex % 2 != 0 }"
+                           ></view>
+                        </view>
+                     </view>
+                     <view class="uvx-pick-color__alpha-gradient" :style="alphaGradientStyle"></view>
+                     <view class="uvx-pick-color__bar-thumb" :style="alphaThumbStyle"></view>
+                  </view>
+               </view>
+            </view>
+         </view>
+
+         <!-- HEX 与 RGBA 值显示 -->
+         <view class="uvx-pick-color__result">
+            <view
+               class="uvx-pick-color__mode"
+               hover-class="uvx-hover-class"
+               @click.stop="toggleMode"
+            >
+               <text class="uvx-pick-color__mode-text">{{ t("切换") }}</text>
+               <text class="uvx-pick-color__mode-text">{{ t("模式") }}</text>
+            </view>
+            <view v-if="isHexMode" class="uvx-pick-color__result-item">
+               <view class="uvx-pick-color__result-value uvx-border">
+                  <text class="uvx-pick-color__result-value-text">{{ hex }}</text>
+               </view>
+               <text class="uvx-pick-color__result-label">{{ t("HEX") }}</text>
+            </view>
+            <template v-else>
+               <view
+                  v-for="(item, index) in rgbaItems"
+                  :key="item.label"
+                  class="uvx-pick-color__result-item"
+                  :class="{ 'uvx-pick-color__result-item--gap': index > 0 }"
+               >
+                  <view class="uvx-pick-color__result-value uvx-border">
+                     <text class="uvx-pick-color__result-value-text">{{ item.value }}</text>
+                  </view>
+                  <text class="uvx-pick-color__result-label">{{ item.label }}</text>
+               </view>
+            </template>
+         </view>
+
+         <!-- 预设颜色 -->
+         <view class="uvx-pick-color__prefab">
+            <view
+               v-for="(item, index) in prefabColorList"
+               :key="index"
+               class="uvx-pick-color__prefab-item"
+            >
+               <view class="uvx-pick-color__checkerboard">
+                  <view class="uvx-pick-color__checker-row">
+                     <view class="uvx-pick-color__checker-cell uvx-pick-color__checker-cell--gray"></view>
+                     <view class="uvx-pick-color__checker-cell"></view>
+                  </view>
+                  <view class="uvx-pick-color__checker-row">
+                     <view class="uvx-pick-color__checker-cell"></view>
+                     <view class="uvx-pick-color__checker-cell uvx-pick-color__checker-cell--gray"></view>
+                  </view>
+               </view>
+               <view
+                  class="uvx-pick-color__prefab-color"
+                  :style="getPrefabStyle(item)"
+                  @click.stop="setColorBySelect(item)"
+               ></view>
+            </view>
+         </view>
+      </view>
+   </uvx-popup>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-pick-color 颜色选择器
+ * @description 从底部弹出并通过面板、色相条和透明度条选择颜色。
+ * @tutorial https://www.uvxui.cn/components/pick-color.html
+ * @property {Color} color 初始颜色，默认透明黑色
+ * @property {Color[]} prefabColor 预设颜色列表
+ * @property {Boolean} closeOnClickOverlay 是否允许点击遮罩关闭，默认 true
+ * @property {String} title 顶部标题
+ * @property {String} cancelText 取消按钮文字
+ * @property {String} confirmText 确认按钮文字
+ * @property {String} cancelColor 取消按钮颜色，空值时跟随主题
+ * @property {String} confirmColor 确认按钮颜色，空值时跟随主题
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @method open 打开颜色选择器
+ * @method close 关闭颜色选择器
+ * @event {Function} confirm 点击确认时触发
+ * @event {Function} cancel 点击取消时触发
+ * @event {Function} close 弹层关闭时触发
+ * @event {Function} change 颜色发生变化时触发
+ * @example <uvx-pick-color ref="picker" @confirm="handleConfirm"></uvx-pick-color>
+ */
+
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type { ChangeEvent } from "../uvx-popup/types/index.uts";
+import type {
+   Color,
+   ColorChangeEvent,
+   ColorRect,
+   Emits,
+   Hsb,
+   Props,
+   RgbaItem,
+   TouchPoint,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-pick-color", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+// 默认预设颜色
+const DEFAULT_COLORS: Color[] = [
+   { r: 60, g: 156, b: 255, a: 1 },
+   { r: 245, g: 108, b: 108, a: 1 },
+   { r: 249, g: 174, b: 61, a: 1 },
+   { r: 90, g: 199, b: 37, a: 1 },
+   { r: 144, g: 147, b: 153, a: 1 },
+   { r: 48, g: 49, b: 51, a: 1 },
+   { r: 233, g: 30, b: 99, a: 1 },
+   { r: 156, g: 39, b: 176, a: 1 },
+   { r: 103, g: 58, b: 183, a: 1 },
+   { r: 63, g: 81, b: 181, a: 1 },
+   { r: 0, g: 188, b: 212, a: 1 },
+   { r: 0, g: 150, b: 136, a: 1 },
+   { r: 139, g: 195, b: 74, a: 1 },
+   { r: 205, g: 220, b: 57, a: 1 },
+   { r: 255, g: 235, b: 59, a: 1 },
+   { r: 255, g: 193, b: 7, a: 1 },
+   { r: 255, g: 152, b: 0, a: 1 },
+   { r: 255, g: 87, b: 34, a: 1 },
+   { r: 121, g: 85, b: 72, a: 1 },
+   { r: 158, g: 158, b: 158, a: 1 },
+   { r: 0, g: 0, b: 0, a: 0.5 },
+   { r: 0, g: 0, b: 0, a: 0 },
+];
+
+const props = withDefaults(defineProps<Props>(), {
+   color: (): Color => ({ r: 0, g: 0, b: 0, a: 0 }),
+   prefabColor: (): Color[] => [],
+   closeOnClickOverlay: true,
+   title: "",
+   cancelText: t("取消"),
+   confirmText: t("确定"),
+   cancelColor: "",
+   confirmColor: "",
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+/**
+ * 获取有效预设颜色
+ * @param colors 外部预设颜色
+ * @returns 预设颜色列表
+ */
+const getPrefabColors = (colors: Color[]): Color[] => {
+   return colors.length > 0 ? colors : DEFAULT_COLORS;
+};
+
+// 弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+// 颜色面板原生节点
+const surfaceRef = ref<UniElement | null>(null);
+// 色相条原生节点
+const hueRef = ref<UniElement | null>(null);
+// 透明度条原生节点
+const alphaRef = ref<UniElement | null>(null);
+// 是否显示工具栏
+const showToolbar = ref(false);
+// 当前颜色
+const rgba = ref<Color>($uvx.color.normalize(props.color));
+// 当前 HSB 值
+const hsb = ref<Hsb>($uvx.color.rgbToHsb(rgba.value));
+// 颜色面板测量结果
+const rects = ref<ColorRect[]>([]);
+// 当前显示模式
+const isHexMode = ref(true);
+// 预设颜色
+const prefabColorList = ref<Color[]>(getPrefabColors(props.prefabColor));
+// 延迟测量定时器
+let measureTimer = 0;
+
+/**
+ * 当前颜色的 HEX 值
+ * @returns string
+ */
+const hex = computed((): string => {
+   return `#${$uvx.color.rgbToHex(rgba.value)}`;
+});
+
+/**
+ * 颜色面板背景色
+ * @returns UTSJSONObject
+ */
+const panelStyle = computed((): UTSJSONObject => {
+   const color = $uvx.color.hsbToRgb({ h: hsb.value.h, s: 100, b: 100 });
+   return {
+      "background-color": `rgb(${color.r},${color.g},${color.b})`,
+   };
+});
+
+/**
+ * 颜色面板指示器样式
+ * @returns UTSJSONObject
+ */
+const surfacePointerStyle = computed((): UTSJSONObject => {
+   return {
+      "left": `${hsb.value.s}%`,
+      "top": `${100 - hsb.value.b}%`,
+   };
+});
+
+/**
+ * 色相指示器样式
+ * @returns UTSJSONObject
+ */
+const hueThumbStyle = computed((): UTSJSONObject => {
+   return { "left": `${hsb.value.h / 360 * 100}%` };
+});
+
+/**
+ * 透明度指示器样式
+ * @returns UTSJSONObject
+ */
+const alphaThumbStyle = computed((): UTSJSONObject => {
+   return { "left": `${rgba.value.a * 100}%` };
+});
+
+/**
+ * 当前颜色预览样式
+ * @returns UTSJSONObject
+ */
+const previewStyle = computed((): UTSJSONObject => {
+   return { "background-color": `rgba(${rgba.value.r},${rgba.value.g},${rgba.value.b},${rgba.value.a})` };
+});
+
+/**
+ * 透明度条样式
+ * @returns UTSJSONObject
+ */
+const alphaGradientStyle = computed((): UTSJSONObject => {
+   const START_COLOR = `rgba(${rgba.value.r}, ${rgba.value.g}, ${rgba.value.b}, 0)`;
+   const END_COLOR = `rgba(${rgba.value.r}, ${rgba.value.g}, ${rgba.value.b}, 1)`;
+   return {
+      "background-image": `linear-gradient(to right, ${START_COLOR}, ${END_COLOR})`,
+   };
+});
+
+/**
+ * RGBA 展示项
+ * @returns RgbaItem[]
+ */
+const rgbaItems = computed((): RgbaItem[] => {
+   return [
+      { label: t("R"), value: rgba.value.r },
+      { label: t("G"), value: rgba.value.g },
+      { label: t("B"), value: rgba.value.b },
+      { label: t("A"), value: rgba.value.a },
+   ];
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 获取预设颜色样式
+ * @param color 预设颜色
+ * @returns UTSJSONObject
+ */
+const getPrefabStyle = (color: Color): UTSJSONObject => {
+   return { "background-color": `rgba(${color.r},${color.g},${color.b},${color.a})` };
+};
+
+/**
+ * 读取触摸点
+ * @param event 原生触摸事件
+ * @returns 触摸坐标或 null
+ */
+const getTouchPoint = (event: UniTouchEvent): TouchPoint | null => {
+   if (event.changedTouches.length > 0) {
+      return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+   }
+   if (event.touches.length > 0) {
+      return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+   }
+   return null;
+};
+
+/**
+ * 测量指定原生节点
+ * @param element 原生节点
+ * @returns 节点矩形或 null
+ */
+const getElementRect = async (element: UniElement | null): Promise<DOMRect | null> => {
+   if (element == null) return null;
+   const promise = element.getBoundingClientRectAsync();
+   if (promise == null) return null;
+   return await promise;
+};
+
+/**
+ * 测量颜色选择区域
+ * @returns boolean，是否完成测量
+ */
+const measureAreas = async (): Promise<boolean> => {
+   const surface = await getElementRect(surfaceRef.value);
+   const hue = await getElementRect(hueRef.value);
+   const alpha = await getElementRect(alphaRef.value);
+   if (surface == null || hue == null || alpha == null) return false;
+   if (surface.width <= 0 || surface.height <= 0 || hue.width <= 0 || alpha.width <= 0) return false;
+   rects.value = [
+      { left: surface.left, top: surface.top, width: surface.width, height: surface.height },
+      { left: hue.left, top: hue.top, width: hue.width, height: hue.height },
+      { left: alpha.left, top: alpha.top, width: alpha.width, height: alpha.height },
+   ];
+   return true;
+};
+
+/**
+ * 延迟并重试测量颜色区域
+ * @param attempt 当前重试次数
+ * @returns null
+ */
+const scheduleMeasure = (attempt: number): void => {
+   if (measureTimer != 0) clearTimeout(measureTimer);
+   measureTimer = setTimeout((): void => {
+      measureTimer = 0;
+      measureAreas().then((isReady: boolean): void => {
+         if (!isReady && attempt < 3) scheduleMeasure(attempt + 1);
+      });
+   }, attempt == 0 ? 350 : 120);
+};
+
+/**
+ * 发布颜色变化
+ * @returns null
+ */
+const emitChange = (): void => {
+   const event: ColorChangeEvent = {
+      rgba: { r: rgba.value.r, g: rgba.value.g, b: rgba.value.b, a: rgba.value.a },
+      hex: hex.value,
+   };
+   emit("change", event);
+};
+
+/**
+ * 根据 HSB 更新 RGB
+ * @returns null
+ */
+const updateRgbByHsb = (): void => {
+   const rgb = $uvx.color.hsbToRgb(hsb.value);
+   rgba.value = { r: rgb.r, g: rgb.g, b: rgb.b, a: rgba.value.a };
+};
+
+/**
+ * 设置拖拽位置
+ * @param x 页面横坐标
+ * @param y 页面纵坐标
+ * @param index 拖拽区域索引
+ * @returns null
+ */
+const setPosition = (x: number, y: number, index: number): void => {
+   if (index < 0 || index >= rects.value.length) return;
+   const rect = rects.value[index];
+   if (rect.width <= 0 || (index == 0 && rect.height <= 0)) return;
+   const left = Math.max(0, Math.min(rect.width, Math.round(x - rect.left)));
+   if (index == 0) {
+      const top = Math.max(0, Math.min(rect.height, Math.round(y - rect.top)));
+      hsb.value.s = Math.round((left / rect.width) * 100);
+      hsb.value.b = Math.round(100 - (top / rect.height) * 100);
+      updateRgbByHsb();
+   } else if (index == 1) {
+      hsb.value.h = Math.round((left / rect.width) * 360);
+      updateRgbByHsb();
+   } else {
+      rgba.value.a = Math.round((left / rect.width) * 10) / 10;
+   }
+   emitChange();
+};
+
+/**
+ * 处理触摸开始
+ * @param event 原生触摸事件
+ * @param index 拖拽区域索引
+ * @returns null
+ */
+const handleTouchStart = (event: UniTouchEvent, index: number): void => {
+   const point = getTouchPoint(event);
+   if (point != null) setPosition(point.x, point.y, index);
+};
+
+/**
+ * 处理触摸移动
+ * @param event 原生触摸事件
+ * @param index 拖拽区域索引
+ * @returns null
+ */
+const handleTouchMove = (event: UniTouchEvent, index: number): void => {
+   const point = getTouchPoint(event);
+   if (point != null) setPosition(point.x, point.y, index);
+};
+
+/**
+ * 选择预设颜色
+ * @param color 预设颜色
+ * @returns null
+ */
+const setColorBySelect = (color: Color): void => {
+   rgba.value = $uvx.color.normalize(color);
+   hsb.value = $uvx.color.rgbToHsb(rgba.value);
+   emitChange();
+};
+
+/**
+ * 切换 HEX 与 RGBA 模式
+ * @returns null
+ */
+const toggleMode = (): void => {
+   isHexMode.value = !isHexMode.value;
+};
+
+/**
+ * 打开颜色选择器
+ * @returns null
+ */
+const open = (): void => {
+   showToolbar.value = true;
+   uPopup.value?.open();
+   nextTick((): void => {
+      scheduleMeasure(0);
+   });
+};
+
+/**
+ * 关闭颜色选择器
+ * @returns null
+ */
+const close = (): void => {
+   uPopup.value?.close();
+};
+
+/**
+ * 处理弹层状态变化
+ * @param event 弹层变化事件
+ * @returns null
+ */
+const handlePopupChange = (event: ChangeEvent): void => {
+   if (event.show) scheduleMeasure(0);
+   else emit("close");
+};
+
+/**
+ * 处理取消操作
+ * @returns null
+ */
+const handleCancel = (): void => {
+   emit("cancel");
+   close();
+};
+
+/**
+ * 处理确认操作
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   emit("confirm", {
+      rgba: { r: rgba.value.r, g: rgba.value.g, b: rgba.value.b, a: rgba.value.a },
+      hex: hex.value,
+   });
+   close();
+};
+
+watch((): Color => props.color, (value: Color): void => {
+   rgba.value = $uvx.color.normalize(value);
+   hsb.value = $uvx.color.rgbToHsb(rgba.value);
+}, { deep: true });
+
+watch((): Color[] => props.prefabColor, (value: Color[]): void => {
+   prefabColorList.value = getPrefabColors(value);
+}, { deep: true });
+
+/** 清理延迟测量 */
+onUnmounted((): void => {
+   if (measureTimer != 0) clearTimeout(measureTimer);
+});
+
+defineExpose({ open, close });
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 颜色选择器根节点
+.uvx-pick-color {
+   overflow: visible;
+   background-color: var(--uvx-container);
+}
+
+// 颜色面板
+.uvx-pick-color__panel {
+   position: relative;
+   height: 400rpx;
+   margin: 20rpx;
+   overflow: hidden;
+}
+
+// 饱和度和亮度渐变层
+.uvx-pick-color__surface {
+   position: absolute;
+   top: 8px;
+   right: 8px;
+   bottom: 8px;
+   left: 8px;
+   overflow: visible;
+   background-color: rgb(255, 0, 0);
+}
+
+// 饱和度渐变层
+.uvx-pick-color__surface-saturation {
+   position: absolute;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   background-image: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+}
+
+// 亮度渐变层
+.uvx-pick-color__surface-mask {
+   position: absolute;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
+}
+
+// 面板指示器
+.uvx-pick-color__surface-pointer {
+   position: absolute;
+   z-index: 2;
+   width: 16px;
+   height: 16px;
+   margin-top: -8px;
+   margin-left: -8px;
+   box-sizing: border-box;
+   border: 1px solid #fff;
+   border-radius: 8px;
+}
+
+// 控制条区域
+.uvx-pick-color__controls {
+   overflow: visible;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   padding: 10rpx 20rpx;
+}
+
+// 颜色预览棋盘格
+.uvx-pick-color__preview {
+   position: relative;
+   width: 100rpx;
+   height: 100rpx;
+   overflow: hidden;
+   border: 1px solid var(--uvx-border);
+   border-radius: 50rpx;
+   background-color: #fff;
+}
+
+// 当前颜色预览
+.uvx-pick-color__preview-color {
+   position: relative;
+   width: 100%;
+   height: 100%;
+}
+
+// 色相和透明度条容器
+.uvx-pick-color__bars {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   justify-content: space-between;
+   height: 100rpx;
+   padding: 6rpx 0 6rpx 30rpx;
+}
+
+// 控制条棋盘格
+.uvx-pick-color__bar {
+   position: relative;
+   height: 24px;
+   padding: 4px 12px;
+   overflow: hidden;
+   box-sizing: border-box;
+}
+
+// 控制条实际轨道
+.uvx-pick-color__bar-track {
+   position: relative;
+   width: 100%;
+   height: 16px;
+   overflow: visible;
+   background-color: #fff;
+}
+
+// APP 兼容的透明棋盘格
+.uvx-pick-color__checkerboard {
+   position: absolute;
+   z-index: 0;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   display: flex;
+   flex-direction: column;
+   overflow: hidden;
+}
+
+// 棋盘格行
+.uvx-pick-color__checker-row {
+   display: flex;
+   flex: 1;
+   flex-direction: row;
+}
+
+// 棋盘格单元
+.uvx-pick-color__checker-cell {
+   flex: 1;
+   background-color: #fff;
+}
+
+// 棋盘格灰色单元
+.uvx-pick-color__checker-cell--gray {
+   background-color: #eee;
+}
+
+// 色相渐变层
+.uvx-pick-color__hue-gradient {
+   position: absolute;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+}
+
+// 透明度渐变层
+.uvx-pick-color__alpha-gradient {
+   position: absolute;
+   z-index: 1;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+}
+
+// 控制条指示器
+.uvx-pick-color__bar-thumb {
+   position: absolute;
+   z-index: 2;
+   top: -2px;
+   width: 20px;
+   height: 20px;
+   margin-left: -10px;
+   box-sizing: border-box;
+   border-radius: 10px;
+   background-color: #fff;
+   box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.1);
+}
+
+// 数值结果区域
+.uvx-pick-color__result {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   box-sizing: border-box;
+   width: 100%;
+   padding: 20rpx;
+   text-align: center;
+}
+
+// 模式切换按钮
+.uvx-pick-color__mode {
+   display: flex;
+   flex-direction: column;
+   flex-shrink: 0;
+   align-items: center;
+   justify-content: center;
+   width: 100rpx;
+   height: 100rpx;
+   margin-right: 10px;
+   border-radius: 10rpx;
+   box-shadow: 1px 1px 2px 1px rgba(0, 0, 0, 0.1);
+}
+
+// 模式切换文字
+.uvx-pick-color__mode-text {
+   width: 100%;
+   line-height: 1.2em;
+   font-size: 14px;
+   text-align: center;
+   color: var(--uvx-text-tips);
+}
+
+// 数值项
+.uvx-pick-color__result-item {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   min-width: 0;
+   height: 100rpx;
+}
+
+// RGBA 数值项间距
+.uvx-pick-color__result-item--gap {
+   margin-left: 10px;
+}
+
+// 数值文本
+.uvx-pick-color__result-value {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   height: 50rpx;
+   width: 100%;
+   border-radius: 4rpx;
+}
+
+// 数值文字
+.uvx-pick-color__result-value-text {
+   width: 100%;
+   font-size: 28rpx;
+   text-align: center;
+   color: var(--uvx-main);
+}
+
+// 数值标签
+.uvx-pick-color__result-label {
+   box-sizing: border-box;
+   width: 100%;
+   height: 50rpx;
+   line-height: 50rpx;
+   font-size: 30rpx;
+   text-align: center;
+   color: var(--uvx-text-content);
+}
+
+// 预设颜色区域
+.uvx-pick-color__prefab {
+   display: flex;
+   flex-direction: row;
+   flex-wrap: wrap;
+   margin: 0 -8rpx;
+   padding: 0 20rpx 20rpx;
+}
+
+// 预设颜色占位
+.uvx-pick-color__prefab-item {
+   position: relative;
+   width: 50rpx;
+   height: 50rpx;
+   margin: 8rpx;
+   overflow: hidden;
+   border: 1px solid var(--uvx-border);
+   border-radius: 6rpx;
+   background-color: #fff;
+}
+
+// 预设颜色
+.uvx-pick-color__prefab-color {
+   position: relative;
+   width: 100%;
+   height: 100%;
+   border-radius: 6rpx;
+}
+</style>

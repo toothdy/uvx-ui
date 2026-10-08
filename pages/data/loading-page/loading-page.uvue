@@ -1,0 +1,163 @@
+<template>
+   <uvx-page>
+      <view class="loading-page-demo">
+         <!-- 加载页演示入口 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               title-style="font-weight: 500;"
+               :is-link="true"
+               @click="handleOpen(item.type)"
+            >
+               <template #icon>
+                  <image
+                     class="uv-cell-icon"
+                     :src="item.iconUrl"
+                     mode="widthFix"
+                  ></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 全屏加载页 -->
+         <uvx-loading-page
+            :loading="isLoading"
+            :loading-text="data.loadingText"
+            :image="data.image"
+            :icon-size="data.iconSize"
+            :loading-mode="data.loadingMode"
+            :bg-color="data.bgColor"
+            :color="data.color"
+            :loading-color="data.loadingColor"
+         ></uvx-loading-page>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Mode } from "@/uni_modules/uvx-ui/components/uvx-loading-icon/types/index.uts";
+
+type LoadingPageDemoType = "text" | "image" | "mode" | "background";
+
+type LoadingPageDemoItem = {
+   type: LoadingPageDemoType;
+   title: string;
+   iconUrl: string;
+};
+
+type LoadingPageDemoConfig = {
+   loadingText: string;
+   image: string;
+   loadingMode: Mode;
+   bgColor: string;
+   iconSize: string | number;
+   color: string;
+   loadingColor: string;
+};
+
+// 演示入口
+const demoItems: LoadingPageDemoItem[] = [
+   {
+      type: "text",
+      title: "自定义提示内容",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/loading-page/promptContent.png",
+   },
+   {
+      type: "image",
+      title: "自定义图片",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/loading-page/customPicture.png",
+   },
+   {
+      type: "mode",
+      title: "自定义加载动画模式",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/loading-page/customMode.png",
+   },
+   {
+      type: "background",
+      title: "自定义背景色",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/loading-page/customBgColor.png",
+   },
+];
+
+// 加载页是否显示
+const isLoading = ref(false);
+// 当前加载页配置
+const data = ref<LoadingPageDemoConfig>({
+   loadingText: "",
+   image: "",
+   loadingMode: "circle",
+   bgColor: "",
+   iconSize: 28,
+   color: "",
+   loadingColor: "",
+});
+// 自动关闭定时器
+let closeTimer: number | null = null;
+
+/**
+ * 清理自动关闭定时器
+ * @returns null
+ */
+const clearCloseTimer = (): void => {
+   if (closeTimer == null) return;
+   clearTimeout(closeTimer);
+   closeTimer = null;
+};
+
+/**
+ * 打开指定加载页示例
+ * @param type 示例类型
+ * @returns null
+ */
+const handleOpen = (type: LoadingPageDemoType): void => {
+   clearCloseTimer();
+   const config: LoadingPageDemoConfig = {
+      loadingText: "",
+      image: "",
+      loadingMode: "circle",
+      bgColor: "",
+      iconSize: 28,
+      color: "",
+      loadingColor: "",
+   };
+
+   if (type == "text") {
+      config.loadingMode = "semicircle";
+      config.loadingText = "正在加载";
+   } else if (type == "image") {
+      config.image = "/static/logo.jpeg";
+      config.loadingText = "加载中";
+      config.iconSize = 80;
+   } else if (type == "mode") {
+      config.loadingText = "加载中";
+   } else {
+      config.loadingMode = "spinner";
+      config.bgColor = "rgba(0, 0, 0, 0.3)";
+      config.loadingText = "加载中";
+      config.color = "#eeeeee";
+      config.loadingColor = "#dddddd";
+   }
+
+   data.value = config;
+   isLoading.value = true;
+   closeTimer = setTimeout((): void => {
+      isLoading.value = false;
+      closeTimer = null;
+   }, 2000);
+};
+
+onUnload((): void => {
+   clearCloseTimer();
+});
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 加载页演示页面
+.loading-page-demo {
+   padding: 0;
+}
+</style>

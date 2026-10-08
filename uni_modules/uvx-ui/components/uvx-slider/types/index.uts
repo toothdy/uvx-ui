@@ -1,0 +1,24 @@
+export type Value = number | string;
+
+export type Props = {
+   value: Value;
+   modelValue: Value;
+   min: Value;
+   max: Value;
+   step: Value;
+   activeColor: string;
+   backgroundColor: string;
+   blockSize: Value;
+   blockColor: string;
+   showValue: boolean;
+   disabled: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [value: number];
+   input: [value: number];
+   changing: [value: number];
+   change: [value: number];
+};

@@ -1,0 +1,21 @@
+export type AlertType = "success" | "warning" | "info" | "error" | "primary";
+export type AlertEffect = "light" | "dark";
+
+/** 警告提示属性 */
+export type Props = {
+   title: string;
+   type: AlertType;
+   description: string;
+   closable: boolean;
+   showIcon: boolean;
+   effect: AlertEffect;
+   center: boolean;
+   fontSize: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 警告提示事件 */
+export type Emits = {
+   click: [];
+};

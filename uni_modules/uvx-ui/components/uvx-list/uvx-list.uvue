@@ -1,0 +1,168 @@
+<template>
+   <list-view
+      class="uvx-list"
+      :class="[border ? 'uvx-list--border' : '', uClass]"
+      :style="listStyle"
+      direction="vertical"
+      :bounces="true"
+      :show-scrollbar="true"
+      @scroll="handleScroll"
+      <!-- #ifndef MP-WEIXIN -->
+      @scrolltolower="handleScrollToLower"
+      <!-- #endif -->
+   >
+      <slot></slot>
+   </list-view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-list 列表
+ * @description 使用 uni-app x 原生列表承载可回收的列表项。
+ * @tutorial https://www.uvxui.cn/components/list.html
+ * @property {Boolean} border 是否显示上下边框
+ * @property {String} borderColor 边框颜色，空值时跟随主题
+ * @property {String} direction 子项默认排版方向
+ * @property {String | Number} padding 子项默认内边距
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} scroll 滚动时触发
+ * @event {Function} scrolltolower 滚动到底部时触发
+ * @slot default uvx-list-item 列表项
+ * @example <uvx-list><uvx-list-item title="列表项"></uvx-list-item></uvx-list>
+ */
+
+import type { ComponentPublicInstance } from "vue";
+import { $uvx } from "../../index.uts";
+import type {
+   Config,
+   Context,
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-list",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   border: false,
+   borderColor: "",
+   direction: "row",
+   padding: "20rpx 30rpx",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 列表滚动事件 */
+const emit = defineEmits<Emits>();
+
+// 已注册的列表项
+const children = ref<ComponentPublicInstance[]>([]);
+
+/**
+ * 子项共享配置
+ * @returns Config
+ */
+const listConfig = computed((): Config => {
+   return {
+      direction: props.direction,
+      padding: $uvx.format.unit(props.padding),
+   };
+});
+
+/**
+ * 列表根节点样式
+ * @returns UTSJSONObject
+ */
+const listStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (props.border && !$uvx.string.empty(props.borderColor)) {
+      style.set("border-top-color", props.borderColor);
+      style.set("border-bottom-color", props.borderColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 同步全部列表项索引
+ * @returns null
+ */
+const syncChildren = (): void => {
+   for (let index = 0; index < children.value.length; index++) {
+      children.value[index].$callMethod("syncFromList", index);
+   }
+};
+
+/**
+ * 注册列表项
+ * @param child 列表项实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+   syncChildren();
+};
+
+/**
+ * 注销列表项
+ * @param child 列表项实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+   syncChildren();
+};
+
+/** 向列表项提供公共配置与注册方法 */
+provide<Context>("uvx-list-context", {
+   config: listConfig,
+   register,
+   unregister,
+});
+
+/**
+ * 转发列表滚动事件
+ * @param event 滚动事件
+ * @returns null
+ */
+const handleScroll = (event: UniScrollEvent): void => {
+   emit("scroll", event);
+};
+
+/**
+ * 转发滚动到底部事件
+ * @param event 滚动到底部事件
+ * @returns null
+ */
+const handleScrollToLower = (event: UniScrollToLowerEvent): void => {
+   emit("scrolltolower", event);
+};
+
+defineExpose({ register, unregister });
+</script>
+
+<style lang="scss">
+// 原生列表容器
+.uvx-list {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   box-sizing: border-box;
+}
+
+// 列表上下边框
+.uvx-list--border {
+   border-top-width: 0.5px;
+   border-top-style: solid;
+   border-top-color: var(--uvx-border);
+   border-bottom-width: 0.5px;
+   border-bottom-style: solid;
+   border-bottom-color: var(--uvx-border);
+}
+</style>

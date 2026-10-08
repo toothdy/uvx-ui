@@ -1,0 +1,243 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo swipe-action-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title swipe-action-demo__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <uvx-swipe-action>
+               <uvx-swipe-action-item
+                  v-if="isBasicVisible"
+                  :options="BASIC_OPTIONS"
+                  @click="handleBasicClick"
+               >
+                  <view class="swipe-action-demo__cell">
+                     <text class="swipe-action-demo__cell-text">向左滑动显示删除按钮</text>
+                  </view>
+               </uvx-swipe-action-item>
+            </uvx-swipe-action>
+         </view>
+
+         <!-- 多按钮并列 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title swipe-action-demo__title">
+               <uvx-text type="main" text="按钮组"></uvx-text>
+            </view>
+            <uvx-swipe-action>
+               <uvx-swipe-action-item :options="MULTIPLE_OPTIONS">
+                  <view class="swipe-action-demo__cell">
+                     <text class="swipe-action-demo__cell-text">两个按钮并列</text>
+                  </view>
+               </uvx-swipe-action-item>
+            </uvx-swipe-action>
+         </view>
+
+         <!-- 带图标按钮 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title swipe-action-demo__title">
+               <uvx-text type="main" text="带图标"></uvx-text>
+            </view>
+            <uvx-swipe-action>
+               <uvx-swipe-action-item :options="ICON_OPTIONS">
+                  <view class="swipe-action-demo__cell">
+                     <text class="swipe-action-demo__cell-text">自定义图标</text>
+                  </view>
+               </uvx-swipe-action-item>
+            </uvx-swipe-action>
+         </view>
+
+         <!-- 组合使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title swipe-action-demo__title">
+               <uvx-text type="main" text="组合使用"></uvx-text>
+            </view>
+            <uvx-swipe-action>
+               <uvx-swipe-action-item
+                  v-for="(item, index) in COMBINATION_ITEMS"
+                  :key="index"
+                  :name="index"
+                  :options="item.options"
+                  :disabled="item.disabled"
+               >
+                  <view class="swipe-action-demo__cell">
+                     <text
+                        class="swipe-action-demo__cell-text"
+                        :class="item.disabled ? 'swipe-action-demo__cell-text--disabled' : ''"
+                     >{{ item.text }}</text>
+                  </view>
+               </uvx-swipe-action-item>
+            </uvx-swipe-action>
+         </view>
+
+         <!-- 圆形操作按钮 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title swipe-action-demo__title">
+               <uvx-text type="main" text="自定义按钮形状"></uvx-text>
+            </view>
+            <uvx-swipe-action>
+               <uvx-swipe-action-item :options="ROUND_OPTIONS">
+                  <view class="swipe-action-demo__cell">
+                     <text class="swipe-action-demo__cell-text">圆形按钮</text>
+                  </view>
+               </uvx-swipe-action-item>
+            </uvx-swipe-action>
+         </view>
+      </view>
+
+      <!-- 删除确认框 -->
+      <uvx-modal
+         ref="uModal"
+         title="温馨提示"
+         content="确定要删除吗？"
+         :show-cancel-button="true"
+         @confirm="handleDeleteConfirm"
+      ></uvx-modal>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   ClickEvent,
+   Option,
+} from "@/uni_modules/uvx-ui/components/uvx-swipe-action-item/types/index.uts";
+
+type SwipeActionDemoItem = {
+   text: string;
+   disabled: boolean;
+   options: Option[];
+};
+
+// 基础示例是否显示
+const isBasicVisible = ref(true);
+// 删除确认框实例
+const uModal = ref<UvxModalComponentPublicInstance | null>(null);
+
+// 基础操作按钮
+const BASIC_OPTIONS: Option[] = [
+   {
+      text: "删除",
+      style: { backgroundColor: "#f56c6c" },
+   },
+];
+
+// 多按钮示例
+const MULTIPLE_OPTIONS: Option[] = [
+   {
+      text: "收藏",
+      style: { backgroundColor: "#3c9cff" },
+   },
+   {
+      text: "删除",
+      style: { backgroundColor: "#f56c6c" },
+   },
+];
+
+// 图标按钮示例
+const ICON_OPTIONS: Option[] = [
+   {
+      text: "收藏",
+      icon: "star-fill",
+      iconSize: 20,
+      style: { backgroundColor: "#f9ae3d" },
+   },
+];
+
+// 组合列表按钮
+const COMBINATION_OPTIONS: Option[] = [
+   {
+      text: "置顶",
+      style: { backgroundColor: "#3c9cff" },
+   },
+   {
+      text: "取消",
+      style: { backgroundColor: "#f9ae3d" },
+   },
+];
+
+// 组合列表示例
+const COMBINATION_ITEMS: SwipeActionDemoItem[] = [
+   { text: "禁用状态", disabled: true, options: COMBINATION_OPTIONS },
+   { text: "正常状态", disabled: false, options: COMBINATION_OPTIONS },
+   { text: "自动关闭", disabled: false, options: COMBINATION_OPTIONS },
+];
+
+// 圆形操作按钮
+const ROUND_OPTIONS: Option[] = [
+   {
+      icon: "trash-fill",
+      style: {
+         backgroundColor: "#f56c6c",
+         width: 40,
+         height: 40,
+         borderRadius: 100,
+         margin: "0px 6px",
+      },
+   },
+   {
+      icon: "heart-fill",
+      style: {
+         backgroundColor: "#5ac725",
+         width: 40,
+         height: 40,
+         borderRadius: 100,
+         margin: "0px 6px",
+      },
+   },
+];
+
+/**
+ * 确认删除基础示例
+ * @param event 按钮点击数据
+ * @returns null
+ */
+const handleBasicClick = (event: ClickEvent): void => {
+   if (event.index != 0) return;
+   uModal.value?.open();
+};
+
+/**
+ * 删除基础示例
+ * @returns null
+ */
+const handleDeleteConfirm = (): void => {
+   isBasicVisible.value = false;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 滑动单元格演示页
+.swipe-action-demo {
+   padding-right: 0;
+   padding-left: 0;
+
+   // 区块标题保持统一页面边距
+   &__title {
+      margin-right: 15px;
+      margin-left: 15px;
+   }
+
+   // 单元格内容
+   &__cell {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      min-height: 64px;
+      padding: 0 16px;
+      box-sizing: border-box;
+   }
+
+   // 单元格文字
+   &__cell-text {
+      color: var(--uvx-text-main);
+      font-size: 15px;
+   }
+
+   // 禁用态文字
+   &__cell-text--disabled {
+      color: var(--uvx-disabled);
+   }
+}
+</style>

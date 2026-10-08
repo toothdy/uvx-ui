@@ -1,0 +1,127 @@
+<template>
+	<uvx-page ref="uPage">
+		<view class="uvx-page-demo icon-demo">
+			<view class="icon-demo__grid">
+				<view
+					@tap="selectIcon(item.name)"
+					class="icon-demo__grid__item"
+					v-for="item in displayList"
+					:key="item.name"
+				>
+					<view class="icon-demo__grid__item__icon">
+						<uvx-icon :name="item.name" size="30"></uvx-icon>
+					</view>
+					<view class="icon-demo__grid__item__text">
+						<uvx-text
+							type="main"
+							:text="item.name"
+							size="12"
+							align="center"
+							u-style="text-align: center;"
+						></uvx-text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { iconList, IconItem } from './icons.uts';
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+/**
+ * 每批渲染数量
+ */
+const BATCH = 30;
+
+/**
+ * 实际渲染的图标列表：首屏只渲第一批，其余在首帧后分批追加
+ * 避免 156 个图标(及其组件)同步创建拖慢 onReady
+ */
+const displayList = ref<IconItem[]>(iconList.slice(0, BATCH));
+
+/**
+ * 首帧渲染完成后，分批把剩余图标追加进来
+ */
+onMounted(() => {
+	const total = iconList.length;
+	let start = BATCH;
+	let delay = 0;
+	while (start < total) {
+		const s = start;
+		const e = Math.min(s + BATCH, total);
+		delay += 16;
+		setTimeout(() => {
+			for (let i = s; i < e; i++) {
+				displayList.value.push(iconList[i]);
+			}
+		}, delay);
+		start = e;
+	}
+});
+
+/**
+ * 点击图标复制名称
+ * @param name 图标名称
+ */
+const selectIcon = (name: string) => {
+	uni.setClipboardData({
+		data: name,
+		showToast: false,
+		success: () => {
+			<!-- #ifdef MP -->
+			uni.hideToast();
+			<!-- #endif -->
+			uPage.value?.toast({
+				type: 'success',
+				message: '复制成功',
+			});
+		},
+	});
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 图标网格，页面间距复用公共演示样式
+.icon-demo {
+
+	&__grid {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		border-left: 0.5px solid var(--uvx-border);
+		border-top: 0.5px solid var(--uvx-border);
+
+		&__item {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			height: 240rpx;
+			width: 33.33%;
+			box-sizing: border-box;
+			padding: 0 5px;
+			border-right: 0.5px solid var(--uvx-border);
+			border-bottom: 0.5px solid var(--uvx-border);
+
+			&__icon {
+				height: 130rpx;
+				display: flex;
+				flex-direction: row;
+				align-items: flex-end;
+			}
+
+			&__text {
+				height: 110rpx;
+				width: 100%;
+				justify-content: flex-start;
+			}
+		}
+	}
+}
+</style>

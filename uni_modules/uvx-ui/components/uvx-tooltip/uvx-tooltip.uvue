@@ -1,0 +1,573 @@
+<template>
+   <view
+      class="uvx-tooltip"
+      :class="[uClass]"
+      :style="$uvx.style.parse(uStyle)"
+   >
+      <!-- 透明遮罩，避免提示显示时触摸穿透 -->
+      <uvx-overlay
+         :show="isShow && overlay"
+         :z-index="uZIndex - 1"
+         :opacity="0"
+         u-style="background-color: transparent;"
+         @click="close"
+      ></uvx-overlay>
+
+      <!-- 触发文本与提示气泡 -->
+      <view
+         class="uvx-tooltip__content"
+         :style="wrapStyle"
+      >
+         <view
+            ref="uTrigger"
+            class="uvx-tooltip__trigger"
+            @longpress.stop.prevent="open"
+         >
+            <text
+               class="uvx-tooltip__trigger-text"
+               :style="textStyle"
+            >{{ text }}</text>
+         </view>
+
+         <uvx-transition
+            v-if="isRendered"
+            mode="fade"
+            :show="isShow"
+            :duration="isShow ? 300 : 80"
+            @change="onTransitionChange"
+         >
+            <view
+               ref="uPopup"
+               class="uvx-tooltip__popup"
+               :style="popStyle"
+            >
+               <view class="uvx-tooltip__popup-content">
+                  <!-- 气泡指示箭头 -->
+                  <view
+                     class="uvx-tooltip__indicator"
+                     :class="[
+                        direction == 'top' ? 'uvx-tooltip__indicator--top' : 'uvx-tooltip__indicator--bottom',
+                        isDark ? 'uvx-tooltip__indicator--dark' : '',
+                     ]"
+                     :style="arrowStyle"
+                  ></view>
+
+                  <!-- 操作按钮列表 -->
+                  <view
+                     class="uvx-tooltip__list"
+                     :class="isDark ? 'uvx-tooltip__list--dark' : ''"
+                  >
+                     <view
+                        v-if="showCopy"
+                        class="uvx-tooltip__button"
+                        :hover-class="isDark ? 'uvx-tooltip__button--hover-dark' : 'uvx-tooltip__button--hover'"
+                        @click.stop="copy"
+                     >
+                        <text
+                           class="uvx-tooltip__button-text"
+                           :class="isDark ? 'uvx-tooltip__button-text--dark' : ''"
+                        >
+                           复制
+                        </text>
+                     </view>
+                     <uvx-line
+                        v-if="showCopy && buttons.length > 0"
+                        direction="col"
+                        length="18"
+                     ></uvx-line>
+                     <template v-for="(item, index) in buttonList" :key="index">
+                        <view
+                           class="uvx-tooltip__button"
+                           :hover-class="isDark ? 'uvx-tooltip__button--hover-dark' : 'uvx-tooltip__button--hover'"
+                           @click.stop="onButton(index)"
+                        >
+                           <text
+                              class="uvx-tooltip__button-text"
+                              :class="isDark ? 'uvx-tooltip__button-text--dark' : ''"
+                           >
+                              {{ item }}
+                           </text>
+                        </view>
+                        <uvx-line
+                           v-if="index < buttonList.length - 1"
+                           direction="col"
+                           length="18"
+                        ></uvx-line>
+                     </template>
+                  </view>
+               </view>
+            </view>
+         </uvx-transition>
+      </view>
+
+      <!-- 提示组件 -->
+      <uvx-toast ref="uToast"></uvx-toast>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-tooltip 工具提示
+ * @description 长按触发文本显示气泡菜单，支持复制、扩展按钮、遮罩和上下方向。
+ * @tutorial https://www.uvxui.cn/components/tooltip.html
+ * @property {String} text 需要显示及复制的触发文本
+ * @property {String} copyText 点击复制按钮时使用的文本，为空时使用 text
+ * @property {String|Number} size 文本大小，单位 px，默认 14
+ * @property {String} color 文本颜色，为空时跟随主题
+ * @property {String} bgColor 提示显示时文本的背景色，默认透明
+ * @property {String} direction 弹出方向：top 或 bottom，默认 top
+ * @property {String|Number} zIndex 气泡层级，默认使用全局弹层层级
+ * @property {Boolean} showCopy 是否显示复制按钮，默认 true
+ * @property {Array} buttons 扩展按钮组
+ * @property {Boolean} overlay 是否显示透明遮罩，默认 true
+ * @property {Boolean} showToast 是否显示复制结果 Toast，默认 true
+ * @property {String} uStyle 外层自定义样式
+ * @property {String} uClass 外层自定义类名
+ *
+ * @event {Function} click 点击按钮时触发，复制按钮为 0，扩展按钮从 1 开始
+ * @example <uvx-tooltip text="长按复制" :buttons="['删除', '修改']"></uvx-tooltip>
+ */
+
+import { t } from "../../index.uts";
+import { $uvx } from "../../index.uts";
+import { config } from "../../core/config.uts";
+import { isDark } from "../../core/theme";
+import { toScale } from "../../core/size";
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-tooltip", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+   text: "",
+   copyText: "",
+   size: 14,
+   color: "",
+   bgColor: "",
+   direction: "top",
+   zIndex: config.zIndex + 71,
+   showCopy: true,
+   buttons: () => [] as string[],
+   overlay: true,
+   showToast: true,
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 模板扩展按钮列表
+ * @returns string[]
+ */
+const buttonList = computed((): string[] => props.buttons);
+
+// 组件点击事件
+const emit = defineEmits<Emits>();
+// 当前组件实例，用于限定小程序节点查询范围
+const proxy = getCurrentInstance()!.proxy!;
+// Toast 实例，用于显示复制结果
+const uToast = ref<UvxToastComponentPublicInstance | null>(null);
+// 触发文本元素
+const uTrigger = ref<UniElement | null>(null);
+// 气泡元素
+const uPopup = ref<UniElement | null>(null);
+// Tooltip 是否显示
+const isShow = ref(false);
+// 气泡节点是否保留
+const isRendered = ref(false);
+// 当前动画标识
+let animationId = 0;
+// 气泡相对窗口的横坐标
+const left = ref(-10000);
+// 气泡相对窗口的纵坐标
+const top = ref(-10000);
+// 气泡实测宽度
+const width = ref(0);
+// 箭头相对气泡的横坐标
+const arrowLeft = ref(0);
+// 气泡与触发文本的间距
+const POPUP_GAP = 10;
+// 气泡与窗口边缘的最小间距
+const SCREEN_GAP = 12;
+// 气泡箭头宽度
+const ARROW_SIZE = 14;
+// 气泡测量前的屏幕外坐标
+const HIDDEN_POS = -10000;
+// Android 原生节点挂载后的测量重试间隔
+const POSITION_RETRY_DELAYS = [0, 16, 32, 64];
+/**
+ * 气泡层级
+ * @returns number
+ */
+const uZIndex = computed((): number => {
+   const value = parseInt(props.zIndex.toString());
+   return Number.isNaN(value) ? config.zIndex + 71 : value;
+});
+
+/**
+ * 触发区域样式
+ * @returns UTSJSONObject
+ */
+const wrapStyle = computed((): UTSJSONObject => {
+   return {
+      "z-index": isShow.value ? uZIndex.value : 0,
+   };
+});
+
+/**
+ * 触发文本样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+	
+   if (typeof props.size == "number") {
+      style.set("font-size", $uvx.format.unit(toScale(props.size)));
+   } else {
+      style.set("font-size", $uvx.format.unit(props.size));
+   }
+	
+   if (!$uvx.string.empty(props.color)) {
+      style.set("color", props.color);
+   }
+   if (isShow.value && !$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+      style.set("border-radius", "2px");
+   }
+   return style;
+});
+
+/**
+ * 气泡箭头定位样式
+ * @returns UTSJSONObject
+ */
+const arrowStyle = computed((): UTSJSONObject => {
+   return {
+      "left": $uvx.format.unit(arrowLeft.value),
+   };
+});
+
+/**
+ * 气泡基础样式
+ * @returns UTSJSONObject
+ */
+const popStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "left": $uvx.format.unit(left.value),
+      "top": $uvx.format.unit(top.value),
+      "z-index": uZIndex.value,
+   };
+   if (width.value > 0) {
+      style.set("width", $uvx.format.unit(width.value));
+   }
+   return style;
+});
+
+/**
+ * 根据节点矩形和窗口尺寸设置气泡位置
+ * @param x 触发节点左坐标
+ * @param y 触发节点上坐标
+ * @param bottom 触发节点下坐标
+ * @param triggerW 触发节点宽度
+ * @param popupW 气泡宽度
+ * @param popupH 气泡高度
+ * @returns null
+ */
+const setPosition = (
+   x: number,
+   y: number,
+   bottom: number,
+   triggerW: number,
+   popupW: number,
+   popupH: number,
+): void => {
+   const screenW = uni.getWindowInfo().windowWidth;
+   const center = x + triggerW / 2;
+   const maxLeft = screenW - popupW - SCREEN_GAP;
+   const nextLeft = Math.max(SCREEN_GAP, Math.min(center - popupW / 2, maxLeft));
+   const nextArrow = center - nextLeft - ARROW_SIZE / 2;
+
+   width.value = popupW;
+   left.value = nextLeft;
+   top.value = props.direction == "top" ? y - popupH - POPUP_GAP : bottom + POPUP_GAP;
+   arrowLeft.value = Math.max(0, Math.min(nextArrow, popupW - ARROW_SIZE));
+};
+
+/**
+ * 立即隐藏并卸载气泡
+ * @returns null
+ */
+const hideImmediately = (): void => {
+   isShow.value = false;
+   isRendered.value = false;
+};
+
+/**
+ * 根据触发文本与窗口尺寸定位气泡
+ * @returns null
+ */
+const updatePosition = (currentAnimationId: number): void => {
+   // #ifdef MP
+   const query = uni.createSelectorQuery().in(proxy);
+   query.select(".uvx-tooltip__trigger").boundingClientRect();
+   query.select(".uvx-tooltip__popup").boundingClientRect();
+   query.exec((result): void => {
+      if (currentAnimationId != animationId || !isShow.value) return;
+      if (result.length < 2 || result[0] == null || result[1] == null) {
+         hideImmediately();
+         return;
+      }
+      const trigger = result[0] as NodeInfo;
+      const popup = result[1] as NodeInfo;
+      if (
+         trigger.left == null
+         || trigger.top == null
+         || trigger.bottom == null
+         || trigger.width == null
+         || popup.width == null
+         || popup.height == null
+      ) {
+         hideImmediately();
+         return;
+      }
+      setPosition(
+         trigger.left,
+         trigger.top,
+         trigger.bottom,
+         trigger.width,
+         popup.width,
+         popup.height,
+      );
+   });
+   // #endif
+
+   // #ifndef MP
+   const trigger = uTrigger.value;
+   const popup = uPopup.value;
+   if (trigger == null || popup == null) return;
+   try {
+      const triggerRect = trigger.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
+      setPosition(
+         triggerRect.left,
+         triggerRect.top,
+         triggerRect.bottom,
+         triggerRect.width,
+         popupRect.width,
+         popupRect.height,
+      );
+   } catch (_error) {
+      // Android Vapor 节点尚未生成 native element 时，等待下一次测量
+      return;
+   }
+   // #endif
+};
+
+/**
+ * 处理过渡动画状态
+ * @param visible 动画当前是否显示
+ * @returns null
+ */
+const onTransitionChange = (visible: boolean): void => {
+   if (!visible && !isShow.value) {
+      isRendered.value = false;
+   }
+};
+
+/**
+ * 显示并定位工具提示
+ * @returns null
+ */
+const open = (): void => {
+   if (isShow.value) return;
+   const currentAnimationId = ++animationId;
+   left.value = HIDDEN_POS;
+   top.value = HIDDEN_POS;
+   width.value = 0;
+   isShow.value = true;
+   isRendered.value = true;
+   nextTick((): void => {
+      nextTick((): void => {
+         if (currentAnimationId != animationId || !isShow.value) return;
+         POSITION_RETRY_DELAYS.forEach((delay: number): void => {
+            setTimeout((): void => {
+               if (currentAnimationId != animationId || !isShow.value) return;
+               updatePosition(currentAnimationId);
+            }, delay);
+         });
+      });
+   });
+};
+
+/**
+ * 关闭工具提示
+ * @returns null
+ */
+const close = (): void => {
+   isShow.value = false;
+   animationId++;
+};
+
+/**
+ * 点击扩展按钮
+ * @param index 扩展按钮索引
+ * @returns null
+ */
+const onButton = (index: number): void => {
+   close();
+   emit("click", props.showCopy ? index + 1 : index);
+};
+
+/**
+ * 复制触发文本
+ * @returns null
+ */
+const copy = (): void => {
+   const value = $uvx.string.empty(props.copyText) ? props.text : props.copyText;
+   close();
+   emit("click", 0);
+   uni.setClipboardData({
+      data: value,
+      showToast: false,
+      success: (): void => {
+         // #ifdef MP
+         uni.hideToast();
+         // #endif
+         if (props.showToast) {
+            uToast.value?.show({ message: t("复制成功"), type: "success" });
+         }
+      }
+   });
+};
+
+onUnmounted((): void => {
+   animationId++;
+});
+
+</script>
+
+<style lang="scss">
+@import "../../theme.scss";
+
+// Tooltip 外层容器
+.uvx-tooltip {
+   position: relative;
+   display: flex;
+   flex-direction: row;
+
+   // 触发文本与气泡定位区域
+   &__content {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+   }
+
+   // 触发文本
+   &__trigger {
+      display: flex;
+      flex-direction: row;
+      white-space: nowrap;
+   }
+
+   // 触发文本内容
+   &__trigger-text {
+      display: flex;
+      color: var(--uvx-text-content);
+      background-color: transparent;
+   }
+
+   // 气泡外层，相对页面窗口定位以避开祖先裁剪
+   &__popup {
+      position: fixed;
+      overflow: visible;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+   }
+
+   // 气泡内容容器
+   &__popup-content {
+      position: relative;
+      overflow: visible;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+   }
+
+   // 气泡指示箭头
+   &__indicator {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      background-color: $uvx-container-dark;
+      transform: rotate(45deg);
+      z-index: 0;
+
+      // 暗色主题使用浅色背景
+      &--dark {
+         background-color: $uvx-container;
+      }
+
+      // 顶部气泡箭头
+      &--top {
+         bottom: -4px;
+      }
+
+      // 底部气泡箭头
+      &--bottom {
+         top: -4px;
+      }
+   }
+
+   // 操作按钮列表
+   &__list {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: row;
+      flex-shrink: 0;
+      align-items: center;
+      overflow: hidden;
+      border-radius: 5px;
+      background-color: $uvx-container-dark;
+      white-space: nowrap;
+
+      // 暗色主题使用浅色背景
+      &--dark {
+         background-color: $uvx-container;
+      }
+   }
+
+   // 单个操作按钮
+   &__button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      padding: 0 13px;
+
+      // 按钮按压背景
+      &--hover {
+         background-color: $uvx-hover-dark;
+      }
+
+      // 暗色主题按钮按压背景
+      &--hover-dark {
+         background-color: $uvx-hover;
+      }
+   }
+
+   // 操作按钮文字
+   &__button-text {
+      color: $uvx-text-main-dark;
+      font-size: 13px;
+      line-height: 18px;
+
+      // 暗色主题使用深色文字
+      &--dark {
+         color: $uvx-text-main;
+      }
+   }
+}
+</style>

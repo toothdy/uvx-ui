@@ -1,0 +1,337 @@
+<template>
+   <!-- 富文本容器 -->
+   <view
+      ref="rootRef"
+      class="uvx-parse"
+      :class="[uClass]"
+      :style="rootStyle"
+      @click="handleClick"
+   >
+      <rich-text
+         class="uvx-parse__content"
+         :nodes="contentValue"
+         :user-select="selectable"
+         mode="native"
+         @itemclick="handleItemClick"
+      />
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-parse 富文本解析器
+ * @description 使用 uni-app x 原生 rich-text 渲染 HTML 内容，支持链接、图片和文本选择。
+ * @tutorial https://www.uvxui.cn/components/parse.html
+ * @property {String} content HTML 内容，默认空字符串
+ * @property {String} containerStyle 根节点样式，默认空字符串
+ * @property {String} domain 相对链接和图片地址使用的主域名，默认空字符串
+ * @property {Boolean} copyLink 外链点击时是否复制链接，默认 true
+ * @property {Boolean} previewImg 图片点击时是否预览图片，默认 true
+ * @property {Boolean} selectable 是否允许选择富文本内容，默认 false
+ * @property {Boolean} setTitle 是否将 title 标签内容设置为页面标题，默认 true
+ * @property {Object} tagStyle 标签默认样式，默认空对象
+ * @property {Boolean | Number} useAnchor 是否启用锚点跳转，数字表示额外偏移量，默认 false
+ * @property {String} uStyle 根节点自定义样式，默认空字符串
+ * @property {String} uClass 根节点自定义类名，默认空字符串
+ * @event {Function} load 内容更新后触发
+ * @event {Function} ready 内容更新后返回根节点尺寸
+ * @event {Function} imgtap 图片点击时触发
+ * @event {Function} linktap 链接点击时触发
+ * @event {Function} click 富文本区域点击时触发
+ * @example <uvx-parse content="<p>内容</p>" />
+ */
+import { $uvx } from "../../index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-parse", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   content: "",
+   containerStyle: "",
+   domain: "",
+   copyLink: true,
+   previewImg: true,
+   selectable: false,
+   setTitle: true,
+   tagStyle: () : UTSJSONObject => ({}),
+   useAnchor: false,
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+// 富文本根节点
+const rootRef = ref<UniElement | null>(null);
+// 当前渲染的 HTML 内容
+const contentValue = ref("");
+
+/**
+ * 判断是否为空字符串
+ * @param value 待判断的字符串
+ * @returns boolean
+ */
+const isEmpty = (value: string): boolean => {
+   return $uvx.string.empty(value);
+};
+
+/**
+ * 判断是否启用锚点
+ * @returns boolean
+ */
+const isAnchorEnabled = (): boolean => {
+   if (typeof props.useAnchor == "boolean") return props.useAnchor;
+   return props.useAnchor != 0;
+};
+
+/**
+ * 补全相对地址
+ * @param url 原始地址
+ * @returns string
+ */
+const resolveUrl = (url: string): string => {
+   if (isEmpty(url) || url.startsWith("#") || url.startsWith("/") && isEmpty(props.domain)) return url;
+   if (url.includes("://") || url.startsWith("data:") || url.startsWith("mailto:")) return url;
+
+   const domain = props.domain.endsWith("/")
+      ? props.domain.substring(0, props.domain.length - 1)
+      : props.domain;
+   if (isEmpty(domain)) return url;
+   return url.startsWith("/") ? domain + url : domain + "/" + url;
+};
+
+/**
+ * 处理 HTML 中的相对链接和图片地址
+ * @param html HTML 内容
+ * @returns string
+ */
+const resolveContentUrls = (html: string): string => {
+   if (isEmpty(props.domain)) return html;
+   return html.replace(/(src|href)\s*=\s*(["'])([^"']+)\2/gi, (match, name, quote, url) => {
+      return name + "=" + quote + resolveUrl(url) + quote;
+   });
+};
+
+/**
+ * 注入未声明的标签默认样式
+ * @param html HTML 内容
+ * @returns string
+ */
+const applyTagStyles = (html: string): string => {
+   const keys = UTSJSONObject.keys(props.tagStyle);
+   let result = html;
+   for (let i = 0; i < keys.length; i++) {
+      const tag = keys[i];
+      const value = props.tagStyle[tag];
+      if (value == null) continue;
+      const style = value.toString();
+      if (isEmpty(style)) continue;
+      const pattern = new RegExp("<" + tag + "(?![^>]*\\bstyle=)(?=[\\s>])", "gi");
+      result = result.replace(pattern, "<" + tag + " style=\"" + style.replace(/\"/g, "&quot;") + "\"");
+   }
+   return result;
+};
+
+/**
+ * 生成原生 rich-text 使用的内容
+ * @param html HTML 内容
+ * @returns string
+ */
+const prepareContent = (html: string): string => {
+   return applyTagStyles(resolveContentUrls(html));
+};
+
+/**
+ * 合并容器样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.object.deepMerge(
+      $uvx.style.parse(props.containerStyle),
+      $uvx.style.parse(props.uStyle),
+   );
+});
+
+/**
+ * 提取 title 标签文本
+ * @param html HTML 内容
+ * @returns string
+ */
+const getTitle = (html: string): string => {
+   const match = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
+   if (match == null || match.length < 2) return "";
+   return match[1].replace(/<[^>]*>/g, "").trim();
+};
+
+/**
+ * 设置页面标题
+ * @param html HTML 内容
+ * @returns null
+ */
+const updateTitle = (html: string): void => {
+   if (!props.setTitle) return;
+   const title = getTitle(html);
+   if (!isEmpty(title)) uni.setNavigationBarTitle({ title });
+};
+
+/**
+ * 读取富文本纯文本
+ * @param html HTML 内容
+ * @returns string
+ */
+const getTextFromHtml = (html: string): string => {
+   let text = html;
+   text = text.replace(/<script[\s\S]*?<\/script>/gi, "");
+   text = text.replace(/<style[\s\S]*?<\/style>/gi, "");
+   text = text.replace(/<br\s*\/?>/gi, "\n");
+   text = text.replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n");
+   text = text.replace(/<[^>]*>/g, "");
+   text = text.replace(/&nbsp;|&#160;/gi, " ");
+   text = text.replace(/&amp;/gi, "&");
+   text = text.replace(/&lt;/gi, "<");
+   text = text.replace(/&gt;/gi, ">");
+   text = text.replace(/&quot;/gi, "\"");
+   return text.trim();
+};
+
+/**
+ * 查询根节点尺寸
+ * @returns Promise<DOMRect | null>
+ */
+const getRect = (): Promise<DOMRect | null> => {
+   const element = rootRef.value;
+   if (element == null) return Promise.resolve(null);
+   return Promise.resolve(element.getBoundingClientRect());
+};
+
+/**
+ * 内容更新后的生命周期事件
+ * @returns null
+ */
+const notifyContentReady = (): void => {
+   nextTick((): void => {
+      emit("load");
+      getRect().then((rect: DOMRect | null): void => {
+         emit("ready", rect);
+      });
+   });
+};
+
+/**
+ * 设置富文本内容
+ * @param content HTML 内容
+ * @param append 是否追加到尾部
+ * @returns null
+ */
+const setContent = (content: string, append: boolean = false): void => {
+   const nextContent = append ? contentValue.value + content : content;
+   contentValue.value = prepareContent(nextContent);
+   updateTitle(nextContent);
+   notifyContentReady();
+};
+
+/**
+ * 读取富文本文本内容
+ * @param targetContent 可选的 HTML 内容
+ * @returns string
+ */
+const getText = (targetContent: string = contentValue.value): string => {
+   return getTextFromHtml(targetContent);
+};
+
+/**
+ * 跳转到富文本锚点
+ * @param id 锚点 id
+ * @param offset 额外偏移量
+ * @returns Promise<void>
+ */
+const navigateTo = (id: string, offset: number = 0): Promise<void> => {
+   if (!isAnchorEnabled()) return Promise.reject(new Error("Anchor is disabled"));
+   const element = uni.getElementById(id);
+   if (element == null) return Promise.reject(new Error("Label not found"));
+   const rect = element.getBoundingClientRect();
+   const anchorOffset = typeof props.useAnchor == "number" ? props.useAnchor : 0;
+   uni.pageScrollTo({ scrollTop: rect.top + offset + anchorOffset, duration: 300 });
+   return Promise.resolve();
+};
+
+/**
+ * 打开站内链接
+ * @param href 链接地址
+ * @returns null
+ */
+const openInternalLink = (href: string): void => {
+   uni.navigateTo({
+      url: href,
+      fail: () : void => {
+         uni.switchTab({ url: href });
+      },
+   });
+};
+
+/**
+ * 处理富文本内容点击
+ * @param event 原生点击事件
+ * @returns null
+ */
+const handleItemClick = (event: UniRichTextItemClickEvent): void => {
+   const detail = event.detail;
+   if (detail.src != null) {
+      emit("imgtap", detail);
+      if (props.previewImg) {
+         uni.previewImage({ current: 0, urls: [detail.src] });
+      }
+      return;
+   }
+   if (detail.href == null) return;
+
+   emit("linktap", detail);
+   const href = detail.href;
+   if (href.startsWith("javascript:")) return;
+   if (href.startsWith("#")) {
+      if (isAnchorEnabled()) navigateTo(href.substring(1));
+      return;
+   }
+   if (href.includes("://")) {
+      // Web 新窗口打开，App 和小程序复制链接，沿用 uvx-link 的跨端策略。
+      // #ifdef WEB
+      if (props.copyLink) window.open(href);
+      // #endif
+      // #ifdef APP || MP
+      if (props.copyLink) uni.setClipboardData({ data: href });
+      // #endif
+      return;
+   }
+   openInternalLink(href);
+};
+
+/**
+ * 转发容器点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click");
+};
+
+watch((): string => props.content, (content: string): void => {
+   setContent(content);
+});
+
+onMounted((): void => {
+   setContent(props.content);
+});
+
+defineExpose({ setContent, getText, getRect, navigateTo });
+</script>
+
+<style lang="scss">
+// 富文本根节点
+.uvx-parse {
+   width: 100%;
+
+   // 原生富文本内容
+   &__content {
+      width: 100%;
+   }
+}
+</style>

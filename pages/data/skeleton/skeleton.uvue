@@ -1,0 +1,411 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 加载状态控制 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="切换状态"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-switch v-model="isLoading"></uvx-switch>
+            </view>
+         </view>
+
+         <!-- 动画控制 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="是否开启动画"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-switch v-model="isAnimate"></uvx-switch>
+            </view>
+         </view>
+
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-skeleton
+                  :loading="isLoading"
+                  :skeleton="SKELETON_BASIC"
+                  :animate="isAnimate"
+               >
+                  <uvx-text
+                     text="庆历四年春，滕子京谪守巴陵郡。越明年，政通人和，百废具兴。乃重修岳阳楼，增其旧制，刻唐贤今人诗赋于其上。"
+                     type="main"
+                     size="30rpx"
+                     :bold="true"
+                     :lines="1"
+                  ></uvx-text>
+                  <uvx-text
+                     text="属予作文以记之。予观夫巴陵胜状，在洞庭一湖。衔远山，吞长江，浩浩汤汤，横无际涯；朝晖夕阴，气象万千。此则岳阳楼之大观也。"
+                     type="main"
+                     size="30rpx"
+                     :lines="1"
+                     margin="8rpx 0 0"
+                  ></uvx-text>
+                  <uvx-text
+                     text="前人之述备矣。然则北通巫峡，南极潇湘，迁客骚人，多会于此，览物之情，得无异乎？若夫霪雨霏霏，连月不开，阴风怒号，浊浪排空；日星隐曜，山岳潜形；商旅不行，樯倾楫摧；薄暮冥冥，虎啸猿啼。"
+                     type="main"
+                     size="30rpx"
+                     :lines="1"
+                     margin="8rpx 0 0"
+                  ></uvx-text>
+               </uvx-skeleton>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-skeleton
+                  :loading="isLoading"
+                  :skeleton="SKELETON_CUSTOM"
+                  :animate="isAnimate"
+               >
+                  <uvx-text
+                     text="岳阳楼记"
+                     type="main"
+                     size="30rpx"
+                     :bold="true"
+                  ></uvx-text>
+                  <uvx-text
+                     text="若夫霪雨霏霏，连月不开，阴风怒号，浊浪排空；日星隐曜，山岳潜形。"
+                     type="main"
+                     size="30rpx"
+                     :lines="1"
+                     margin="30rpx 0 0"
+                  ></uvx-text>
+                  <uvx-text
+                     text="商旅不行，樯倾楫摧；薄暮冥冥，虎啸猿啼。登斯楼也，则有去国怀乡，忧谗畏讥，满目萧然，感极而悲者矣。"
+                     type="main"
+                     size="30rpx"
+                     :lines="1"
+                     margin="18rpx 0 0"
+                  ></uvx-text>
+                  <uvx-text
+                     text="登斯楼也，览物之情，得无异乎？"
+                     type="main"
+                     size="30rpx"
+                     :lines="1"
+                     margin="18rpx 0 0"
+                  ></uvx-text>
+               </uvx-skeleton>
+            </view>
+         </view>
+
+         <!-- 横向并列布局 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="横向并列布局"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-skeleton
+                  :loading="isLoading"
+                  :skeleton="SKELETON_FLEX"
+                  :animate="isAnimate"
+               >
+                  <view class="skeleton-demo__flex">
+                     <uvx-avatar
+                        src="https://www.uvuix.cn/common/logo.png"
+                        size="100rpx"
+                     ></uvx-avatar>
+                     <view class="skeleton-demo__lines">
+                        <uvx-text
+                           text="岳阳楼记"
+                           type="main"
+                           size="30rpx"
+                           :bold="true"
+                        ></uvx-text>
+                        <uvx-text
+                           text="至若春和景明，波澜不惊，上下天光，一碧万顷；沙鸥翔集，锦鳞游泳。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                           margin="18rpx 0 0"
+                        ></uvx-text>
+                        <uvx-text
+                           text="心旷神怡，宠辱偕忘。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                           margin="18rpx 0 0"
+                        ></uvx-text>
+                     </view>
+                  </view>
+               </uvx-skeleton>
+            </view>
+         </view>
+
+         <!-- 混合布局 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="混合布局"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-skeleton
+                  :loading="isLoading"
+                  :skeleton="SKELETON_MIXED"
+                  :animate="isAnimate"
+               >
+                  <!-- 图片和文字 -->
+                  <view class="skeleton-demo__row">
+                     <view class="skeleton-demo__row-one-left">
+                        <image
+                           class="skeleton-demo__image-one"
+                           src="https://dummyimage.com/200x200/3c9cff/fff"
+                        ></image>
+                     </view>
+                     <view class="skeleton-demo__row-one-right">
+                        <uvx-text
+                           text="至若春和景明，波澜不惊，上下天光，一碧万顷；沙鸥翔集，锦鳞游泳。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                        ></uvx-text>
+                        <uvx-text
+                           text="岸芷汀兰，郁郁青青。而或长烟一空，皓月千里。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                           margin="6rpx 0 0"
+                        ></uvx-text>
+                        <uvx-text
+                           text="把酒临风。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                           margin="6rpx 0 0"
+                        ></uvx-text>
+                     </view>
+                  </view>
+
+                  <view class="skeleton-demo__content-gap"></view>
+
+                  <!-- 横向图片列表 -->
+                  <view class="skeleton-demo__row skeleton-demo__row-two">
+                     <image class="skeleton-demo__image-two" src="https://dummyimage.com/200x200/3c9cff/fff"></image>
+                     <image class="skeleton-demo__image-two" src="https://dummyimage.com/200x200/f9ae3d/fff"></image>
+                     <image class="skeleton-demo__image-two" src="https://dummyimage.com/200x200/5ac725/fff"></image>
+                     <image class="skeleton-demo__image-two" src="https://dummyimage.com/200x200/f56c6c/fff"></image>
+                     <image class="skeleton-demo__image-two" src="https://dummyimage.com/200x200/909399/fff"></image>
+                  </view>
+
+                  <view class="skeleton-demo__content-gap"></view>
+
+                  <!-- 文字和图片 -->
+                  <view class="skeleton-demo__row">
+                     <view class="skeleton-demo__row-three-left">
+                        <uvx-text
+                           text="浮光跃金，静影沉璧，渔歌互答，此乐何极！登斯楼也，则有心旷神怡，宠辱偕忘，把酒临风，其喜洋洋者矣。"
+                           type="main"
+                           size="30rpx"
+                           :bold="true"
+                           :lines="1"
+                        ></uvx-text>
+                        <uvx-text
+                           text="嗟夫！予尝求古仁人之心，或异二者之为，何哉？不以物喜，不以己悲；居庙堂之高则忧其民，处江湖之远则忧其君。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                           margin="8rpx 0 0"
+                        ></uvx-text>
+                        <uvx-text
+                           text="是进亦忧，退亦忧。然则何时而乐耶？其必曰：先天下之忧而忧，后天下之乐而乐乎！噫！微斯人，吾谁与归？时六年九月十五日。"
+                           type="main"
+                           size="30rpx"
+                           :lines="1"
+                           margin="8rpx 0 0"
+                        ></uvx-text>
+                     </view>
+                     <image
+                        class="skeleton-demo__image-three"
+                        src="https://dummyimage.com/200x200/3c9cff/fff"
+                     ></image>
+                  </view>
+               </uvx-skeleton>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script setup lang="uts">
+import type { Config } from "@/uni_modules/uvx-ui/components/uvx-skeleton/types/index.uts";
+
+// 是否显示骨架屏
+const isLoading = ref(true);
+// 是否开启动画
+const isAnimate = ref(true);
+
+// 基础线条配置
+const SKELETON_BASIC: Config = [
+   {
+      type: "line",
+      num: 3,
+      gap: "20rpx",
+   },
+];
+
+// 不同长度的线条配置
+const SKELETON_CUSTOM: Config = [
+   {
+      type: "line",
+      num: 4,
+      gap: "20rpx",
+      style: [
+         "width: 200rpx; height: 50rpx; margin-bottom: 20rpx;",
+         "",
+         "",
+         "width: 500rpx;",
+      ],
+   },
+];
+
+// 头像和文本横向布局配置
+const SKELETON_FLEX: Config = [
+   {
+      type: "flex",
+      num: 1,
+      children: [
+         {
+            type: "avatar",
+            num: 1,
+            style: "margin-right: 10rpx;",
+         },
+         {
+            type: "line",
+            num: 3,
+            gap: "30rpx",
+            style: [
+               "width: 200rpx;",
+               "",
+               "width: 400rpx;",
+            ],
+         },
+      ],
+   },
+];
+
+// 图片和文本混合布局配置
+const SKELETON_MIXED: Config = [
+   {
+      type: "flex",
+      num: 1,
+      children: [
+         {
+            type: "custom",
+            num: 1,
+            style: "width: 136rpx; height: 136rpx; margin-right: 30rpx;",
+         },
+         {
+            type: "line",
+            num: 3,
+            style: [
+               "",
+               "width: 360rpx;",
+               "width: 200rpx;",
+            ],
+         },
+      ],
+   },
+   30,
+   {
+      type: "flex",
+      children: [
+         { type: "custom", style: "width: 98rpx; height: 160rpx;" },
+         { type: "custom", style: "width: 98rpx; height: 160rpx; margin-left: 50rpx;" },
+         { type: "custom", style: "width: 98rpx; height: 160rpx; margin-left: 50rpx;" },
+         { type: "custom", style: "width: 98rpx; height: 160rpx; margin-left: 50rpx;" },
+         { type: "custom", style: "width: 98rpx; height: 160rpx; margin-left: 50rpx;" },
+      ],
+   },
+   30,
+   {
+      type: "flex",
+      children: [
+         {
+            type: "line",
+            num: 3,
+            gap: "30rpx",
+         },
+         {
+            type: "custom",
+            style: "width: 160rpx; height: 160rpx; margin-left: 30rpx;",
+         },
+      ],
+   },
+];
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 头像和文本横向布局
+.skeleton-demo__flex {
+   display: flex;
+   flex-direction: row;
+}
+
+// 横向布局文字区域
+.skeleton-demo__lines {
+   width: 560rpx;
+   margin-left: 10rpx;
+}
+
+// 混合布局行
+.skeleton-demo__row {
+   display: flex;
+   flex-direction: row;
+}
+
+// 第一行左侧图片区域
+.skeleton-demo__row-one-left {
+   width: 136rpx;
+   height: 136rpx;
+   margin-right: 30rpx;
+}
+
+// 第一行右侧文字区域
+.skeleton-demo__row-one-right {
+   flex: 1;
+}
+
+// 第一行图片
+.skeleton-demo__image-one {
+   width: 136rpx;
+   height: 136rpx;
+}
+
+// 混合内容垂直间距
+.skeleton-demo__content-gap {
+   height: 30rpx;
+}
+
+// 第二行图片布局
+.skeleton-demo__row-two {
+   justify-content: space-between;
+}
+
+// 第二行图片
+.skeleton-demo__image-two {
+   width: 98rpx;
+   height: 160rpx;
+}
+
+// 第三行左侧文字区域
+.skeleton-demo__row-three-left {
+   flex: 1;
+}
+
+// 第三行图片
+.skeleton-demo__image-three {
+   width: 160rpx;
+   height: 160rpx;
+}
+</style>

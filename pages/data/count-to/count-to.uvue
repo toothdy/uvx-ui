@@ -1,0 +1,209 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo count-to-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content count-to-demo__content">
+               <uvx-count-to :end-val="basicEndValue" @end="handleEnd"></uvx-count-to>
+            </view>
+         </view>
+
+         <!-- 倒计数 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="倒计数"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content count-to-demo__content">
+               <uvx-count-to :start-val="countDownStart"></uvx-count-to>
+            </view>
+         </view>
+
+         <!-- 显示小数位 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="显示小数位"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content count-to-demo__content">
+               <uvx-count-to
+                  :start-val="decimalStart"
+                  :end-val="decimalEnd"
+                  :decimals="decimalPlaces"
+               ></uvx-count-to>
+            </view>
+         </view>
+
+         <!-- 千分位分隔符 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="千分位分隔符"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content count-to-demo__content">
+               <uvx-count-to
+                  :start-val="separatorStart"
+                  :end-val="separatorEnd"
+                  separator=","
+                  :decimals="decimalPlaces"
+               ></uvx-count-to>
+            </view>
+         </view>
+
+         <!-- 自定义控制 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义控制"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content count-to-demo__content">
+               <uvx-count-to
+                  ref="uCountTo"
+                  :end-val="controlEndValue"
+                  :autoplay="false"
+               ></uvx-count-to>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-grid
+                  :border="true"
+                  align="center"
+                  custom-style="margin-top: 20px; margin-bottom: 20px;"
+               >
+                  <uvx-grid-item @click="handleStart">
+                     <view class="count-to-demo__slot">
+                        <view class="count-to-demo__circle">
+                           <text class="count-to-demo__circle-text">开始</text>
+                        </view>
+                     </view>
+                  </uvx-grid-item>
+                  <uvx-grid-item @click="handleStop">
+                     <view class="count-to-demo__slot">
+                        <view class="count-to-demo__circle">
+                           <text class="count-to-demo__circle-text">暂停</text>
+                        </view>
+                     </view>
+                  </uvx-grid-item>
+                  <uvx-grid-item @click="handleRestart">
+                     <view class="count-to-demo__slot">
+                        <view class="count-to-demo__circle">
+                           <text class="count-to-demo__circle-text">继续</text>
+                        </view>
+                     </view>
+                  </uvx-grid-item>
+               </uvx-grid>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content count-to-demo__content">
+               <uvx-count-to
+                  :end-val="basicEndValue"
+                  color="#909399"
+                  :font-size="fontSize"
+                  :bold="true"
+               ></uvx-count-to>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基础功能目标值
+const basicEndValue = ref(3000);
+// 倒计数起始值
+const countDownStart = ref(300);
+// 小数示例起始值
+const decimalStart = ref(100.0);
+// 小数示例目标值
+const decimalEnd = ref(10.55);
+// 显示的小数位数
+const decimalPlaces = ref(2);
+// 千分位示例起始值
+const separatorStart = ref(2000);
+// 千分位示例目标值
+const separatorEnd = ref(1542);
+// 手动控制示例目标值
+const controlEndValue = ref(3000);
+// 自定义字号
+const fontSize = ref(40);
+// 手动控制组件实例
+const uCountTo = ref<UvxCountToComponentPublicInstance | null>(null);
+
+/**
+ * 开始手动控制示例
+ * @returns null
+ */
+const handleStart = (): void => {
+   uCountTo.value?.start();
+};
+
+/**
+ * 暂停手动控制示例
+ * @returns null
+ */
+const handleStop = (): void => {
+   uCountTo.value?.stop();
+};
+
+/**
+ * 继续手动控制示例
+ * @returns null
+ */
+const handleRestart = (): void => {
+   uCountTo.value?.restart();
+};
+
+/**
+ * 处理数字滚动完成
+ * @returns null
+ */
+const handleEnd = (): void => {
+   console.log("count-to end");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 数字滚动演示页面
+.count-to-demo {
+   // 数字展示区域
+   &__content {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+   }
+
+   // 控制项外框
+   &__slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 100px;
+      border-color: #dbfbdb;
+      border-width: 2px;
+   }
+
+   // 控制项圆面
+   &__circle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      margin: 2px;
+      border-radius: 100px;
+      background-color: #dbfbdb;
+   }
+
+   // 控制项文字
+   &__circle-text {
+      color: rgb(25, 190, 107);
+      font-size: 13px;
+   }
+}
+</style>

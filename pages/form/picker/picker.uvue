@@ -1,0 +1,313 @@
+<template>
+   <uvx-page>
+      <view class="picker-demo">
+         <!-- 选择器演示入口 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               :is-link="true"
+               @click="handleShowPicker(item.target)"
+            >
+               <template #icon>
+                  <image class="uv-cell-icon" :src="item.iconUrl" mode="widthFix"></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 基础选择器 -->
+         <uvx-picker
+            ref="uPicker1"
+            :round="10"
+            :columns="columns1"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+
+         <!-- 默认项选择器 -->
+         <uvx-picker
+            ref="uPicker2"
+            :round="10"
+            :columns="columns2"
+            :default-index="[1, 2]"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+
+         <!-- 多列联动选择器 -->
+         <uvx-picker
+            ref="uPicker3"
+            :round="10"
+            :columns="columns3"
+            @change="handleLinkageChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+
+         <!-- 地区联动选择器 -->
+         <uvx-picker
+            ref="uPicker4"
+            :round="10"
+            :columns="regionColumns"
+            key-name="name"
+            @change="handleRegionChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+
+         <!-- 加载状态选择器 -->
+         <uvx-picker
+            ref="uPicker5"
+            :round="10"
+            :columns="columns4"
+            :loading="isLoading"
+            @change="handleLoadingChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+
+         <!-- 标题选择器 -->
+         <uvx-picker
+            ref="uPicker6"
+            :round="10"
+            :columns="columns5"
+            title="标题太长就会显示省略号哦"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+
+         <!-- 固定遮罩选择器 -->
+         <uvx-picker
+            ref="uPicker7"
+            :round="10"
+            :columns="columns6"
+            :close-on-click-overlay="false"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @close="handleClose"
+            @confirm="handleConfirm"
+         ></uvx-picker>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "@/uni_modules/uvx-ui/index.uts";
+import type {
+   Item,
+   Column,
+   Columns,
+   ChangeEvent,
+   ConfirmEvent,
+} from "@/uni_modules/uvx-ui/components/uvx-picker/types/index.uts";
+
+type PickerDemoItem = {
+   title: string;
+   iconUrl: string;
+   target: number;
+};
+
+/**
+ * 创建地区选项
+ * @param name 地区名称
+ * @param code 地区编码
+ * @returns UTSJSONObject
+ */
+const createRegionOption = (name: string, code: number): UTSJSONObject => {
+   return { "name": name, "code": code };
+};
+
+// 联动第二列数据
+const LINKAGE_COLUMNS: Column[] = [
+   ["深圳", "厦门", "上海", "拉萨"] as Column,
+   ["得州", "华盛顿", "纽约", "阿拉斯加"] as Column,
+];
+// 省级选项
+const REGION_PROVINCES: Column = [
+   createRegionOption("广东省", 44),
+   createRegionOption("福建省", 35),
+];
+// 城市选项
+const REGION_CITIES: Column[] = [
+   [createRegionOption("深圳市", 4403), createRegionOption("广州市", 4401)] as Column,
+   [createRegionOption("厦门市", 3502), createRegionOption("福州市", 3501)] as Column,
+];
+// 区县选项
+const REGION_AREAS: Column[][] = [
+   [
+      [createRegionOption("南山区", 440305), createRegionOption("福田区", 440304)] as Column,
+      [createRegionOption("天河区", 440106), createRegionOption("越秀区", 440104)] as Column,
+   ],
+   [
+      [createRegionOption("思明区", 350203), createRegionOption("湖里区", 350206)] as Column,
+      [createRegionOption("鼓楼区", 350102), createRegionOption("台江区", 350103)] as Column,
+   ],
+];
+// 演示入口
+const demoItems: PickerDemoItem[] = [
+   { title: "基础使用", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/2.png", target: 1 },
+   { title: "设置默认项", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/5.png", target: 2 },
+   { title: "多列联动", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/1.png", target: 3 },
+   { title: "省市区三级联动", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/1.png", target: 4 },
+   { title: "加载中状态(切换第一列)", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/3.png", target: 5 },
+   { title: "设置标题", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/4.png", target: 6 },
+   { title: "禁止点击遮罩关闭", iconUrl: "https://cdn.uviewui.com/uview/demo/picker/6.png", target: 7 },
+];
+// 基础选择数据
+const columns1 = ref<Columns>([["中国", "美国", "日本"] as Column]);
+// 默认项选择数据
+const columns2 = ref<Columns>([["中国", "美国", "日本"] as Column]);
+// 多列联动数据
+const columns3 = ref<Columns>([
+   ["中国", "美国"] as Column,
+   LINKAGE_COLUMNS[0],
+]);
+// 加载状态数据
+const columns4 = ref<Columns>([
+   ["中国", "美国"] as Column,
+   LINKAGE_COLUMNS[0],
+]);
+// 标题选择数据
+const columns5 = ref<Columns>([["中国", "美国", "日本"] as Column]);
+// 遮罩控制数据
+const columns6 = ref<Columns>([["中国", "美国", "日本"] as Column]);
+// 地区联动数据
+const regionColumns = ref<Columns>([
+   REGION_PROVINCES,
+   REGION_CITIES[0],
+   REGION_AREAS[0][0],
+]);
+// 异步加载状态
+const isLoading = ref(false);
+// 七个选择器实例
+const uPicker1 = ref<UvxPickerComponentPublicInstance | null>(null);
+const uPicker2 = ref<UvxPickerComponentPublicInstance | null>(null);
+const uPicker3 = ref<UvxPickerComponentPublicInstance | null>(null);
+const uPicker4 = ref<UvxPickerComponentPublicInstance | null>(null);
+const uPicker5 = ref<UvxPickerComponentPublicInstance | null>(null);
+const uPicker6 = ref<UvxPickerComponentPublicInstance | null>(null);
+const uPicker7 = ref<UvxPickerComponentPublicInstance | null>(null);
+
+/**
+ * 格式化单个选项
+ * @param item 选择器选项
+ * @returns string
+ */
+const getItemLabel = (item: Item): string => {
+   if (typeof item == "string") return item;
+   if (typeof item == "number") return item.toString();
+   const name = item.getString("name");
+   if (name != null) return name;
+   return item.getString("text", "");
+};
+
+/**
+ * 格式化选中结果
+ * @param values 已选选项
+ * @returns string
+ */
+const getValuesText = (values: Item[]): string => {
+   const labels: string[] = [];
+   for (let i = 0; i < values.length; i++) labels.push(getItemLabel(values[i]));
+   return labels.join(" / ");
+};
+
+/**
+ * 打开指定选择器
+ * @param target 选择器编号
+ * @returns null
+ */
+const handleShowPicker = (target: number): void => {
+   if (target == 1) uPicker1.value?.open();
+   else if (target == 2) uPicker2.value?.open();
+   else if (target == 3) uPicker3.value?.open();
+   else if (target == 4) uPicker4.value?.open();
+   else if (target == 5) uPicker5.value?.open();
+   else if (target == 6) uPicker6.value?.open();
+   else uPicker7.value?.open();
+};
+
+/**
+ * 输出选择变化
+ * @param event 选择变化数据
+ * @returns null
+ */
+const handleChange = (event: ChangeEvent): void => {
+   console.log("选择变化：", event.columnIndex, event.index, getValuesText(event.value));
+};
+
+/**
+ * 联动更新第二列
+ * @param event 选择变化数据
+ * @returns null
+ */
+const handleLinkageChange = (event: ChangeEvent): void => {
+   handleChange(event);
+   if (event.columnIndex == 0) uPicker3.value?.setColumnValues(1, LINKAGE_COLUMNS[event.index]);
+};
+
+/**
+ * 更新三级地区列
+ * @param event 选择变化数据
+ * @returns null
+ */
+const handleRegionChange = (event: ChangeEvent): void => {
+   handleChange(event);
+   if (event.columnIndex == 0) {
+      uPicker4.value?.setColumnValues(1, REGION_CITIES[event.index]);
+      uPicker4.value?.setColumnValues(2, REGION_AREAS[event.index][0]);
+      uPicker4.value?.setIndexs([event.index, 0, 0], true);
+   } else if (event.columnIndex == 1) {
+      const provinceIndex = event.indexs[0];
+      uPicker4.value?.setColumnValues(2, REGION_AREAS[provinceIndex][event.index]);
+      uPicker4.value?.setIndexs([provinceIndex, event.index, 0], true);
+   }
+};
+
+/**
+ * 模拟加载后更新联动列
+ * @param event 选择变化数据
+ * @returns Promise<void>
+ */
+const handleLoadingChange = async (event: ChangeEvent): Promise<void> => {
+   handleChange(event);
+   if (event.columnIndex != 0) return;
+   isLoading.value = true;
+   await $uvx.sleep(600);
+   uPicker5.value?.setColumnValues(1, LINKAGE_COLUMNS[event.index]);
+   isLoading.value = false;
+};
+
+/**
+ * 输出确认结果
+ * @param event 确认数据
+ * @returns null
+ */
+const handleConfirm = (event: ConfirmEvent): void => {
+   console.log("确认选择：", getValuesText(event.innerIndex));
+};
+
+/**
+ * 输出取消操作
+ * @returns null
+ */
+const handleCancel = (): void => {
+   console.log("取消选择");
+};
+
+/**
+ * 输出关闭事件
+ * @returns null
+ */
+const handleClose = (): void => {
+   console.log("选择器已关闭");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

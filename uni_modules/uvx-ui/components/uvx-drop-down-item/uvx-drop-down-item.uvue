@@ -1,0 +1,242 @@
+<template>
+   <view
+      class="uvx-drop-down-item"
+      :class="props.uClass"
+      :style="rootStyle"
+      hover-class="uvx-drop-down-item--hover"
+      :hover-stay-time="150"
+      @click="handleClick"
+   >
+      <text
+         class="uvx-drop-down-item__text"
+         :class="textClass"
+         :style="textStyle"
+      >{{ props.label }}</text>
+      <uvx-icon
+         v-if="props.type.toString() != '1'"
+         :name="itemIcon.name"
+         :size="itemIcon.size"
+         :color="itemIcon.color"
+      ></uvx-icon>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-drop-down-item 下拉筛选菜单项
+ * @description 搭配 uvx-drop-down 使用，支持开关筛选和多选项弹层两种类型。
+ * @tutorial https://www.uvxui.cn/components/drop-down.html
+ * @property {String | Number} name 字段标识
+ * @property {String | Number} type 类型，1 为直接切换，2 为打开筛选弹层
+ * @property {String} label 菜单文字
+ * @property {String | Number} value 当前筛选值
+ * @property {Boolean} isDrop 是否展开当前项
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} click 点击菜单项时触发
+ * @example <uvx-drop-down-item name="order" type="2" label="综合排序" value="all"></uvx-drop-down-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Context,
+   Icon,
+   ItemClickEvent,
+} from "../uvx-drop-down/types/index.uts";
+import type {
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-drop-down-item",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   name: "",
+   type: "2",
+   label: "",
+   value: "",
+   isDrop: false,
+   uStyle: "",
+   uClass: "",
+});
+
+// 菜单项事件
+const emit = defineEmits<Emits>();
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 最近的下拉筛选容器
+const dropDown = inject<Context | null>("uvx-drop-down-context", null);
+if (dropDown == null) throw new Error("uvx-drop-down-item 必须在 uvx-drop-down 内使用");
+// 当前值是否为已筛选状态
+const isActive = ref(false);
+// 当前项是否展开
+const isDropped = ref(props.isDrop);
+
+/**
+ * 菜单项根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 当前菜单项是否使用激活外观
+ * @returns boolean
+ */
+const isActiveAppearance = computed((): boolean => {
+   return isActive.value || isDropped.value;
+});
+
+/**
+ * 当前菜单项图标配置
+ * @returns Icon
+ */
+const itemIcon = computed((): Icon => {
+   const normalIcon = dropDown.config.value.extraIcon;
+   const activeIcon = dropDown.config.value.extraActiveIcon;
+   return {
+      name: isDropped.value ? activeIcon.name : normalIcon.name,
+      size: isActiveAppearance.value ? activeIcon.size : normalIcon.size,
+      color: isActiveAppearance.value ? activeIcon.color : normalIcon.color,
+   };
+});
+
+/**
+ * 菜单文字状态类
+ * @returns string
+ */
+const textClass = computed((): string => {
+   return isActiveAppearance.value
+      ? "uvx-drop-down-item__text--active"
+      : "uvx-drop-down-item__text--normal";
+});
+
+/**
+ * 菜单文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const config = dropDown.config.value;
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(
+         isActiveAppearance.value ? config.textActiveSize : config.textSize,
+      ),
+   };
+   const color = isActiveAppearance.value ? config.textActiveColor : config.textColor;
+   if (!$uvx.string.empty(color)) style.set("color", color);
+   return style;
+});
+
+/**
+ * 同步当前值的激活状态
+ * @returns null
+ */
+const syncActive = (): void => {
+   isActive.value = dropDown.config.value.defaultValue.indexOf(props.value) == -1;
+};
+
+/**
+ * 设置菜单项展开状态
+ * @param dropped 是否展开
+ * @returns null
+ */
+const setDropped = (dropped: boolean): void => {
+   isDropped.value = dropped;
+};
+
+/**
+ * 处理菜单项点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   const isToggle = props.type.toString() == "1";
+   if (isToggle) {
+      isActive.value = !isActive.value;
+   } else {
+      isDropped.value = !isDropped.value;
+   }
+   const event: ItemClickEvent = {
+      name: props.name,
+      active: isToggle ? isActive.value : isDropped.value,
+      type: props.type,
+   };
+   dropDown.childClick(instance, event);
+   emit("click", event);
+};
+
+/** 当前值变化时同步激活状态 */
+watch(() => props.value, (): void => {
+   syncActive();
+}, { immediate: true });
+
+/** 外部展开状态变化时同步内部状态 */
+watch((): boolean => props.isDrop, (value: boolean): void => {
+   setDropped(value);
+});
+
+/** 挂载时注册到下拉筛选容器 */
+onMounted((): void => {
+   dropDown.register(instance);
+});
+
+/** 卸载时从下拉筛选容器注销 */
+onUnmounted((): void => {
+   dropDown.unregister(instance);
+});
+
+defineExpose({ setDropped });
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 下拉筛选菜单项
+.uvx-drop-down-item {
+   display: flex;
+   flex: 1;
+   min-width: 0;
+   height: 44px;
+   padding: 0 10px;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   overflow: visible;
+
+   // 按压反馈
+   &--hover {
+      background-color: var(--uvx-hover);
+   }
+
+   // 菜单文字
+   &__text {
+      flex-shrink: 1;
+      min-width: 0;
+      max-width: 100px;
+      margin-right: 5px;
+      overflow: hidden;
+      line-height: 1.2em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      /* #ifdef APP && !VUE3-VAPOR */
+      lines: 1;
+      /* #endif */
+   }
+
+   // 普通文字
+   &__text--normal {
+      color: var(--uvx-text-main);
+   }
+
+   // 激活文字
+   &__text--active {
+      color: var(--uvx-primary);
+   }
+}
+</style>

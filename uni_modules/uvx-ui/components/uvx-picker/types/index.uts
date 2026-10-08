@@ -1,0 +1,46 @@
+export type Item = string | number | UTSJSONObject;
+export type Column = Item[];
+export type Columns = Column[];
+
+export type Props = {
+   showToolbar: boolean;
+   title: string;
+   round: string | number;
+   columns: Columns;
+   loading: boolean;
+   itemHeight: number;
+   cancelText: string;
+   confirmText: string;
+   cancelColor: string;
+   confirmColor: string;
+   color: string;
+   activeColor: string;
+   visibleItemCount: number;
+   keyName: string;
+   closeOnClickOverlay: boolean;
+   closeOnClickConfirm: boolean;
+   defaultIndex: number[];
+   uStyle: string;
+   uClass: string;
+};
+
+export type ChangeEvent = {
+   value: Item[];
+   index: number;
+   indexs: number[];
+   values: Columns;
+   columnIndex: number;
+};
+
+export type ConfirmEvent = {
+   indexs: number[];
+   innerIndex: Item[];
+   values: Columns;
+};
+
+export type Emits = {
+   confirm: [event: ConfirmEvent];
+   cancel: [];
+   close: [];
+   change: [event: ChangeEvent];
+};

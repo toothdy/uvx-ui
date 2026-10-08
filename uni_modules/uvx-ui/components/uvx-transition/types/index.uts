@@ -1,0 +1,13 @@
+export type Props = {
+   show: boolean;
+   mode: string;
+   duration: number;
+   easing: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [detail: boolean];
+   change: [detail: boolean];
+};

@@ -1,0 +1,144 @@
+@use 'sass:map';
+@import '../../theme.scss';
+
+$uvx-colors: (
+	/* 表面 / 容器 */
+	'page':             ('light': $uvx-page, 'dark': $uvx-page-dark),
+	'container':        ('light': $uvx-container, 'dark': $uvx-container-dark),
+	'hover':            ('light': $uvx-hover, 'dark': $uvx-hover-dark),
+
+	/* 文本 */
+	'text-main':        ('light': $uvx-text-main,        'dark': $uvx-text-main-dark),
+	'text-content':     ('light': $uvx-text-content,     'dark': $uvx-text-content-dark),
+	'text-tips':        ('light': $uvx-text-tips,        'dark': $uvx-text-tips-dark),
+	'text-placeholder': ('light': $uvx-text-placeholder, 'dark': $uvx-text-placeholder-dark),
+	/* 边框 / 禁用 */
+	'border':           ('light': $uvx-border,           'dark': $uvx-border-dark),
+	'switch-border':    ('light': rgba(0, 0, 0, 0.12),   'dark': rgba(255, 255, 255, 0.12)),
+	'shadow':           ('light': rgba(0, 0, 0, 0.25),   'dark': rgba(255, 255, 255, 0.25)),
+	'disabled':         ('light': $uvx-disabled,         'dark': $uvx-disabled-dark),
+
+	'primary':          ('light': $uvx-primary, 'dark': $uvx-primary-dark),
+	'warning':          ('light': $uvx-warning, 'dark': $uvx-warning-dark),
+	'success':          ('light': $uvx-success, 'dark': $uvx-success-dark),
+	'error':            ('light': $uvx-error,   'dark': $uvx-error-dark),
+	'info':             ('light': $uvx-info,    'dark': $uvx-info-dark),
+);
+
+// 单行文本基础规则，所有平台都需要可收缩的宽度
+.uvx-line-1 {
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+   white-space: nowrap;
+   text-overflow: ellipsis;
+}
+
+/* #ifdef WEB || MP */
+@for $i from 2 through 5 {
+   .uvx-line-#{$i} {
+      display: -webkit-box !important;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-all;
+      -webkit-line-clamp: $i;
+      -webkit-box-orient: vertical !important;
+   }
+}
+/* #endif */
+
+/* #ifdef APP && !VUE3-VAPOR */
+@for $i from 1 through 5 {
+   .uvx-line-#{$i} {
+      // 非蒸汽 App 使用 lines 控制最大行数
+      lines: $i;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+   }
+}
+/* #endif */
+
+$border-directions: (
+   '': (
+      'width': 'border-width',
+      'style': 'border-style',
+   ),
+   '-top': (
+      'width': 'border-top-width',
+      'style': 'border-top-style',
+   ),
+   '-left': (
+      'width': 'border-left-width',
+      'style': 'border-left-style',
+   ),
+   '-right': (
+      'width': 'border-right-width',
+      'style': 'border-right-style',
+   ),
+   '-bottom': (
+      'width': 'border-bottom-width',
+      'style': 'border-bottom-style',
+   ),
+);
+
+@each $direction, $props in $border-directions {
+   .uvx-border#{$direction} {
+      #{map.get($props, 'width')}: 0.5px !important;
+      border-color: var(--uvx-border) !important;
+      #{map.get($props, 'style')}: solid;
+   }
+}
+
+.uvx-light {
+	@each $name, $val in $uvx-colors {
+		--uvx-#{$name}: #{map.get($val, 'light')};
+	}
+}
+
+.uvx-dark {
+	@each $name, $val in $uvx-colors {
+		--uvx-#{$name}: #{map.get($val, 'dark')};
+	}
+}
+
+.uvx-border-top-bottom {
+   border-top-width: 0.5px !important;
+   border-bottom-width: 0.5px !important;
+   border-color: var(--uvx-border) !important;
+   border-top-style: solid;
+   border-bottom-style: solid;
+}
+
+// 去除button的所有默认样式
+.uvx-reset-button {
+   padding: 0;
+   background-color: transparent;
+   /* #ifdef WEB || MP */
+   border: none;
+   outline: none;
+   font-size: inherit;
+   line-height: inherit;
+   color: inherit;
+   -webkit-appearance: none;
+   -moz-appearance: none;
+   appearance: none;
+   -webkit-tap-highlight-color: transparent;
+   /* #endif */
+   /* #ifdef APP */
+   border-width: 0;
+   /* #endif */
+}
+
+/* #ifdef WEB || MP */
+.uvx-reset-button::after {
+   border: none !important;
+}
+/* #endif */
+
+.uvx-hover-class {
+   opacity: 0.7;
+}

@@ -1,0 +1,186 @@
+<template>
+   <view
+      v-if="show"
+      class="uvx-toolbar"
+      :class="[showBorder ? 'uvx-border-bottom' : '', uClass]"
+      :style="toolbarStyle"
+      <!-- #ifdef APP-HARMONY -->
+      @touchmove.stop="handleTouchMove"
+      <!-- #else -->
+      @touchmove.stop.prevent="handleTouchMove"
+      <!-- #endif -->
+   >
+      <!-- 取消操作 -->
+      <view
+         class="uvx-toolbar__action"
+         :hover-class="showCancel ? 'uvx-hover-class' : 'none'"
+         @click="handleCancel"
+      >
+         <text
+            v-if="showCancel"
+            class="uvx-toolbar__action-text uvx-toolbar__action-text--cancel"
+            :style="cancelStyle"
+         >{{ cancelText }}</text>
+      </view>
+      <!-- 标题 -->
+      <text class="uvx-toolbar__title uvx-line-1">{{ title }}</text>
+      <!-- 确认操作 -->
+      <view
+         class="uvx-toolbar__action"
+         :hover-class="showConfirm ? 'uvx-hover-class' : 'none'"
+         @click="handleConfirm"
+      >
+         <text
+            v-if="showConfirm"
+            class="uvx-toolbar__action-text uvx-toolbar__action-text--confirm"
+            :style="confirmStyle"
+         >{{ confirmText }}</text>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-toolbar 工具栏
+ * @description 为选择器等组件提供标题、取消和确认操作。
+ * @tutorial https://www.uvxui.cn/components/toolbar.html
+ * @property {Boolean} show 是否显示工具栏，默认 true
+ * @property {Boolean} showBorder 是否显示底部边框，默认 false
+ * @property {Boolean} showCancel 是否显示取消按钮，默认 true
+ * @property {Boolean} showConfirm 是否显示确认按钮，默认 true
+ * @property {String} cancelText 取消按钮文字，默认 取消
+ * @property {String} confirmText 确认按钮文字，默认 确认
+ * @property {String} cancelColor 取消按钮颜色，默认跟随主题
+ * @property {String} confirmColor 确认按钮颜色，默认跟随主题
+ * @property {String} title 标题文字
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} cancel 点击取消按钮时触发
+ * @event {Function} confirm 点击确认按钮时触发
+ * @example <uvx-toolbar title="请选择" @cancel="cancel" @confirm="confirm"></uvx-toolbar>
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-toolbar", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   show: true,
+   showBorder: false,
+   showCancel: true,
+   showConfirm: true,
+   cancelText: t("取消"),
+   confirmText: t("确定"),
+   cancelColor: "",
+   confirmColor: "",
+   title: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 工具栏操作事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 工具栏样式
+ * @returns UTSJSONObject
+ */
+const toolbarStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 取消文字自定义样式
+ * @returns UTSJSONObject
+ */
+const cancelStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.cancelColor)) style.set("color", props.cancelColor);
+   return style;
+});
+
+/**
+ * 确认文字自定义样式
+ * @returns UTSJSONObject
+ */
+const confirmStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.confirmColor)) style.set("color", props.confirmColor);
+   return style;
+});
+
+/**
+ * 发送取消事件
+ * @returns null
+ */
+const handleCancel = (): void => {
+   if (!props.showCancel) return;
+   emit("cancel");
+};
+
+/**
+ * 发送确认事件
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   if (!props.showConfirm) return;
+   emit("confirm");
+};
+
+/**
+ * 阻止触摸移动穿透
+ * @returns null
+ */
+const handleTouchMove = (): void => {};
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 工具栏容器
+.uvx-toolbar {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: space-between;
+   box-sizing: border-box;
+   width: 100%;
+   height: 44px;
+   background-color: var(--uvx-container);
+
+   // 两侧操作区
+   &__action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      height: 44px;
+
+      &-text {
+         padding: 0 15px;
+         font-size: 15px;
+         line-height: 44px;
+
+         &--cancel {
+            color: var(--uvx-text-tips);
+         }
+
+         &--confirm {
+            color: var(--uvx-primary);
+         }
+      }
+   }
+
+   // 居中标题
+   &__title {
+      color: var(--uvx-text-main);
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 44px;
+      padding: 0 45px;
+      text-align: center;
+   }
+}
+</style>

@@ -1,0 +1,160 @@
+<template>
+   <uvx-page>
+      <!-- #ifdef APP -->
+      <scroll-view class="album-page-scroll">
+      <!-- #endif -->
+         <view class="uvx-page-demo album-page">
+            <!-- 基础使用 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="基础使用"></uvx-text>
+               </view>
+               <view class="album-page__card">
+                  <view class="album-page__avatar">
+                     <uvx-image src="/static/logo.jpeg" :width="32" :height="32"></uvx-image>
+                  </view>
+                  <view class="album-page__content">
+                     <uvx-text text="uvx-ui" type="primary" bold :size="17"></uvx-text>
+                     <uvx-text
+                        text="跨平台原生渲染组件库，提供常用组件和统一的主题能力。"
+                        type="content"
+                        margin="0 0 8px 0"
+                     ></uvx-text>
+                     <uvx-album :urls="SINGLE_OBJECT_IMAGES" key-name="src2"></uvx-album>
+                  </view>
+               </view>
+            </view>
+
+            <!-- 多图模式 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="多图模式"></uvx-text>
+               </view>
+               <view class="album-page__card">
+                  <view class="album-page__avatar">
+                     <uvx-image src="/static/logo.jpeg" :width="32" :height="32"></uvx-image>
+                  </view>
+                  <view class="album-page__content">
+                     <uvx-text text="uvx-ui" type="primary" bold :size="17"></uvx-text>
+                     <uvx-text
+                        text="超过最大展示数量时，最后一张图片会显示剩余图片数量。"
+                        type="content"
+                        margin="0 0 8px 0"
+                     ></uvx-text>
+                     <uvx-album :urls="MULTIPLE_IMAGES" :multiple-size="90"></uvx-album>
+                  </view>
+               </view>
+            </view>
+
+            <!-- 图文对齐 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="图文对齐"></uvx-text>
+               </view>
+               <view class="album-page__card">
+                  <view class="album-page__avatar">
+                     <uvx-image src="/static/logo.jpeg" :width="32" :height="32"></uvx-image>
+                  </view>
+                  <view class="album-page__content">
+                     <uvx-text text="uvx-ui" type="primary" bold :size="17"></uvx-text>
+                     <uvx-text
+                        text="文字容器宽度通过 albumWidth 事件与相册首行宽度保持一致。"
+                        type="content"
+                        block
+                        word-wrap="break-word"
+                        margin="0 0 8px 0"
+                        :u-style="alignedTextStyle"
+                     ></uvx-text>
+                     <uvx-album
+                        :urls="MULTIPLE_IMAGES"
+                        :multiple-size="68"
+                        @album-width="handleAlbumWidth"
+                     ></uvx-album>
+                  </view>
+               </view>
+            </view>
+
+         </view>
+      <!-- #ifdef APP -->
+      </scroll-view>
+      <!-- #endif -->
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Item } from "@/uni_modules/uvx-ui/components/uvx-album/types/index.uts";
+
+// 图文对齐宽度
+const albumWidth = ref(0);
+
+// 对象地址单图
+const SINGLE_OBJECT_IMAGES: Item[] = [
+   { src2: "https://cdn.uviewui.com/uview/album/1.jpg" },
+];
+
+// 多图相册
+const MULTIPLE_IMAGES: Item[] = [
+   "https://cdn.uviewui.com/uview/album/1.jpg",
+   "https://cdn.uviewui.com/uview/album/2.jpg",
+   "https://cdn.uviewui.com/uview/album/3.jpg",
+   "https://cdn.uviewui.com/uview/album/4.jpg",
+   "https://cdn.uviewui.com/uview/album/5.jpg",
+   "https://cdn.uviewui.com/uview/album/6.jpg",
+   "https://cdn.uviewui.com/uview/album/7.jpg",
+   "https://cdn.uviewui.com/uview/album/8.jpg",
+   "https://cdn.uviewui.com/uview/album/9.jpg",
+   "https://cdn.uviewui.com/uview/album/10.jpg",
+];
+
+/**
+ * 图文对齐容器样式
+ * @returns string
+ */
+const alignedTextStyle = computed((): string => {
+   return `width: ${albumWidth.value}px;`;
+});
+
+/**
+ * 更新相册宽度
+ * @param width 相册宽度
+ * @returns null
+ */
+const handleAlbumWidth = (width: number): void => {
+   albumWidth.value = width;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// App 页面滚动容器
+.album-page-scroll {
+   flex: 1;
+}
+
+// 相册演示页面
+.album-page {
+   padding-bottom: 20px;
+}
+
+// 图文相册卡片
+.album-page__card {
+   display: flex;
+   flex-direction: row;
+   align-items: flex-start;
+}
+
+// 头像容器
+.album-page__avatar {
+   padding: 5px;
+   border-radius: 3px;
+   background-color: var(--uvx-container);
+}
+
+// 图文内容区域
+.album-page__content {
+   flex: 1;
+   margin-left: 10px;
+}
+
+</style>

@@ -1,0 +1,105 @@
+<template>
+   <uvx-page ref="uPage">
+         <!-- Toast 演示列表 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               title-style="font-weight: 500;"
+               :icon="item.iconUrl"
+               :is-link="true"
+               @click="handleShow(item)"
+            ></uvx-cell>
+         </uvx-cell-group>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   Options,
+   Position,
+   Type,
+} from "@/uni_modules/uvx-ui/components/uvx-toast/types/index.uts";
+
+type ToastDemoItem = {
+   type: Type;
+   position: Position;
+   title: string;
+   message: string;
+   url: string;
+   iconUrl: string;
+};
+
+// Toast 演示项
+const demoItems: ToastDemoItem[] = [
+   {
+      type: "default",
+      position: "center",
+      title: "默认主题",
+      message: "锦瑟无端五十弦",
+      url: "",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/toast/default.png",
+   },
+   {
+      type: "error",
+      position: "center",
+      title: "失败主题",
+      message: "一弦一柱思华年",
+      url: "",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/toast/error.png",
+   },
+   {
+      type: "success",
+      position: "center",
+      title: "成功主题(带图标)",
+      message: "庄生晓梦迷蝴蝶",
+      url: "",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/toast/success.png",
+   },
+   {
+      type: "warning",
+      position: "top",
+      title: "位置偏移上方",
+      message: "望帝春心托杜鹃",
+      url: "",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/toast/top.png",
+   },
+   {
+      type: "loading",
+      position: "center",
+      title: "正在加载",
+      message: "正在加载",
+      url: "",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/toast/loading.png",
+   },
+   {
+      type: "default",
+      position: "center",
+      title: "结束后跳转标签页",
+      message: "此情可待成追忆",
+      url: "/pages/basic/text/text",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/toast/jump.png",
+   },
+];
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+/**
+ * 显示选中的 Toast
+ * @param item 演示项
+ * @returns null
+ */
+const handleShow = (item: ToastDemoItem): void => {
+   const options: Options = {
+      type: item.type,
+      position: item.position,
+      message: item.message,
+      url: item.url
+   };
+   uPage.value?.toast(options);
+};
+</script>
+
+<style lang="scss">
+</style>

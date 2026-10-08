@@ -1,0 +1,16 @@
+import type { Mode } from "../../uvx-loading-icon/types/index.uts";
+
+/** 加载页属性 */
+export type Props = {
+   loading: boolean;
+   loadingText: string | number;
+   image: string;
+   loadingMode: Mode;
+   bgColor: string;
+   color: string;
+   fontSize: string | number;
+   iconSize: string | number;
+   loadingColor: string;
+   duration: number;
+   uStyle: string;
+};

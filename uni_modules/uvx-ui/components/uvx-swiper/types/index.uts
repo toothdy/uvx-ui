@@ -1,0 +1,50 @@
+// swiper-indicator 已占用 Mode,图片裁剪模式以 ImageMode 别名导入
+import type { Mode as ImageMode } from "../../uvx-image/types/index.uts";
+import type { Mode } from "../../uvx-swiper-indicator/types/index.uts";
+
+export type Item = string | UTSJSONObject;
+export type ItemType = "image" | "video";
+export type EasingFunction = "default" | "linear" | "easeInCubic" | "easeOutCubic" | "easeInOutCubic";
+export type Style = string;
+
+export type Props = {
+   list: Item[];
+   indicator: boolean;
+   indicatorActiveColor: string;
+   indicatorInactiveColor: string;
+   indicatorStyle: Style;
+   indicatorMode: Mode;
+   autoplay: boolean;
+   current: string | number;
+   currentItemId: string;
+   interval: string | number;
+   duration: string | number;
+   circular: boolean;
+   vertical: boolean;
+   previousMargin: string | number;
+   nextMargin: string | number;
+   acceleration: boolean;
+   displayMultipleItems: number;
+   easingFunction: EasingFunction;
+   keyName: string;
+   imgMode: ImageMode;
+   height: string | number;
+   bgColor: string;
+   radius: string | number;
+   loading: boolean;
+   showTitle: boolean;
+   titleStyle: Style;
+   uStyle: string;
+   uClass: string;
+};
+
+export type ChangeEvent = {
+   current: number;
+   currentItemId: string;
+   source: string;
+};
+
+export type Emits = {
+   click: [item: Item, index: number];
+   change: [event: ChangeEvent];
+};

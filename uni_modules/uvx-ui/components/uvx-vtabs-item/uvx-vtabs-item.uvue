@@ -1,0 +1,115 @@
+<template>
+   <!-- 垂直选项卡内容项 -->
+   <view
+      ref="itemElement"
+      class="uvx-vtabs-item"
+      :class="props.uClass"
+      :style="itemStyle"
+   >
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-vtabs-item 垂直选项卡内容项
+ * @description 配合 uvx-vtabs 使用，负责承载并上报单个分类内容的布局。
+ * @tutorial https://www.uvxui.cn/components/vtabs.html
+ * @property {String | Number} index 内容项下标
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @slot default 内容项主体
+ * @example <uvx-vtabs-item :index="0">...</uvx-vtabs-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Context } from "../uvx-vtabs/types/index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-vtabs-item",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   index: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 父级垂直选项卡上下文
+const vtabs = inject<Context | null>("uvx-vtabs-context", null);
+if (vtabs == null) throw new Error("uvx-vtabs-item 必须在 uvx-vtabs 内使用");
+// 内容项根节点
+const itemElement = ref<UniElement | null>(null);
+
+/**
+ * 内容项根节点样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 获取有效内容项下标
+ * @returns number
+ */
+const getIndex = (): number => {
+   const value = Number(props.index);
+   return Number.isNaN(value) ? -1 : Math.floor(value);
+};
+
+/**
+ * 测量内容项布局并上报父组件
+ * @returns null
+ */
+const measure = (): void => {
+   const element = itemElement.value;
+   if (element == null) return;
+   const promise = element.getBoundingClientRectAsync();
+   if (promise == null) return;
+   promise.then((rect: DOMRect): void => {
+      vtabs.updateLayout(instance, rect.top, rect.height);
+   });
+};
+
+/** 内容项下标变化后刷新父级布局 */
+watch(() => props.index, (): void => {
+   vtabs.init();
+});
+
+/** 内容项样式变化后刷新父级布局 */
+watch((): string => props.uStyle, (): void => {
+   vtabs.init();
+});
+
+/** 挂载后注册并测量内容项 */
+onMounted((): void => {
+   vtabs.register(instance);
+   nextTick((): void => {
+      measure();
+   });
+});
+
+/** 卸载时注销内容项 */
+onUnmounted((): void => {
+   vtabs.unregister(instance);
+});
+
+defineExpose({ getIndex, measure });
+</script>
+
+<style lang="scss">
+// 垂直选项卡内容项
+.uvx-vtabs-item {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   flex-shrink: 0;
+   overflow: visible;
+}
+</style>

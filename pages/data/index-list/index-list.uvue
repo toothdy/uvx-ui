@@ -1,0 +1,229 @@
+<template>
+   <uvx-page direction="none">
+      <uvx-index-list
+         :index-list="INDEX_LIST"
+         @select="handleSelect"
+      >
+         <template #header>
+            <!-- 常用联系人入口 -->
+            <view class="index-list-demo__list">
+               <view
+                  v-for="(item, index) in QUICK_LINKS"
+                  :key="index"
+                  class="index-list-demo__item"
+               >
+                  <uvx-avatar
+                     shape="square"
+                     :size="35"
+                     :icon="item.icon"
+                     :font-size="26"
+                     :random-bg-color="true"
+                     color="#ffffff"
+                  ></uvx-avatar>
+                  <text class="index-list-demo__name">{{ item.name }}</text>
+               </view>
+               <uvx-line></uvx-line>
+            </view>
+         </template>
+
+         <!-- 索引分组 -->
+         <uvx-index-item
+            v-for="(group, groupIndex) in CONTACT_GROUPS"
+            :key="groupIndex"
+            :index="group.index"
+         >
+            <uvx-index-anchor :text="group.index"></uvx-index-anchor>
+            <view class="index-list-demo__list">
+               <view
+                  v-for="(contact, contactIndex) in group.contacts"
+                  :key="contactIndex"
+                  class="index-list-demo__contact"
+               >
+                  <image
+                     class="index-list-demo__avatar"
+                     :src="contact.imageUrl"
+                     mode="aspectFill"
+                  ></image>
+                  <text class="index-list-demo__name">{{ contact.name }}</text>
+               </view>
+               <uvx-line></uvx-line>
+            </view>
+         </uvx-index-item>
+
+         <template #footer>
+            <!-- 联系人数量 -->
+            <view class="index-list-demo__footer">
+               <text class="index-list-demo__footer-text">共 {{ CONTACT_COUNT }} 位好友</text>
+            </view>
+            <uvx-safe-bottom></uvx-safe-bottom>
+         </template>
+      </uvx-index-list>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Value } from "@/uni_modules/uvx-ui/components/uvx-index-list/types/index.uts";
+
+type QuickLink = {
+   name: string;
+   icon: string;
+};
+
+type Contact = {
+   name: string;
+   imageUrl: string;
+};
+
+type ContactGroup = {
+   index: Value;
+   contacts: Contact[];
+};
+
+// 常用联系人入口
+const QUICK_LINKS: QuickLink[] = [
+   { name: "新的朋友", icon: "weixin-fill" },
+   { name: "标签", icon: "tags-fill" },
+   { name: "朋友圈", icon: "moments-circel-fill" },
+   { name: "QQ", icon: "qq-fill" },
+];
+
+// 联系人姓名候选值
+const CONTACT_NAMES: string[] = [
+   "勇往无敌",
+   "疯狂的迪飙",
+   "磊爱可",
+   "梦幻梦幻梦",
+   "枫中飘瓢",
+   "飞翔天使",
+   "曾经第一",
+   "追风幻影族长",
+   "麦小姐",
+   "胡格罗雅",
+];
+
+// 联系人头像候选值
+const CONTACT_IMAGES: string[] = [
+   "https://cdn.uviewui.com/uview/album/1.jpg",
+   "https://cdn.uviewui.com/uview/album/2.jpg",
+   "https://cdn.uviewui.com/uview/album/3.jpg",
+   "https://cdn.uviewui.com/uview/album/4.jpg",
+   "https://cdn.uviewui.com/uview/album/5.jpg",
+   "https://cdn.uviewui.com/uview/album/6.jpg",
+   "https://cdn.uviewui.com/uview/album/7.jpg",
+   "https://cdn.uviewui.com/uview/album/8.jpg",
+];
+
+/**
+ * 生成演示索引
+ * @returns Value[]
+ */
+const createIndexList = (): Value[] => {
+   const values: Value[] = ["↑", "☆"];
+   const firstCode = "A".charCodeAt(0);
+   for (let index = 0; index < 26; index++) {
+      values.push(String.fromCharCode(firstCode + index));
+   }
+   values.push("#");
+   return values;
+};
+
+// 演示索引列表
+const INDEX_LIST = createIndexList();
+
+/**
+ * 生成联系人分组
+ * @param indexes 索引列表
+ * @returns ContactGroup[]
+ */
+const createContactGroups = (indexes: Value[]): ContactGroup[] => {
+   const groups: ContactGroup[] = [];
+   for (let groupIndex = 0; groupIndex < indexes.length; groupIndex++) {
+      const contacts: Contact[] = [];
+      for (let contactIndex = 0; contactIndex < 3; contactIndex++) {
+         const dataIndex = groupIndex * 3 + contactIndex;
+         contacts.push({
+            name: CONTACT_NAMES[dataIndex % CONTACT_NAMES.length],
+            imageUrl: CONTACT_IMAGES[dataIndex % CONTACT_IMAGES.length],
+         } as Contact);
+      }
+      groups.push({ index: indexes[groupIndex], contacts } as ContactGroup);
+   }
+   return groups;
+};
+
+// 联系人分组
+const CONTACT_GROUPS = createContactGroups(INDEX_LIST);
+// 联系人总数
+const CONTACT_COUNT = CONTACT_GROUPS.length * 3;
+
+/**
+ * 处理索引选择
+ * @param index 索引下标
+ * @param value 索引值
+ * @returns null
+ */
+const handleSelect = (index: number, value: Value): void => {
+   console.log("选中索引", index, value);
+};
+</script>
+
+<style lang="scss">
+// 联系人列表
+.index-list-demo__list {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   background-color: var(--uvx-page);
+}
+
+// 常用联系人项
+.index-list-demo__item {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   min-height: 48px;
+   padding: 6px 12px;
+}
+
+// 联系人项
+.index-list-demo__contact {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   min-height: 48px;
+   padding: 6px 12px;
+}
+
+// 联系人头像
+.index-list-demo__avatar {
+   width: 35px;
+   height: 35px;
+   flex-shrink: 0;
+   border-radius: 3px;
+}
+
+// 联系人名称
+.index-list-demo__name {
+   margin-left: 10px;
+   color: var(--uvx-text-main);
+   font-size: 16px;
+   line-height: 1.2em;
+}
+
+// 联系人统计
+.index-list-demo__footer {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   min-height: 48px;
+}
+
+// 联系人统计文字
+.index-list-demo__footer-text {
+   color: var(--uvx-text-tips);
+   font-size: 14px;
+   line-height: 1.2em;
+   text-align: center;
+}
+</style>

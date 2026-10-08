@@ -1,0 +1,192 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo subsection-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-subsection
+                  :list="LIST"
+                  mode="subsection"
+                  :current="current1"
+                  @change="handleChange1"
+               ></uvx-subsection>
+            </view>
+         </view>
+
+         <!-- 按钮模式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="按钮模式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-subsection
+                  :list="LIST"
+                  mode="button"
+                  :current="current2"
+                  @change="handleChange2"
+               ></uvx-subsection>
+            </view>
+         </view>
+
+         <!-- 更换主题 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="更换主题"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-subsection
+                  :list="LIST"
+                  mode="subsection"
+                  :current="current3"
+                  active-color="#f56c6c"
+                  @change="handleChange3"
+               ></uvx-subsection>
+            </view>
+         </view>
+
+         <!-- 默认位置 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="默认位置"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-subsection
+                  :list="LIST"
+                  mode="button"
+                  :current="current4"
+                  active-color="#f9ae3d"
+                  @change="handleChange4"
+               ></uvx-subsection>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-subsection
+                  :list="LIST"
+                  :current="current5"
+                  :font-size="14"
+                  u-style="border-radius: 22px;"
+                  u-item-style="border-radius: 19px;"
+                  @change="handleChange5"
+               ></uvx-subsection>
+            </view>
+         </view>
+
+         <!-- 在弹层中使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="在其他组件中使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-button type="primary" text="打开" @click="handleOpen"></uvx-button>
+            </view>
+         </view>
+      </view>
+
+      <uvx-popup ref="uPopup" mode="bottom" :round="10">
+         <view class="subsection-demo__popup">
+            <uvx-subsection
+               :list="LIST"
+               :current="current1"
+               mode="subsection"
+               @change="handleChange1"
+            ></uvx-subsection>
+         </view>
+      </uvx-popup>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Item } from "@/uni_modules/uvx-ui/components/uvx-subsection/types/index.uts";
+
+// 演示选项
+const LIST: Item[] = ["未付款", "已付款", "待评价"];
+
+// 各示例当前选项
+const current1 = ref(0);
+const current2 = ref(0);
+const current3 = ref(0);
+const current4 = ref(1);
+const current5 = ref(0);
+// 弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+
+/**
+ * 更新基础示例选项
+ * @param index 选项索引
+ * @returns null
+ */
+const handleChange1 = (index: number): void => {
+   current1.value = index;
+};
+
+/**
+ * 更新按钮示例选项
+ * @param index 选项索引
+ * @returns null
+ */
+const handleChange2 = (index: number): void => {
+   current2.value = index;
+};
+
+/**
+ * 更新主题示例选项
+ * @param index 选项索引
+ * @returns null
+ */
+const handleChange3 = (index: number): void => {
+   current3.value = index;
+};
+
+/**
+ * 更新默认位置示例选项
+ * @param index 选项索引
+ * @returns null
+ */
+const handleChange4 = (index: number): void => {
+   current4.value = index;
+};
+
+/**
+ * 更新自定义样式示例选项
+ * @param index 选项索引
+ * @returns null
+ */
+const handleChange5 = (index: number): void => {
+   current5.value = index;
+};
+
+/**
+ * 打开弹层
+ * @returns null
+ */
+const handleOpen = (): void => {
+   uPopup.value?.open();
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 分段器演示页
+.subsection-demo {
+   // 弹层内容
+   &__popup {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-height: 120px;
+      padding: 20px;
+      box-sizing: border-box;
+      justify-content: center;
+   }
+}
+</style>

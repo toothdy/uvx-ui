@@ -1,0 +1,119 @@
+<template>
+	<uvx-page>
+		<view class="uvx-page-demo">
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="基础使用"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-row u-style="margin-bottom: 10px;">
+						<uvx-col :span="6">
+							<view class="demo-layout bg-purple-light"></view>
+						</uvx-col>
+						<uvx-col :span="6">
+							<view class="demo-layout bg-purple"></view>
+						</uvx-col>
+					</uvx-row>
+
+					<uvx-row u-style="margin-bottom: 10px;">
+						<uvx-col :span="4"><view class="demo-layout bg-purple"></view></uvx-col>
+						<uvx-col :span="4"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="4"><view class="demo-layout bg-purple-dark"></view></uvx-col>
+					</uvx-row>
+
+					<uvx-row justify="space-between">
+						<uvx-col :span="3"><view class="demo-layout bg-purple"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+					</uvx-row>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="分栏间隔"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-row justify="space-between" :gutter="10">
+						<uvx-col :span="3"><view class="demo-layout bg-purple"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+					</uvx-row>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="混合布局"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-row justify="space-between" :gutter="10">
+						<uvx-col :span="2"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="4"><view class="demo-layout bg-purple"></view></uvx-col>
+						<uvx-col :span="6"><view class="demo-layout bg-purple-dark"></view></uvx-col>
+					</uvx-row>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="分栏偏移"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-row justify="space-between" u-style="margin-bottom: 10px;">
+						<uvx-col :span="3" :offset="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="3" :offset="3"><view class="demo-layout bg-purple"></view></uvx-col>
+					</uvx-row>
+					<uvx-row>
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="3" :offset="3"><view class="demo-layout bg-purple"></view></uvx-col>
+					</uvx-row>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="对齐方式"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-row justify="space-between" u-style="margin-bottom: 10px;">
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple"></view></uvx-col>
+					</uvx-row>
+					<uvx-row>
+						<uvx-col :span="3"><view class="demo-layout bg-purple-light"></view></uvx-col>
+						<uvx-col :span="3"><view class="demo-layout bg-purple"></view></uvx-col>
+					</uvx-row>
+				</view>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup>
+</script>
+
+<style lang="scss" scoped>
+@import '@/common/demo.scss';
+
+.demo-layout {
+	height: 25px;
+	border-radius: 4px;
+	background: #ced7e1;
+}
+
+.bg-purple {
+	background: #ced7e1;
+}
+
+.bg-purple-light {
+	background: #e5e9f2;
+}
+
+.bg-purple-dark {
+	background: #99a9bf;
+}
+</style>
+

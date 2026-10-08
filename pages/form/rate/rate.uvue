@@ -1,0 +1,72 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="基本案例"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-page__tag-item"><uvx-rate :size="20"></uvx-rate></view>
+            </view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义选中星星数量"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-page__tag-item"><uvx-rate :size="20" v-model="value" @change="change"></uvx-rate></view>
+            </view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义星星大小"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-page__tag-item"><uvx-rate :size="30" :count="4"></uvx-rate></view>
+            </view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="是否禁用评分"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" disabled></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="是否只读评分"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" readonly></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义选中星星颜色"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" v-model="activeColorValue" active-color="#2979ff"></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义未选中星星颜色"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" v-model="value1" inactive-color="#2979ff"></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="禁止触摸选择"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" :touchable="false"></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="允许触摸选择"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" :touchable="true"></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="是否允许半星"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" v-model="halfValue" :touchable="true" :allow-half="true" @change="change"></uvx-rate></view></view>
+         </view>
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义选中的图标"></uvx-text></view>
+            <view class="uvx-demo-block__content"><view class="uvx-page__rate-item"><uvx-rate :size="20" v-model="activeIconValue" inactive-icon="heart" active-icon="heart-fill"></uvx-rate></view></view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+const value = ref(3);
+const value1 = ref(2);
+const activeColorValue = ref(3);
+const halfValue = ref(3.5);
+const activeIconValue = ref(3);
+
+const change = (value: number): void => {
+   console.log(value);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

@@ -1,0 +1,109 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tooltip-demo__content">
+               <uvx-tooltip :text="text1" :overlay="true"></uvx-tooltip>
+            </view>
+         </view>
+
+         <!-- 下方显示 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="下方显示"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tooltip-demo__content tooltip-demo__content--bottom">
+               <uvx-tooltip :text="text2" direction="bottom"></uvx-tooltip>
+            </view>
+         </view>
+
+         <!-- 扩展按钮 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="扩展按钮"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tooltip-demo__content">
+               <uvx-tooltip
+                  :text="text3"
+                  :buttons="buttons1"
+                  @click="handleClick"
+               ></uvx-tooltip>
+            </view>
+         </view>
+
+         <!-- 自动调整位置 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自动调整位置"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tooltip-demo__content">
+               <uvx-tooltip :text="text4" :buttons="buttons2"></uvx-tooltip>
+            </view>
+         </view>
+
+         <!-- 高亮选中文本背景色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="高亮选中文本背景色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tooltip-demo__content">
+               <uvx-tooltip
+                  :text="text5"
+                  :buttons="buttons3"
+                  bg-color="#9783F2"
+               ></uvx-tooltip>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基础提示文本
+const text1 = "长按文本，上方提示";
+// 下方提示文本
+const text2 = "长按文本，下方提示";
+// 单按钮提示文本
+const text3 = "显示多个扩展按钮";
+// 自动调整提示文本
+const text4 = "自动调整气泡位置";
+// 背景色提示文本
+const text5 = "长按文本，显示背景色";
+
+// 单按钮配置
+const buttons1 = ["扩展"];
+// 多按钮配置
+const buttons2 = ["扩展", "搜索", "翻译"];
+// 背景色场景按钮配置
+const buttons3 = ["扩展", "搜索", "翻译"];
+
+/**
+ * 处理扩展按钮点击
+ * @param index 按钮索引
+ * @returns null
+ */
+const handleClick = (index: number): void => {
+   console.log("Tooltip click", index);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// Tooltip 演示页面
+.tooltip-demo {
+   // 演示内容区域
+   &__content {
+      padding-top: 10px;
+
+      // 下方提示需要预留气泡空间
+      &--bottom {
+         padding-bottom: 30px;
+      }
+   }
+}
+</style>

@@ -1,0 +1,69 @@
+<template>
+	<view class="uvx-cell-group" :class="[uClass]" :style="$uvx.style.parse(uStyle)">
+		<view v-if="title" class="uvx-cell-group__title">
+			<slot name="title">
+				<text class="uvx-cell-group__title__text" :style="$uvx.style.parse(titleStyle)">
+					{{ title }}
+				</text>
+			</slot>
+		</view>
+		<view class="uvx-cell-group__wrapper">
+			<uvx-line v-if="border" />
+			<slot />
+		</view>
+	</view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-cell-group 单元格组
+ * @description 用于将多个cell组件进行分组,通常用于设置页面、个人中心等场景
+ * @tutorial https://www.uvxui.cn/components/cell.html
+ * @property {String} title 分组标题
+ * @property {Boolean}border 是否显示外边框 (默认 true)
+ * @property {String} titleStyle 标题样式
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * 
+ * @event {Function} click 	点击cell列表时触发
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Props } from './types/index.uts';
+
+defineOptions({ name: 'uvx-cell-group', options: { virtualHost: true }, externalClasses: ['u-class'] });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	title: '',
+	border: true,
+	titleStyle: "",
+	uStyle: "",
+	uClass: ''
+})
+</script>
+
+<style lang="scss">
+$uvx-cell-group-title-padding: 16px 16px 8px !default;
+$uvx-cell-group-title-font-size: 15px !default;
+$uvx-cell-group-title-line-height: 16px !default;
+
+.uvx-cell-group {
+	display: flex;
+
+	&__title {
+		padding: $uvx-cell-group-title-padding;
+		&__text {
+			font-size: $uvx-cell-group-title-font-size;
+			line-height: $uvx-cell-group-title-line-height;
+			color: var(--uvx-text-main);
+		}
+	}
+
+	&__wrapper {
+		position: relative;
+	}
+}
+</style>

@@ -1,0 +1,277 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo count-down-demo">
+         <!-- 基础用法 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础用法"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-count-down
+                  :time="basicTime"
+                  format="HH:mm:ss"
+                  :auto-start="true"
+                  :millisecond="true"
+                  @finish="handleFinish"
+               ></uvx-count-down>
+            </view>
+         </view>
+
+         <!-- 自定义格式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义格式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-count-down
+                  :time="customTime"
+                  format="DD:HH:mm:ss"
+                  :auto-start="true"
+                  :millisecond="true"
+                  @change="handleChange"
+               >
+                  <view class="count-down-demo__time">
+                     <text class="count-down-demo__time-item">{{ customData.days }} 天</text>
+                     <text class="count-down-demo__time-item">{{ formatUnit(customData.hours) }} 时</text>
+                     <text class="count-down-demo__time-item">{{ formatUnit(customData.minutes) }} 分</text>
+                     <text class="count-down-demo__time-item">{{ formatUnit(customData.seconds) }} 秒</text>
+                  </view>
+               </uvx-count-down>
+            </view>
+         </view>
+
+         <!-- 毫秒级渲染 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="毫秒级渲染"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-count-down
+                  :time="basicTime"
+                  format="HH:mm:ss:SSS"
+                  :auto-start="true"
+                  :millisecond="true"
+               ></uvx-count-down>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-count-down
+                  :time="basicTime"
+                  format="HH:mm:ss"
+                  :auto-start="true"
+                  :millisecond="true"
+                  @change="handleChange"
+               >
+                  <view class="count-down-demo__time">
+                     <view class="count-down-demo__custom">
+                        <text class="count-down-demo__custom-text">{{ formatUnit(customData.hours) }}</text>
+                     </view>
+                     <text class="count-down-demo__separator">:</text>
+                     <view class="count-down-demo__custom">
+                        <text class="count-down-demo__custom-text">{{ formatUnit(customData.minutes) }}</text>
+                     </view>
+                     <text class="count-down-demo__separator">:</text>
+                     <view class="count-down-demo__custom">
+                        <text class="count-down-demo__custom-text">{{ formatUnit(customData.seconds) }}</text>
+                     </view>
+                  </view>
+               </uvx-count-down>
+            </view>
+         </view>
+
+         <!-- 手动控制 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="手动控制"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-count-down
+                  ref="uCountDown"
+                  :time="manualTime"
+                  format="ss:SSS"
+                  :auto-start="false"
+                  :millisecond="true"
+               ></uvx-count-down>
+            </view>
+            <uvx-grid
+               :border="true"
+               custom-style="margin-top: 10px;"
+            >
+               <uvx-grid-item @click="handleReset">
+                  <view class="count-down-demo__grid-item">
+                     <uvx-icon name="reload" :size="22"></uvx-icon>
+                     <text class="count-down-demo__grid-text">重置</text>
+                  </view>
+               </uvx-grid-item>
+               <uvx-grid-item @click="handleStart">
+                  <view class="count-down-demo__grid-item">
+                     <view class="count-down-demo__circle">
+                        <uvx-icon color="#fff" name="play-right-fill" :size="22"></uvx-icon>
+                     </view>
+                     <text class="count-down-demo__grid-text">开始</text>
+                  </view>
+               </uvx-grid-item>
+               <uvx-grid-item @click="handlePause">
+                  <view class="count-down-demo__grid-item">
+                     <uvx-icon name="pause-circle" :size="22"></uvx-icon>
+                     <text class="count-down-demo__grid-text">暂停</text>
+                  </view>
+               </uvx-grid-item>
+            </uvx-grid>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { TimeData } from "@/uni_modules/uvx-ui/components/uvx-count-down/types/index.uts";
+
+// 基础倒计时时长
+const basicTime = ref(30 * 60 * 60 * 1000);
+// 自定义格式倒计时时长
+const customTime = ref(30 * 60 * 60 * 1000);
+// 手动控制倒计时时长
+const manualTime = ref(3 * 1000);
+// 自定义格式的时间数据
+const customData = ref<TimeData>({
+   days: 0,
+   hours: 0,
+   minutes: 0,
+   seconds: 0,
+   milliseconds: 0,
+});
+// 手动控制组件实例
+const uCountDown = ref<UvxCountDownComponentPublicInstance | null>(null);
+
+/**
+ * 补齐时间单位
+ * @param value 时间单位数值
+ * @returns string
+ */
+const formatUnit = (value: number): string => {
+   return value < 10 ? `0${value}` : value.toString();
+};
+
+/**
+ * 更新自定义格式数据
+ * @param data 倒计时数据
+ * @returns null
+ */
+const handleChange = (data: TimeData): void => {
+   customData.value = data;
+};
+
+/**
+ * 处理倒计时结束
+ * @returns null
+ */
+const handleFinish = (): void => {
+   console.log("count-down finish");
+};
+
+/**
+ * 开始手动倒计时
+ * @returns null
+ */
+const handleStart = (): void => {
+   uCountDown.value?.start();
+};
+
+/**
+ * 暂停手动倒计时
+ * @returns null
+ */
+const handlePause = (): void => {
+   uCountDown.value?.pause();
+};
+
+/**
+ * 重置手动倒计时
+ * @returns null
+ */
+const handleReset = (): void => {
+   uCountDown.value?.reset();
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 倒计时自定义内容
+.count-down-demo {
+   &__time {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+   }
+
+   // 自定义格式文本
+   &__time-item {
+      margin-right: 4px;
+      color: var(--uvx-text-content);
+      font-size: 15px;
+   }
+
+   // 自定义样式数字块
+   &__custom {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      margin-top: 4px;
+      border-radius: 4px;
+      background-color: var(--uvx-primary);
+   }
+
+   // 自定义样式数字
+   &__custom-text {
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 自定义样式分隔符
+   &__separator {
+      padding: 0 4px;
+      color: var(--uvx-primary);
+   }
+
+   // 手动控制网格项
+   &__grid-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 70px;
+      height: 70px;
+   }
+
+   // 开始按钮圆形背景
+   &__circle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 32px;
+      background-color: var(--uvx-primary);
+      box-shadow: 1px 1px 4px rgba(155, 191, 255, 0.7);
+   }
+
+   // 手动控制文字
+   &__grid-text {
+      margin-left: 6px;
+      color: var(--uvx-text-tips);
+      font-size: 14px;
+      line-height: 1.2em;
+   }
+}
+</style>

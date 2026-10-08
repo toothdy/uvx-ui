@@ -1,0 +1,111 @@
+<template>
+   <view
+      class="uvx-index-anchor"
+      :class="props.uClass"
+      :style="anchorStyle"
+   >
+      <text
+         class="uvx-index-anchor__text"
+         :style="textStyle"
+      >{{ props.text }}</text>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-index-anchor 索引分组锚点
+ * @description 搭配 uvx-index-list 和 uvx-index-item 展示分组标题。
+ * @tutorial https://www.uvxui.cn/components/index-list.html
+ * @property {String | Number} text 锚点文字
+ * @property {String} color 锚点文字颜色，空值时跟随主题
+ * @property {String | Number} size 锚点文字大小
+ * @property {String} bgColor 锚点背景颜色，空值时跟随主题
+ * @property {String | Number} height 锚点高度
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @example <uvx-index-anchor text="A"></uvx-index-anchor>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Context } from "../uvx-index-list/types/index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-index-anchor",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   text: "",
+   color: "",
+   size: 14,
+   bgColor: "",
+   height: 32,
+   uStyle: "",
+   uClass: "",
+});
+
+// 索引列表上下文
+const indexList = inject<Context | null>("uvx-index-list-context", null);
+if (indexList == null) throw new Error("uvx-index-anchor 必须在 uvx-index-list 内使用");
+
+/**
+ * 锚点容器样式
+ * @returns UTSJSONObject
+ */
+const anchorStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": $uvx.format.unit(props.height),
+   };
+   if (!$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 锚点文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.size),
+   };
+   if (!$uvx.string.empty(props.color)) {
+      style.set("color", props.color);
+   }
+   return style;
+});
+</script>
+
+<style lang="scss">
+// 索引锚点容器
+.uvx-index-anchor {
+   z-index: 1;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+   padding-left: 15px;
+   flex-shrink: 0;
+   overflow: hidden;
+   background-color: var(--uvx-container);
+}
+
+// 索引锚点文字
+.uvx-index-anchor__text {
+   width: 100%;
+   color: var(--uvx-text-content);
+   line-height: 1.2em;
+}
+
+/* #ifdef APP-IOS */
+// iOS 原生文字基线偏高，向下补偿避免文字被遮挡
+.uvx-index-anchor__text {
+   position: relative;
+   top: 1px;
+}
+/* #endif */
+</style>

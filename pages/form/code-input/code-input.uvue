@@ -1,0 +1,152 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="基础使用"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-code-input
+                  v-model="value1"
+                  :maxlength="4"
+                  @change="handleChange"
+                  @finish="handleFinish"
+               ></uvx-code-input>
+            </view>
+         </view>
+         <!-- 横线模式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="横线模式"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-code-input v-model="value2" mode="line" :maxlength="4" bold></uvx-code-input>
+            </view>
+         </view>
+         <!-- 设置长度 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="设置长度"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-code-input v-model="value3" :maxlength="6"></uvx-code-input>
+            </view>
+         </view>
+         <!-- 设置间距 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="设置间距"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-code-input v-model="value4" mode="box" :space="0" :maxlength="4"></uvx-code-input>
+            </view>
+         </view>
+         <!-- 细边框 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="细边框"></uvx-text></view>
+            <view class="uvx-demo-block__content code-input-demo-column">
+               <uvx-code-input v-model="value5" mode="box" :space="0" :maxlength="4" hairline></uvx-code-input>
+               <view class="code-input-demo-gap">
+                  <uvx-code-input v-model="value6" mode="line" :space="10" :maxlength="4" hairline></uvx-code-input>
+               </view>
+            </view>
+         </view>
+         <!-- 调整颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="调整颜色"></uvx-text></view>
+            <view class="uvx-demo-block__content code-input-demo-column">
+               <uvx-code-input
+                  v-model="value7"
+                  mode="box"
+                  :space="0"
+                  :maxlength="4"
+                  hairline
+                  color="#f56c6c"
+                  border-color="#f56c6c"
+               ></uvx-code-input>
+               <view class="code-input-demo-gap">
+                  <uvx-code-input
+                     v-model="value10"
+                     mode="line"
+                     size="30"
+                     :maxlength="4"
+                     hairline
+                     color="#3c9cff"
+                     border-color="#3c9cff"
+                  ></uvx-code-input>
+               </view>
+            </view>
+         </view>
+         <!-- 点模式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="点模式"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-code-input v-model="value8" mode="box" dot :space="0" :maxlength="4" hairline></uvx-code-input>
+            </view>
+         </view>
+         <!-- 预置内容 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="预置内容"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-code-input
+                  v-model="value9"
+                  mode="box"
+                  :space="0"
+                  :maxlength="4"
+                  hairline
+                  font-size="17"
+               ></uvx-code-input>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基础验证码
+const value1 = ref("");
+// 横线模式验证码
+const value2 = ref("");
+// 六位验证码
+const value3 = ref("");
+// 无间距验证码
+const value4 = ref("");
+// 细边框盒子模式
+const value5 = ref("");
+// 细边框横线模式
+const value6 = ref("");
+// 红色验证码
+const value7 = ref("");
+// 圆点验证码
+const value8 = ref("");
+// 预置验证码
+const value9 = ref("123");
+// 蓝色验证码
+const value10 = ref("34");
+
+/**
+ * 监听输入变化
+ * @param value 当前输入值
+ * @returns null
+ */
+const handleChange = (value: string): void => {
+   console.log("change", value);
+};
+
+/**
+ * 监听输入完成
+ * @param value 当前输入值
+ * @returns null
+ */
+const handleFinish = (value: string): void => {
+   console.log("finish", value);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 演示项之间的间距
+.code-input-demo-gap {
+   margin-top: 10px;
+}
+
+// 细边框和颜色示例纵向排列
+.code-input-demo-column {
+   flex-direction: column;
+   align-items: flex-start;
+}
+</style>

@@ -1,0 +1,232 @@
+<template>
+   <uvx-transition mode="fade" :show="isShown">
+      <view
+         class="uvx-alert"
+         :class="[
+            'uvx-alert--' + type + '--' + effect,
+            uClass,
+         ]"
+         :style="alertStyle"
+         @tap.stop="handleClick"
+      >
+         <!-- 状态图标 -->
+         <view v-if="showIcon" class="uvx-alert__icon">
+            <uvx-icon
+               :name="iconName"
+               :size="18"
+               :color="iconColor"
+            ></uvx-icon>
+         </view>
+
+         <!-- 提示内容 -->
+         <view class="uvx-alert__content">
+            <text
+               v-if="!$uvx.string.empty(title)"
+               class="uvx-alert__title"
+               :class="textClasses"
+               :style="textStyle"
+            >{{ title }}</text>
+            <text
+               v-if="!$uvx.string.empty(description)"
+               class="uvx-alert__description"
+               :class="textClasses"
+               :style="textStyle"
+            >{{ description }}</text>
+         </view>
+
+         <!-- 关闭按钮 -->
+         <view
+            v-if="closable"
+            class="uvx-alert__close"
+            @tap.stop="handleClose"
+         >
+            <uvx-icon name="close" :size="15" :color="iconColor"></uvx-icon>
+         </view>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-alert 警告提示
+ * @description 展现需要关注的信息，支持语义主题、图标和关闭操作。
+ * @tutorial https://www.uvxui.cn/components/alert.html
+ * @property {String} title 标题文字
+ * @property {String} type 语义主题，默认 warning
+ * @property {String} description 辅助说明文字
+ * @property {Boolean} closable 是否显示关闭按钮，默认 false
+ * @property {Boolean} showIcon 是否显示状态图标，默认 false
+ * @property {String} effect 色调，light 或 dark，默认 light
+ * @property {Boolean} center 文字是否居中，默认 false
+ * @property {String | Number} fontSize 文字字号，默认 14px
+ * @property {String} uStyle 自定义样式字符串
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击提示时触发，无参数
+ * @example <uvx-alert title="温馨提示" description="请检查输入" show-icon closable></uvx-alert>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-alert",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   title: "",
+   type: "warning",
+   description: "",
+   closable: false,
+   showIcon: false,
+   effect: "light",
+   center: false,
+   fontSize: 14,
+   uStyle: "",
+   uClass: "",
+});
+const emit = defineEmits<Emits>();
+
+// 当前实例是否显示
+const isShown = ref(true);
+
+/**
+ * 提示容器样式
+ * @returns UTSJSONObject
+ */
+const alertStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 文本样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("font-size", $uvx.format.unit(props.fontSize));
+   return style;
+});
+
+/**
+ * 文本状态类
+ * @returns string[]
+ */
+const textClasses = computed((): string[] => {
+   const classes: string[] = ["uvx-alert__text--" + props.type + "--" + props.effect];
+   if (props.center) classes.push("uvx-alert__text--center");
+   return classes;
+});
+
+/**
+ * 当前状态的图标名称
+ * @returns string
+ */
+const iconName = computed((): string => {
+   if (props.type == "success") return "checkmark-circle-fill";
+   if (props.type == "error") return "close-circle-fill";
+   if (props.type == "info") return "info-circle-fill";
+   if (props.type == "primary") return "more-circle-fill";
+   return "error-circle-fill";
+});
+
+/**
+ * 图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   return props.effect == "dark" ? "#ffffff" : props.type;
+});
+
+/**
+ * 处理提示点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click");
+};
+
+/**
+ * 关闭当前提示
+ * @returns null
+ */
+const handleClose = (): void => {
+   isShown.value = false;
+};
+</script>
+
+<style lang="scss">
+// 提示主体
+.uvx-alert {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+   box-sizing: border-box;
+   padding: 8px 10px;
+   border-radius: 4px;
+}
+
+// 图标与内容间距
+.uvx-alert__icon {
+   margin-right: 5px;
+}
+
+// 文本容器
+.uvx-alert__content {
+   flex: 1;
+   min-width: 0;
+}
+
+// 标题文字
+.uvx-alert__title {
+   font-weight: bold;
+   line-height: 1.2em;
+   margin-bottom: 2px;
+}
+
+// 辅助说明
+.uvx-alert__description {
+   line-height: 1.2em;
+}
+
+// 关闭按钮，放在正常布局中避免 App 端裁剪
+.uvx-alert__close {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   margin-left: 10px;
+}
+
+// 浅色提示背景
+.uvx-alert--primary--light { background-color: $uvx-primary-light; }
+.uvx-alert--success--light { background-color: $uvx-success-light; }
+.uvx-alert--warning--light { background-color: $uvx-warning-light; }
+.uvx-alert--error--light { background-color: $uvx-error-light; }
+.uvx-alert--info--light { background-color: $uvx-info-light; }
+
+// 深色提示背景
+.uvx-alert--primary--dark { background-color: var(--uvx-primary); }
+.uvx-alert--success--dark { background-color: var(--uvx-success); }
+.uvx-alert--warning--dark { background-color: var(--uvx-warning); }
+.uvx-alert--error--dark { background-color: var(--uvx-error); }
+.uvx-alert--info--dark { background-color: var(--uvx-info); }
+
+// 浅色提示文字
+.uvx-alert__text--primary--light { color: var(--uvx-primary); }
+.uvx-alert__text--success--light { color: var(--uvx-success); }
+.uvx-alert__text--warning--light { color: var(--uvx-warning); }
+.uvx-alert__text--error--light { color: var(--uvx-error); }
+.uvx-alert__text--info--light { color: var(--uvx-info); }
+
+// 深色提示文字
+.uvx-alert__text--primary--dark { color: #ffffff; }
+.uvx-alert__text--success--dark { color: #ffffff; }
+.uvx-alert__text--warning--dark { color: #ffffff; }
+.uvx-alert__text--error--dark { color: #ffffff; }
+.uvx-alert__text--info--dark { color: #ffffff; }
+
+// 居中文本
+.uvx-alert__text--center { text-align: center; }
+</style>

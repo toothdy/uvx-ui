@@ -1,0 +1,211 @@
+<template>
+   <!-- 空状态主体 -->
+   <view
+      v-if="show"
+      class="uvx-empty"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <!-- 自定义图片 -->
+      <image
+         v-if="isImageIcon"
+         class="uvx-empty__image"
+         :src="icon"
+         mode="widthFix"
+         :style="imageStyle"
+      ></image>
+
+      <!-- 预置或自定义字体图标 -->
+      <uvx-icon
+         v-else
+         :name="resolvedIconName"
+         :size="iconSize"
+         :color="iconColor"
+      ></uvx-icon>
+
+      <!-- 空状态提示 -->
+      <text class="uvx-empty__text" :style="textStyle">{{ displayText }}</text>
+
+      <!-- 附加操作内容 -->
+      <view class="uvx-empty__slot">
+         <slot></slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-empty 内容为空
+ * @description 用于首屏数据为空时展示预置图标、提示文字和可选操作内容。
+ * @tutorial https://www.uvxui.cn/components/empty.html
+ * @property {String} icon 自定义字体图标名、图片路径或 base64，默认空字符串
+ * @property {String} text 自定义提示文字，默认根据 mode 显示
+ * @property {String} textColor 提示文字颜色，默认跟随主题
+ * @property {String | Number} textSize 提示文字大小，默认 14
+ * @property {String} iconColor 字体图标颜色，默认跟随主题
+ * @property {String | Number} iconSize 字体图标大小，默认 90
+ * @property {String} mode 预置状态，默认 data
+ * @property {String | Number} width 自定义图片宽度，默认 160
+ * @property {String | Number} height 自定义图片高度，默认 160
+ * @property {Boolean} show 是否显示组件，默认 true
+ * @property {String | Number} marginTop 与上一个元素的距离，默认 0
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @slot default 提示文字下方的附加内容
+ * @example <uvx-empty mode="list"></uvx-empty>
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type { Mode, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-empty", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+/** 属性 */
+const props = withDefaults(defineProps<Props>(), {
+   icon: "",
+   text: "",
+   textColor: "",
+   textSize: 14,
+   iconColor: "",
+   iconSize: 90,
+   mode: "data",
+   width: 160,
+   height: 160,
+   show: true,
+   marginTop: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 获取预置字体图标名
+ * @param mode 空状态类型
+ * @returns string
+ */
+const getModeIconName = (mode: Mode): string => {
+   if (mode == "message" || mode == "comment") return "chat";
+   return `empty-${mode}`;
+};
+
+/**
+ * 获取预置提示文字
+ * @param mode 空状态类型
+ * @returns string
+ */
+const getModeText = (mode: Mode): string => {
+   switch (mode) {
+      case "car": return t("购物车为空");
+      case "page": return t("页面不存在");
+      case "search": return t("没有搜索结果");
+      case "address": return t("没有收货地址");
+      case "wifi-off": return t("没有WiFi");
+      case "order": return t("订单为空");
+      case "coupon": return t("没有优惠券");
+      case "favor": return t("暂无收藏");
+      case "permission": return t("无权限");
+      case "history": return t("无历史记录");
+      case "news": return t("无新闻列表");
+      case "message": return t("消息列表为空");
+      case "list": return t("列表为空");
+      case "comment": return t("暂无评论");
+      default: return t("数据为空");
+   }
+};
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "margin-top": $uvx.format.unit(props.marginTop),
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 自定义图标是否为图片
+ * @returns boolean
+ */
+const isImageIcon = computed((): boolean => {
+   const isBase64 = props.icon.indexOf("data:") > -1 && props.icon.indexOf("base64") > -1;
+   return props.icon.indexOf("/") > -1 || isBase64;
+});
+
+/**
+ * 当前字体图标名
+ * @returns string
+ */
+const resolvedIconName = computed((): string => {
+   return $uvx.string.empty(props.icon) ? getModeIconName(props.mode) : props.icon;
+});
+
+/**
+ * 当前提示文字
+ * @returns string
+ */
+const displayText = computed((): string => {
+   return $uvx.string.empty(props.text) ? getModeText(props.mode) : props.text;
+});
+
+/**
+ * 自定义图片样式
+ * @returns UTSJSONObject
+ */
+const imageStyle = computed((): UTSJSONObject => {
+   return {
+      "width": $uvx.format.unit(props.width),
+      "height": $uvx.format.unit(props.height),
+   };
+});
+
+/**
+ * 提示文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.textSize),
+   };
+   if (!$uvx.string.empty(props.textColor)) {
+      style.set("color", props.textColor);
+   }
+   return style;
+});
+</script>
+
+<style lang="scss">
+// 空状态主体
+.uvx-empty {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   width: 100%;
+   box-sizing: border-box;
+}
+
+// 自定义图片
+.uvx-empty__image {
+   display: flex;
+}
+
+// 空状态提示
+.uvx-empty__text {
+   margin-top: 10px;
+   color: var(--uvx-text-placeholder);
+   line-height: 1.2em;
+   text-align: center;
+}
+
+// 附加操作内容
+.uvx-empty__slot {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   margin-top: 10px;
+}
+</style>

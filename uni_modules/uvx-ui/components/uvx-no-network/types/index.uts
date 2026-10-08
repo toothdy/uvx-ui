@@ -1,0 +1,17 @@
+export type Props = {
+   // 无网络时的提示文案
+   tips: string;
+   // 组件层级，页面存在更高层级定位元素时可调大
+   zIndex: string | number;
+   // 无网络时展示的图标，支持内置图标名、图片地址与 base64
+   image: string;
+};
+
+export type Emits = {
+   // 点击重试按钮时触发
+   retry: [];
+   // 网络恢复连接时触发
+   connected: [];
+   // 网络断开时触发
+   disconnected: [];
+};

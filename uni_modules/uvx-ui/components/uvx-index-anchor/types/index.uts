@@ -1,0 +1,19 @@
+import type { Value } from "../../uvx-index-list/types/index.uts";
+
+/** 索引锚点属性 */
+export type Props = {
+   /** 锚点文字 */
+   text: Value;
+   /** 锚点文字颜色，空值时跟随主题 */
+   color: string;
+   /** 锚点文字大小 */
+   size: string | number;
+   /** 锚点背景颜色，空值时跟随主题 */
+   bgColor: string;
+   /** 锚点高度 */
+   height: string | number;
+   /** 根节点自定义样式 */
+   uStyle: string;
+   /** 根节点自定义类名 */
+   uClass: string;
+};

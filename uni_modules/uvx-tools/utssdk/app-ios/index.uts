@@ -1,0 +1,42 @@
+import { NSURL } from "Foundation";
+import { UIApplication } from "UIKit";
+
+import { AnimationCallback, OpenSystemSettings, StopAnimation } from "../interface.uts";
+import { startTimerAnimation, stopTimerAnimation } from "../common/animation.uts";
+
+/**
+ * 启动 iOS 定时器动画
+ * @param animationId 动画标识
+ * @param callback 动画回调
+ * @returns null
+ */
+@UTSJS.keepAlive
+export function startAnimation(
+   animationId: number,
+   callback: AnimationCallback,
+): void {
+   startTimerAnimation(animationId, callback);
+}
+
+/**
+ * 停止 iOS 定时器动画
+ * @param animationId 动画标识
+ * @returns null
+ */
+export const stopAnimation: StopAnimation = function (
+   animationId: number,
+): void {
+   stopTimerAnimation(animationId);
+};
+
+/**
+ * 打开 iOS 系统通用设置页
+ * @returns null
+ */
+export const openSystemSettings: OpenSystemSettings = (): void => {
+   // 私有 scheme 在部分系统版本可能仅打开设置首页
+   const URL_VALUE = new NSURL(string = "App-prefs:root=General");
+   if (URL_VALUE != null) {
+      UIApplication.shared.openURL(URL_VALUE! as URL);
+   }
+};

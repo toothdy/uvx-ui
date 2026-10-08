@@ -1,0 +1,222 @@
+<template>
+   <view
+      class="uvx-keyboard-number"
+      <!-- #ifdef APP-HARMONY -->
+      @touchmove.stop="handleTouchMove"
+      <!-- #else -->
+      @touchmove.stop.prevent="handleTouchMove"
+      <!-- #endif -->
+   >
+      <!-- 数字与身份证按键 -->
+      <view
+         v-for="(item, index) in numberKeys"
+         :key="index"
+         class="uvx-keyboard-number__key-wrapper"
+         :class="isWideKey(index) ? 'uvx-keyboard-number__key-wrapper--wide' : ''"
+      >
+         <view
+            class="uvx-keyboard-number__key"
+            hover-class="uvx-keyboard-number__key--active"
+            :hover-stay-time="200"
+            @click="handleKeyClick(item)"
+         >
+            <text class="uvx-keyboard-number__key-text">{{ item }}</text>
+         </view>
+      </view>
+
+      <!-- 退格按键 -->
+      <view class="uvx-keyboard-number__key-wrapper">
+         <view
+            class="uvx-keyboard-number__key uvx-keyboard-number__key--function"
+            hover-class="uvx-keyboard-number__key--active"
+            :hover-stay-time="200"
+            @touchstart.stop="handleBackspaceStart"
+            @touchend.stop="clearBackspaceTimer"
+            @touchcancel.stop="clearBackspaceTimer"
+         >
+            <uvx-icon name="backspace" color="main" size="28"></uvx-icon>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-keyboard-number 数字键盘
+ * @description 为 uvx-keyboard 提供数字和身份证两种按键布局。
+ * @property {String} mode 键盘类型：number、card，默认 number
+ * @property {Boolean} dotDisabled 是否隐藏数字键盘的小数点，默认 false
+ * @property {Boolean} random 是否随机排列按键，默认 false
+ * @event {Function} change 点击普通按键时触发
+ * @event {Function} backspace 点击或长按退格键时触发
+ */
+
+import type {
+   Props,
+   Key,
+   Emits,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-keyboard-number", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   mode: "number",
+   dotDisabled: false,
+   random: false,
+});
+
+/** 数字键盘事件 */
+const emit = defineEmits<Emits>();
+
+// 基础数字按键
+const NUMBER_KEYS: Key[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+// 长按退格定时器
+let backspaceTimer: number | null = null;
+
+/**
+ * 返回随机排列的按键副本
+ * @param source 原始按键
+ * @returns Key[]
+ */
+const shuffleKeys = (source: Key[]): Key[] => {
+   const result = source.slice();
+   for (let index = result.length - 1; index > 0; index--) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      const current = result[index];
+      result[index] = result[randomIndex];
+      result[randomIndex] = current;
+   }
+   return result;
+};
+
+/**
+ * 当前键盘按键
+ * @returns Key[]
+ */
+const numberKeys = computed((): Key[] => {
+   if (props.mode == "card") {
+      const keys = NUMBER_KEYS.slice(0, 9);
+      keys.push("X");
+      keys.push(0);
+      return props.random ? shuffleKeys(keys) : keys;
+   }
+   if (props.dotDisabled) {
+      return props.random ? shuffleKeys(NUMBER_KEYS) : NUMBER_KEYS.slice();
+   }
+   if (props.random) {
+      const keys = shuffleKeys(NUMBER_KEYS);
+      keys.push(".");
+      return keys;
+   }
+   const keys = NUMBER_KEYS.slice(0, 9);
+   keys.push(".");
+   keys.push(0);
+   return keys;
+});
+
+/**
+ * 当前按键是否占两列
+ * @param index 按键索引
+ * @returns boolean
+ */
+const isWideKey = (index: number): boolean => {
+   return props.mode == "number" && props.dotDisabled && index == 9;
+};
+
+/**
+ * 发送普通按键值
+ * @param value 按键值
+ * @returns null
+ */
+const handleKeyClick = (value: Key): void => {
+   emit("change", value);
+};
+
+/**
+ * 清除长按退格定时器
+ * @returns null
+ */
+const clearBackspaceTimer = (): void => {
+   if (backspaceTimer == null) return;
+   clearInterval(backspaceTimer);
+   backspaceTimer = null;
+};
+
+/**
+ * 开始连续退格
+ * @returns null
+ */
+const handleBackspaceStart = (): void => {
+   emit("backspace");
+   clearBackspaceTimer();
+   backspaceTimer = setInterval((): void => {
+      emit("backspace");
+   }, 250);
+};
+
+/**
+ * 阻止键盘区域触摸移动穿透
+ * @returns null
+ */
+const handleTouchMove = (): void => {};
+
+/**
+ * 卸载时清理连续退格计时器
+ * @returns null
+ */
+onUnmounted(clearBackspaceTimer);
+</script>
+
+<style lang="scss">
+// 数字键盘容器
+.uvx-keyboard-number {
+   display: flex;
+   flex-direction: row;
+   flex-wrap: wrap;
+   box-sizing: border-box;
+   width: 100%;
+   padding: 4px 5px;
+   background-color: var(--uvx-page);
+
+   // 单个按键占位
+   &__key-wrapper {
+      box-sizing: border-box;
+      width: 33.333%;
+      padding: 4px 3px;
+
+      // 隐藏小数点时的零键宽度
+      &--wide {
+         width: 66.666%;
+      }
+   }
+
+   // 按键外观
+   &__key {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      height: 45px;
+      border-radius: 4px;
+      background-color: var(--uvx-container);
+      box-shadow: 0 1px 0 var(--uvx-border);
+
+      // 功能按键
+      &--function {
+         background-color: var(--uvx-container);
+      }
+
+      // 按压状态
+      &--active {
+         background-color: var(--uvx-hover);
+      }
+   }
+
+   // 按键文字
+   &__key-text {
+      color: var(--uvx-text-main);
+      font-size: 20px;
+      font-weight: 500;
+   }
+}
+</style>

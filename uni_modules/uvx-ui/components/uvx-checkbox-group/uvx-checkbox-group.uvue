@@ -1,0 +1,244 @@
+<template>
+   <view class="uvx-checkbox-group" :class="[groupClasses, uClass]" :style="groupStyle">
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-checkbox-group 复选框组
+ * @description 管理多个 uvx-checkbox 的选中值和公共样式配置。
+ * @tutorial https://www.uvxui.cn/components/checkbox.html
+ * @property {Array} value 复选框组选中值
+ * @property {Array} modelValue v-model 选中值
+ * @property {String} name 表单标识符
+ * @property {String} shape 形状：circle、square、card
+ * @property {Boolean} disabled 是否禁用全部复选框
+ * @property {String} activeColor 选中颜色，空值时跟随主题主色
+ * @property {String} inactiveColor 未选中颜色，空值时跟随主题占位色
+ * @property {String | Number} size 复选框尺寸
+ * @property {String} placement 排列方式：row、column
+ * @property {String | Number} labelSize 标签字号
+ * @property {String} labelColor 标签颜色，空值时跟随主题
+ * @property {Boolean} labelDisabled 是否禁止点击标签切换状态
+ * @property {String} iconColor 勾选图标颜色
+ * @property {String | Number} iconSize 勾选图标尺寸
+ * @property {String} iconPlacement 图标位置：left、right
+ * @property {Boolean} borderBottom 纵向排列时是否显示下边框
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 选中值变化事件
+ * @event {Function} change 选中值变化事件
+ * @example <uvx-checkbox-group v-model="values"><uvx-checkbox name="A" /></uvx-checkbox-group>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { ComponentPublicInstance } from "vue";
+import type {
+   GroupConfig,
+   Value,
+} from "../uvx-checkbox/types/index.uts";
+import type {
+   Context,
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-checkbox-group", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: () => [] as Value[],
+   modelValue: () => [] as Value[],
+   name: "",
+   shape: "square",
+   disabled: false,
+   activeColor: "",
+   inactiveColor: "",
+   size: 18,
+   placement: "row",
+   labelSize: 14,
+   labelColor: "",
+   labelDisabled: false,
+   iconColor: "#ffffff",
+   iconSize: 12,
+   iconPlacement: "left",
+   borderBottom: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 复选框组事件 */
+const emit = defineEmits<Emits>();
+
+// 已注册的复选框实例
+const children = ref<ComponentPublicInstance[]>([]);
+// 当前选中值
+const innerValue = ref<Value[]>([]);
+
+/**
+ * 外部绑定值，v-model 优先于 value
+ * @returns Value[]
+ */
+const value = computed((): Value[] => {
+   if (props.modelValue.length > 0 || props.value.length == 0) return props.modelValue;
+   return props.value;
+});
+
+/**
+ * 子项共享配置
+ * @returns GroupConfig
+ */
+const config = computed((): GroupConfig => {
+   return {
+      shape: props.shape,
+      disabled: props.disabled,
+      activeColor: props.activeColor,
+      inactiveColor: props.inactiveColor,
+      size: props.size,
+      placement: props.placement,
+      labelSize: props.labelSize,
+      labelColor: props.labelColor,
+      labelDisabled: props.labelDisabled,
+      iconColor: props.iconColor,
+      iconSize: props.iconSize,
+      iconPlacement: props.iconPlacement,
+      borderBottom: props.borderBottom,
+   };
+});
+
+/**
+ * 复选框组布局类名
+ * @returns string[]
+ */
+const groupClasses = computed((): string[] => {
+   return [`uvx-checkbox-group--${props.placement}`];
+});
+
+/**
+ * 复选框组自定义样式
+ * @returns UTSJSONObject
+ */
+const groupStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 判断指定值是否选中
+ * @param value 复选框名称
+ * @returns boolean
+ */
+const isSelected = (value: Value): boolean => {
+   return innerValue.value.indexOf(value) != -1;
+};
+
+/**
+ * 同步单个子项状态和公共配置
+ * @param child 子组件实例
+ * @returns null
+ */
+const syncChild = (child: ComponentPublicInstance): void => {
+   const name = child.$callMethod("getName") as Value;
+   child.$callMethod("syncFromGroup", isSelected(name));
+};
+
+/**
+ * 同步全部子项
+ * @returns null
+ */
+const syncChildren = (): void => {
+   for (let i = 0; i < children.value.length; i++) {
+      syncChild(children.value[i]);
+   }
+};
+
+/**
+ * 注册子项并同步初始状态
+ * @param child 子组件实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+   syncChild(child);
+};
+
+/**
+ * 移除已卸载的子项
+ * @param child 子组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index != -1) children.value.splice(index, 1);
+};
+
+/**
+ * 切换指定值并发布组事件
+ * @param value 复选框名称
+ * @returns null
+ */
+const toggleValue = (value: Value): void => {
+   if (props.disabled) return;
+   const values = innerValue.value.slice();
+   const index = values.indexOf(value);
+   if (index == -1) {
+      values.push(value);
+   } else {
+      values.splice(index, 1);
+   }
+   innerValue.value = values;
+   syncChildren();
+   emit("input", values);
+   emit("update:modelValue", values);
+   emit("change", values);
+};
+
+/**
+ * 向后代复选框提供响应式配置和组操作
+ * @returns null
+ */
+provide<Context>("uvx-checkbox-group-context", {
+   config,
+   register,
+   unregister,
+   toggleValue,
+});
+
+/**
+ * 外部选中值变化时同步所有子项
+ * @param values 外部选中值
+ * @returns null
+ */
+watch(value, (values: Value[]): void => {
+   innerValue.value = values.slice();
+   syncChildren();
+}, { immediate: true });
+
+/**
+ * 公共配置变化时同步所有子项
+ * @returns null
+ */
+watch(config, (): void => {
+   syncChildren();
+});
+
+defineExpose({ register, unregister, toggleValue });
+</script>
+
+<style lang="scss">
+// 复选框组排列方式
+.uvx-checkbox-group {
+   display: flex;
+
+   &--row {
+      flex-direction: row;
+      flex-wrap: wrap;
+   }
+
+   &--column {
+      flex-direction: column;
+   }
+}
+</style>

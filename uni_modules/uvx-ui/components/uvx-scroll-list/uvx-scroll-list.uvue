@@ -1,0 +1,280 @@
+<template>
+   <!-- 横向滚动内容 -->
+   <view
+      class="uvx-scroll-list"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <scroll-view
+         :id="scrollId"
+         class="uvx-scroll-list__scroll"
+         direction="horizontal"
+         :show-scrollbar="false"
+         :upper-threshold="0"
+         :lower-threshold="0"
+         @scroll="handleScroll"
+         @scrolltoupper="handleScrollToUpper"
+         @scrolltolower="handleScrollToLower"
+      >
+         <view class="uvx-scroll-list__content">
+            <slot></slot>
+         </view>
+      </scroll-view>
+
+      <!-- 滚动进度指示器 -->
+      <view
+         v-if="indicator"
+         class="uvx-scroll-list__indicator"
+         :style="indicatorRootStyle"
+      >
+         <view
+            class="uvx-scroll-list__indicator-line"
+            :style="indicatorLineStyle"
+         >
+            <view
+               class="uvx-scroll-list__indicator-bar"
+               :style="indicatorBarStyle"
+            ></view>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-scroll-list 横向滚动列表
+ * @description 用于展示可水平滑动的商品、分类或其他内容。
+ * @tutorial https://www.uvxui.cn/components/scroll-list.html
+ * @property {String | Number} indicatorWidth 指示器轨道宽度
+ * @property {String | Number} indicatorBarWidth 指示器滑块宽度
+ * @property {Boolean} indicator 是否显示指示器
+ * @property {String} indicatorColor 指示器非激活颜色
+ * @property {String} indicatorActiveColor 指示器激活颜色
+ * @property {String} indicatorStyle 指示器容器样式
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} left 滚动到左边界时触发
+ * @event {Function} right 滚动到右边界时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-scroll-list",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   indicatorWidth: 50,
+   indicatorBarWidth: 20,
+   indicator: true,
+   indicatorColor: "",
+   indicatorActiveColor: "",
+   indicatorStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+// 组件实例唯一标识
+const scrollId = "uvx-scroll-list-" + Date.now().toString() + "-" + Math.floor(Math.random() * 100000).toString();
+// 当前滚动位置
+const scrollLeft = ref(0);
+// 滚动内容总宽度
+const contentWidth = ref(0);
+// 滚动可视宽度
+const viewportWidth = ref(0);
+
+/**
+ * 获取有效的尺寸数值
+ * @param value 尺寸属性
+ * @param fallback 无效时的默认值
+ * @returns px 数值
+ */
+const getSizeValue = (value: string | number, fallback: number): number => {
+   const text = value.toString().trim();
+   const numberValue = parseFloat(text);
+   if (Number.isNaN(numberValue) || numberValue < 0) return fallback;
+   if (text.endsWith("rpx")) {
+      return numberValue * uni.getWindowInfo().windowWidth / 750;
+   }
+   return numberValue;
+};
+
+/**
+ * 指示器轨道宽度
+ * @returns number
+ */
+const indicatorWidthValue = computed((): number => {
+   return getSizeValue(props.indicatorWidth, 50);
+});
+
+/**
+ * 指示器滑块宽度
+ * @returns number
+ */
+const indicatorBarWidthValue = computed((): number => {
+   return Math.min(getSizeValue(props.indicatorBarWidth, 20), indicatorWidthValue.value);
+});
+
+/**
+ * 滚动比例
+ * @returns number
+ */
+const scrollProgress = computed((): number => {
+   const maxScroll = Math.max(0, contentWidth.value - viewportWidth.value);
+   if (maxScroll <= 0) return 0;
+   return Math.max(0, Math.min(1, scrollLeft.value / maxScroll));
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 指示器容器样式
+ * @returns UTSJSONObject
+ */
+const indicatorRootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.indicatorStyle);
+});
+
+/**
+ * 指示器轨道样式
+ * @returns UTSJSONObject
+ */
+const indicatorLineStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(indicatorWidthValue.value),
+   };
+   if (!$uvx.string.empty(props.indicatorColor)) {
+      style.set("background-color", props.indicatorColor);
+   }
+   return style;
+});
+
+/**
+ * 指示器滑块样式
+ * @returns UTSJSONObject
+ */
+const indicatorBarStyle = computed((): UTSJSONObject => {
+   const movableWidth = Math.max(0, indicatorWidthValue.value - indicatorBarWidthValue.value);
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(indicatorBarWidthValue.value),
+      "transform": "translateX(" + (scrollProgress.value * movableWidth).toString() + "px)",
+   };
+   if (!$uvx.string.empty(props.indicatorActiveColor)) {
+      style.set("background-color", props.indicatorActiveColor);
+   }
+   return style;
+});
+
+/**
+ * 处理滚动事件
+ * @param event 滚动事件
+ * @returns null
+ */
+const handleScroll = (event: UniScrollEvent): void => {
+   scrollLeft.value = Math.max(0, event.detail.scrollLeft);
+   contentWidth.value = Math.max(0, event.detail.scrollWidth);
+};
+
+/**
+ * 处理滚动到左边界
+ * @returns null
+ */
+const handleScrollToUpper = (): void => {
+   scrollLeft.value = 0;
+   emit("left");
+};
+
+/**
+ * 处理滚动到右边界
+ * @returns null
+ */
+const handleScrollToLower = (): void => {
+   scrollLeft.value = Math.max(0, contentWidth.value - viewportWidth.value);
+   emit("right");
+};
+
+/**
+ * 重新测量滚动区尺寸
+ * @returns null
+ */
+const init = (): void => {
+   nextTick((): void => {
+      const element = uni.getElementById<UniScrollViewElement>(scrollId);
+      if (element == null) return;
+      try {
+         viewportWidth.value = Math.max(0, element.getBoundingClientRect().width);
+      } catch (_error) {
+         return;
+      }
+   });
+};
+
+/** 组件挂载后测量滚动可视区 */
+onMounted((): void => {
+   init();
+});
+
+defineExpose({ init });
+</script>
+
+<style lang="scss">
+// 滚动列表根节点
+.uvx-scroll-list {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding-bottom: 10px;
+}
+
+// 横向滚动容器
+.uvx-scroll-list__scroll {
+   display: flex;
+   width: 100%;
+}
+
+// 滚动内容容器
+.uvx-scroll-list__content {
+   display: flex;
+   flex-direction: row;
+   align-self: flex-start;
+   flex-shrink: 0;
+}
+
+// 指示器容器
+.uvx-scroll-list__indicator {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   margin-top: 15px;
+}
+
+// 指示器轨道
+.uvx-scroll-list__indicator-line {
+   height: 4px;
+   overflow: hidden;
+   background-color: var(--uvx-border);
+   border-radius: 100px;
+}
+
+// 指示器滑块
+.uvx-scroll-list__indicator-bar {
+   height: 4px;
+   background-color: var(--uvx-primary);
+   border-radius: 100px;
+}
+</style>

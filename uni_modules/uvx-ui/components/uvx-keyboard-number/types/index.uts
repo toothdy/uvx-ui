@@ -1,0 +1,13 @@
+export type Mode = "number" | "card";
+export type Key = string | number;
+
+export type Props = {
+   mode: Mode;
+   dotDisabled: boolean;
+   random: boolean;
+};
+
+export type Emits = {
+   change: [value: Key];
+   backspace: [];
+};

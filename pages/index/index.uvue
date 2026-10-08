@@ -1,0 +1,226 @@
+<template>
+	<uvx-page :scroll-top="pageScrollTop" @scroll="handleScroll">
+		<view class="page-header">
+			<view class="page-header__top">
+				<image class="page-header__logo" src="/static/logo.jpeg" />
+				<view class="page-header__info">
+					<view class="page-header__info-title">
+						<text class="page-header__info-title-main">uvx-ui</text>
+						<text class="page-header__info-title-version">1.0.0</text>
+					</view>
+					<text class="page-header__info-desc">{{ t("多平台快速开发的UI框架") }}</text>
+				</view>
+				<!-- 语言切换按钮 -->
+				<view class="page-header__locale" @tap="handleToggleLocale">
+					<text class="page-header__locale-text">{{ localeLabel }}</text>
+				</view>
+			</view>
+			<view class="page-header__content">
+				<text class="page-header__content-text">　　{{ t("破釜沉舟之兼容 Android、iOS、HarmonyOS、H5、微信小程序多端基于uni-app-x 的生态框架，开箱即用，利剑出击。") }}</text>
+			</view>
+		</view>
+		<view>
+			<uvx-cell-group
+				v-for="(item, index) in list"
+				:key="index"
+				:title="item.groupName"
+				title-style="font-weight: 500;"
+			>
+				<uvx-cell
+					v-for="(item1, index1) in item.list"
+					:key="index1"
+					:title="item1.title"
+					:is-link="true"
+					:url="item1.path"
+				>
+					<template #icon>
+						<view v-if="item1.isNew">
+							<view class="new">
+								<text class="new__text">新</text>
+							</view>
+						</view>
+						<uvx-icon v-else :name="getIcon(item1.icon)"></uvx-icon>
+					</template>
+				</uvx-cell>
+			</uvx-cell-group>
+		</view>
+		<uvx-back-top :scrollTop="scrollTop" @click="onBackTop"></uvx-back-top>
+		<uvx-safe-bottom></uvx-safe-bottom>
+		<!-- #ifdef APP -->
+		<uvx-theme></uvx-theme>
+		<!-- #endif -->
+	</uvx-page>
+</template>
+
+<script setup lang="uts">
+import { locale, setLocale, t } from "@/uni_modules/uvx-ui";
+import data from '@/pages/index/data.uts';
+import type { GroupItem, ListItem } from '@/pages/index/data.uts';
+
+// 按当前语言渲染分组与条目标题,语言切换时自动更新
+const list = computed((): GroupItem[] => {
+	return data.map((group: GroupItem): GroupItem => {
+		return {
+			groupName: t(group.groupName),
+			list: group.list.map((item: ListItem): ListItem => {
+				return {
+					path: item.path,
+					icon: item.icon,
+					title: t(item.title),
+					isNew: item.isNew,
+				};
+			}),
+		};
+	});
+});
+const scrollTop = ref(0);
+const pageScrollTop = ref(0);
+
+// 支持的语言标识
+const LOCALE_NAMES = ["zh-cn", "zh-tw", "en"];
+// 按钮显示文案
+const LOCALE_LABELS = ["简", "繁", "EN"];
+
+// 当前语言按钮文案
+const localeLabel = computed((): string => {
+	const index = LOCALE_NAMES.indexOf(locale.value);
+	return index == -1 ? LOCALE_LABELS[0] : LOCALE_LABELS[index];
+});
+
+/**
+ * 循环切换语言
+ */
+const handleToggleLocale = () => {
+	const index = LOCALE_NAMES.indexOf(locale.value);
+	const next = index == -1 ? 0 : (index + 1) % LOCALE_NAMES.length;
+	setLocale(LOCALE_NAMES[next]);
+};
+
+/**
+ * 滚动事件
+ */
+const handleScroll = (e : UniScrollEvent) => {
+	scrollTop.value = e.detail.scrollTop;
+}
+
+/**
+ * 点击返回顶部
+ */
+const onBackTop = () => {
+	// #ifdef APP
+	// 先同步当前值再置 0,避免"绑定值未变不触发"
+	pageScrollTop.value = scrollTop.value;
+	nextTick(() => { pageScrollTop.value = 0; });
+	// #endif
+	// #ifndef APP
+	uni.pageScrollTo({ scrollTop: 0, duration: 100 });
+	// #endif
+}
+
+// #ifndef APP
+/**
+ * 页面滚动事件
+ */
+onPageScroll((e) => {
+	scrollTop.value = e.scrollTop;
+});
+// #endif
+
+/**
+ * 获取图标名称的函数
+ */
+const getIcon = (path: string): string => {
+	return `https://cdn.uviewui.com/uview/example/${path}.png`;
+}
+</script>
+<style lang="scss">
+.page-header {
+	padding: 16px;
+	position: relative;
+
+	&__top {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+	}
+
+	&__logo {
+		width: 70px;
+		height: 70px;
+	}
+
+	&__info {
+		margin-left: 16px;
+		flex: 1;
+		min-width: 0;
+
+		&-title {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+
+			&-main {
+				color: var(--uvx-primary);
+				font-size: 25px;
+				font-weight: bold;
+				text-align: left;
+			}
+
+			&-version {
+				font-size: 16px;
+				color: var(--uvx-error);
+				font-weight: normal;
+				margin-left: 4px;
+			}
+		}
+
+		&-desc {
+			color: var(--uvx-text-tips);
+			font-size: 14px;
+		}
+	}
+
+	&__content {
+		margin-top: 20px;
+
+		&-text {
+			font-size: 14px;
+			color: var(--uvx-text-content);
+			line-height: 20px;
+		}
+	}
+
+	// 语言切换按钮
+	&__locale {
+		margin-left: auto;
+		padding: 3px 12px;
+		border: 0.5px solid var(--uvx-border);
+		border-radius: 14px;
+		background-color: var(--uvx-container);
+
+		&-text {
+			font-size: 13px;
+			color: var(--uvx-text-content);
+		}
+	}
+}
+
+.new {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	background-color: var(--uvx-hover);
+	border-radius: 4px;
+
+	&__text {
+		font-size: 14px;
+		text-align: center;
+		line-height: 20px;
+		color: var(--uvx-primary);
+	}
+}
+</style>

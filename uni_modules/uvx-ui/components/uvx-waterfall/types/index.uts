@@ -1,0 +1,43 @@
+import type { Status } from "../../uvx-load-more/types/index.uts";
+
+/** 瀑布流数据项 */
+export type Item = UTSJSONObject;
+
+/** 瀑布流回退布局项 */
+export type RenderItem = {
+   item: Item;
+   index: number;
+};
+
+/** 瀑布流作用域插槽参数 */
+export type SlotProps = {
+   item: Item;
+   index: number;
+};
+
+/** 瀑布流组件属性 */
+export type Props = {
+   modelValue: Item[];
+   idKey: string;
+   heightKey: string;
+   columnCount: string | number;
+   columnGap: string | number;
+   rowGap: string | number;
+   leftGap: string | number;
+   rightGap: string | number;
+   showScrollbar: boolean;
+   lowerThreshold: number;
+   loadStatus: Status;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 瀑布流组件事件 */
+export type Emits = {
+   "update:modelValue": [value: Item[]];
+   finish: [];
+   clear: [];
+   remove: [id: string | number];
+   loadmore: [];
+   scrolltolower: [event: UniScrollToLowerEvent];
+};

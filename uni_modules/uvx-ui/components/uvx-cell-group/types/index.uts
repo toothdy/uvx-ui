@@ -1,0 +1,7 @@
+export type Props = {
+   title: string;
+   border: boolean;
+   titleStyle: string;
+   uStyle: string;
+   uClass: string;
+};

@@ -1,0 +1,299 @@
+<template>
+   <uvx-page ref="uPage">
+      <view class="datetime-picker-demo">
+         <!-- 演示入口 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               :is-link="true"
+               @click="openPicker(index)"
+            >
+               <template #icon>
+                  <image class="uv-cell-icon" :src="item.iconUrl" mode="widthFix"></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 日期时间选择器实例 -->
+         <uvx-datetime-picker
+            ref="uDatetime"
+            v-model="datetimeValue"
+            mode="datetime"
+            :round="10"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uDate"
+            v-model="dateValue"
+            mode="date"
+            :round="10"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uMonth"
+            v-model="monthValue"
+            mode="year-month"
+            :round="10"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uYear"
+            v-model="yearValue"
+            mode="year"
+            :round="10"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uTime"
+            v-model="timeValue"
+            mode="time"
+            :round="10"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uFilter"
+            v-model="filterValue"
+            mode="date"
+            :round="10"
+            :filter="filterEvenYear"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uFormatter"
+            v-model="formatterValue"
+            mode="date"
+            :round="10"
+            :formatter="formatColumn"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+         <uvx-datetime-picker
+            ref="uRange"
+            v-model="rangeValue"
+            mode="datetime"
+            :round="10"
+            :min-date="MIN_DATE"
+            :max-date="MAX_DATE"
+            :close-on-click-overlay="false"
+            @change="handleChange"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-datetime-picker>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   ChangeEvent,
+   ColumnType,
+   ConfirmEvent,
+} from "@/uni_modules/uvx-ui/components/uvx-datetime-picker/types/index.uts";
+
+type DemoItem = {
+   title: string;
+   iconUrl: string;
+};
+
+const MIN_DATE = 1587524800000;
+const MAX_DATE = 1893470400000;
+const CURRENT_DATE = new Date().getTime();
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+// TS 演示中的八个入口
+const demoItems: DemoItem[] = [
+   {
+      title: "完整日期时间",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/6.png",
+   },
+   {
+      title: "年月日",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/4.png",
+   },
+   {
+      title: "年月",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/3.png",
+   },
+   {
+      title: "年",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/2.png",
+   },
+   {
+      title: "时间",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/5.png",
+   },
+   {
+      title: "过滤器(保留偶数年)",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/2.png",
+   },
+   {
+      title: "格式化",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/1.png",
+   },
+   {
+      title: "限制最大最小值",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/datetime-picker/7.png",
+   },
+];
+
+// 各模式的绑定值
+const datetimeValue = ref(CURRENT_DATE);
+const dateValue = ref(CURRENT_DATE);
+const monthValue = ref(CURRENT_DATE);
+const yearValue = ref(CURRENT_DATE);
+const timeValue = ref("05:28");
+const filterValue = ref(CURRENT_DATE);
+const formatterValue = ref(CURRENT_DATE);
+const rangeValue = ref(CURRENT_DATE);
+
+// 八个选择器实例
+const uDatetime = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uDate = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uMonth = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uYear = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uTime = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uFilter = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uFormatter = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+const uRange = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+
+/**
+ * 打开指定选择器
+ * @param index 入口索引
+ * @returns null
+ */
+const openPicker = (index: number): void => {
+   switch (index) {
+      case 0:
+         uDatetime.value?.open();
+         break;
+      case 1:
+         uDate.value?.open();
+         break;
+      case 2:
+         uMonth.value?.open();
+         break;
+      case 3:
+         uYear.value?.open();
+         break;
+      case 4:
+         uTime.value?.open();
+         break;
+      case 5:
+         uFilter.value?.open();
+         break;
+      case 6:
+         uFormatter.value?.open();
+         break;
+      case 7:
+         uRange.value?.open();
+         break;
+   }
+};
+
+/**
+ * 输出关闭事件
+ * @returns null
+ */
+const handleClose = (): void => {
+   console.log("close");
+};
+
+/**
+ * 输出取消事件
+ * @returns null
+ */
+const handleCancel = (): void => {
+   console.log("cancel");
+};
+
+/**
+ * 输出滚轮变化
+ * @param event 变化事件
+ * @returns null
+ */
+const handleChange = (event: ChangeEvent): void => {
+   console.log("change", event.value, event.mode);
+};
+
+/**
+ * 按模式显示确认结果
+ * @param event 确认事件
+ * @returns null
+ */
+const handleConfirm = (event: ConfirmEvent): void => {
+   let title = event.value.toString();
+   if (event.mode != "time") {
+      const date = new Date(Number(event.value));
+      const year = date.getFullYear().toString();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      if (event.mode == "year") title = year;
+      else if (event.mode == "year-month") title = `${year}-${month}`;
+      else if (event.mode == "date") title = `${year}-${month}-${day}`;
+      else title = `${year}-${month}-${day} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+   }
+   uPage.value?.toast({ message: title, icon: false });
+};
+
+/**
+ * 保留偶数年份
+ * @param type 列类型
+ * @param values 原始选项
+ * @returns string[]
+ */
+const filterEvenYear = (type: ColumnType, values: string[]): string[] => {
+   if (type != "year") return values;
+   const result: string[] = [];
+   for (let i = 0; i < values.length; i++) {
+      if (parseInt(values[i]) % 2 == 0) result.push(values[i]);
+   }
+   return result;
+};
+
+/**
+ * 格式化日期列文字
+ * @param type 列类型
+ * @param value 原始选项
+ * @returns string
+ */
+const formatColumn = (type: ColumnType, value: string): string => {
+   if (type == "year") return `${value}年`;
+   if (type == "month") return `${value}月`;
+   if (type == "day") return `${value}日`;
+   return value;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 演示页沿用 TS 版的无额外内边距列表布局
+.datetime-picker-demo {
+   padding: 0;
+}
+</style>

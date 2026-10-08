@@ -1,0 +1,384 @@
+<template>
+   <view
+      ref="anchor"
+      class="uvx-drop-down__anchor"
+      :class="props.isSticky ? 'uvx-drop-down__anchor--sticky' : ''"
+      :style="anchorStyle"
+   >
+      <view
+         ref="bar"
+         class="uvx-drop-down"
+         :class="barClasses"
+         :style="barStyle"
+      >
+         <slot></slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-drop-down 下拉筛选
+ * @description 下拉筛选菜单容器，搭配 uvx-drop-down-item 和 uvx-drop-down-popup 使用。
+ * @tutorial https://www.uvxui.cn/components/drop-down.html
+ * @property {Boolean} isSticky 是否启用吸顶，默认 true
+ * @property {String | Number} sign 组件唯一标识，默认 UVDROPDOWN
+ * @property {Array<Value>} defaultValue 未选中状态的值集合
+ * @property {String | Number} textSize 菜单文字字号
+ * @property {String} textColor 菜单文字颜色，空字符串时跟随主题
+ * @property {String | Number} textActiveSize 激活菜单文字字号
+ * @property {String} textActiveColor 激活菜单文字颜色，空字符串时跟随主题主色
+ * @property {Icon} extraIcon 默认图标配置
+ * @property {Icon} extraActiveIcon 激活图标配置
+ * @property {String} uStyle 菜单栏自定义样式
+ * @property {String} uClass 菜单栏自定义类名
+ * @method init 更新吸顶状态与弹层锚点位置
+ * @event {Function} click 点击菜单项时触发
+ * @example <uvx-drop-down sign="filter"><uvx-drop-down-item label="排序"></uvx-drop-down-item></uvx-drop-down>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { ComponentPublicInstance } from "vue";
+import type {
+   Config,
+   Context,
+   Emits,
+   ItemClickEvent,
+   MenuMessage,
+   Props,
+   Rect,
+   Value,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-drop-down",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   isSticky: true,
+   sign: "UVDROPDOWN",
+   defaultValue: () => [0, "0", "all"] as Value[],
+   textSize: "15px",
+   textColor: "",
+   textActiveSize: "15px",
+   textActiveColor: "",
+   extraIcon: () => ({
+      name: "arrow-down",
+      size: 15,
+      color: "",
+   }),
+   extraActiveIcon: () => ({
+      name: "arrow-up",
+      size: 15,
+      color: "primary",
+   }),
+   uStyle: "",
+   uClass: "",
+});
+
+// 组件事件
+const emit = defineEmits<Emits>();
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 菜单栏占位节点
+const anchor = ref<UniElement | null>(null);
+// 菜单栏节点
+const bar = ref<UniElement | null>(null);
+// 已注册的菜单项
+const children = ref<ComponentPublicInstance[]>([]);
+// App 端菜单栏是否处于吸顶状态
+const isFixed = ref(false);
+// 菜单栏高度
+const barHeight = ref(0);
+// 菜单栏左侧位置
+const barLeft = ref(0);
+// 菜单栏宽度
+const barWidth = ref(0);
+
+/**
+ * 获取组件通信事件名
+ * @param suffix 事件后缀
+ * @returns string
+ */
+const getEventName = (suffix: string): string => {
+   return props.sign.toString() + suffix;
+};
+
+/**
+ * 子项共享配置
+ * @returns Config
+ */
+const config = computed((): Config => {
+   return {
+      defaultValue: props.defaultValue,
+      textSize: props.textSize,
+      textColor: props.textColor,
+      textActiveSize: props.textActiveSize,
+      textActiveColor: props.textActiveColor,
+      extraIcon: props.extraIcon,
+      extraActiveIcon: props.extraActiveIcon,
+   };
+});
+
+/**
+ * 占位节点样式
+ * @returns UTSJSONObject
+ */
+const anchorStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (isFixed.value && barHeight.value > 0) {
+      style.set("height", barHeight.value.toString() + "px");
+   }
+   return style;
+});
+
+/**
+ * 菜单栏状态类
+ * @returns string[]
+ */
+const barClasses = computed((): string[] => {
+   const classes: string[] = [];
+   if (isFixed.value) classes.push("uvx-drop-down--fixed");
+   if (!$uvx.string.empty(props.uClass)) classes.push(props.uClass);
+   return classes;
+});
+
+/**
+ * 菜单栏样式
+ * @returns UTSJSONObject
+ */
+const barStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (isFixed.value) {
+      style.set("left", barLeft.value.toString() + "px");
+      style.set("width", barWidth.value.toString() + "px");
+   }
+   if (!$uvx.string.empty(props.uStyle)) {
+      return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+   }
+   return style;
+});
+
+/**
+ * 注册菜单项
+ * @param child 菜单项实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+};
+
+/**
+ * 注销菜单项
+ * @param child 菜单项实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+};
+
+/**
+ * 收起除目标外的菜单项
+ * @param target 保持当前状态的菜单项
+ * @returns null
+ */
+const closeOtherItems = (target: ComponentPublicInstance | null): void => {
+   for (let index = 0; index < children.value.length; index++) {
+      const child = children.value[index];
+      if (target == null || child != target) child.$callMethod("setDropped", false);
+   }
+};
+
+/**
+ * 应用并发布菜单栏位置
+ * @param top 菜单栏顶部位置
+ * @param height 菜单栏高度
+ * @param left 菜单栏左侧位置
+ * @param width 菜单栏宽度
+ * @returns null
+ */
+const applyBarRect = (
+   top: number,
+   height: number,
+   left: number,
+   width: number,
+): void => {
+   if (height > 0) barHeight.value = height;
+   if (width > 0) {
+      barLeft.value = left;
+      barWidth.value = width;
+   }
+   uni.$emit(getEventName("_GETRECT"), {
+      top: top,
+      height: height,
+   } as Rect);
+};
+
+/**
+ * 查询并发布当前菜单栏位置
+ * @returns null
+ */
+const emitRect = (): void => {
+   // #ifdef MP
+   uni.createSelectorQuery()
+      .in(instance)
+      .select(".uvx-drop-down")
+      .boundingClientRect()
+      .exec((result): void => {
+         if (result.length == 0 || result[0] == null) return;
+         const rect = result[0] as NodeInfo;
+         if (
+            rect.top == null
+            || rect.height == null
+            || rect.left == null
+            || rect.width == null
+         ) return;
+         applyBarRect(rect.top, rect.height, rect.left, rect.width);
+      });
+   // #endif
+
+   // #ifndef MP
+   const element = bar.value;
+   if (element == null) return;
+   try {
+      const rect = element.getBoundingClientRect();
+      applyBarRect(rect.top, rect.height, rect.left, rect.width);
+   } catch (_error) {
+      // 原生节点尚未生成时保留现状，等待下次 init 重试
+      return;
+   }
+   // #endif
+};
+
+/**
+ * 处理菜单项点击
+ * @param child 菜单项实例
+ * @param event 点击参数
+ * @returns null
+ */
+const childClick = (
+   child: ComponentPublicInstance,
+   event: ItemClickEvent,
+): void => {
+   closeOtherItems(event.type.toString() == "2" ? child : null);
+   emitRect();
+   emit("click", event);
+   uni.$emit(getEventName("_CLICKMENU"), {
+      show: event.type.toString() == "2" && event.active,
+   } as MenuMessage);
+};
+
+/**
+ * 更新吸顶状态与弹层锚点位置
+ * @returns null
+ */
+const init = (): void => {
+   nextTick((): void => {
+      // #ifdef MP
+      isFixed.value = false;
+      emitRect();
+      // #endif
+
+      // #ifndef MP
+      const anchorElement = anchor.value;
+      const barElement = bar.value;
+      if (anchorElement == null || barElement == null) return;
+      try {
+         const anchorRect = anchorElement.getBoundingClientRect();
+         const barRect = barElement.getBoundingClientRect();
+         if (barRect.height > 0) barHeight.value = barRect.height;
+         if (anchorRect.width > 0) {
+            barLeft.value = anchorRect.left;
+            barWidth.value = anchorRect.width;
+         }
+         // #ifdef APP
+         isFixed.value = props.isSticky && anchorRect.top <= 0;
+         // #endif
+         // #ifndef APP
+         isFixed.value = false;
+         // #endif
+      } catch (_error) {
+         // 原生节点尚未生成时保留现状，等待下次 init 重试
+         return;
+      }
+      nextTick((): void => {
+         emitRect();
+      });
+      // #endif
+   });
+};
+
+/** 弹层关闭时同步收起全部菜单项 */
+const handlePopupClose = (): void => {
+   closeOtherItems(null);
+};
+
+/** 向菜单项提供响应式配置和组操作 */
+provide<Context>("uvx-drop-down-context", {
+   config: config,
+   register,
+   unregister,
+   childClick,
+});
+
+/** 吸顶配置变化时重新计算位置 */
+watch((): boolean => props.isSticky, (): void => {
+   if (!props.isSticky) isFixed.value = false;
+   init();
+});
+
+/** 挂载后监听弹层关闭并发布初始位置 */
+onMounted((): void => {
+   uni.$on(getEventName("_CLOSEPOPUP"), handlePopupClose);
+   init();
+});
+
+/** 卸载时移除组件通信监听 */
+onUnmounted((): void => {
+   uni.$off(getEventName("_CLOSEPOPUP"), handlePopupClose);
+});
+
+defineExpose({ init });
+</script>
+
+<style lang="scss">
+// 菜单栏占位节点
+.uvx-drop-down__anchor {
+   width: 100%;
+
+   /* #ifndef APP */
+   // Web 与微信端使用原生 sticky
+   &--sticky {
+      position: sticky;
+      top: 0;
+      z-index: 970;
+   }
+   /* #endif */
+}
+
+// 下拉筛选菜单栏
+.uvx-drop-down {
+   display: flex;
+   flex-direction: row;
+   align-items: stretch;
+   justify-content: space-between;
+   width: 100%;
+   box-sizing: border-box;
+   overflow: visible;
+   border-bottom-width: 0.5px;
+   border-bottom-style: solid;
+   border-bottom-color: var(--uvx-border);
+   background-color: var(--uvx-container);
+
+   // App 端由页面滚动回调驱动吸顶
+   &--fixed {
+      position: fixed;
+      top: 0;
+      z-index: 970;
+   }
+}
+</style>

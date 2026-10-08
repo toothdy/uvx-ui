@@ -1,0 +1,160 @@
+<template>
+	<uvx-page>
+		<view class="uvx-page">
+			<uvx-cell-group>
+				<uvx-cell
+					v-for="(item, index) in list"
+					:key="index"
+					:title="item.title"
+					:isLink="true"
+					@tap="openTransition(item.mode)"
+				>
+					<template v-slot:icon>
+						<image class="uvx-cell-icon" :src="item.iconUrl" mode="widthFix"></image>
+					</template>
+				</uvx-cell>
+			</uvx-cell-group>
+
+			<uvx-transition
+				:mode="mode"
+				:show="show"
+				:u-style="$uvx.style.stringify(overlayStyle)"
+				@click="onOverlayClick"
+			/>
+
+			<!-- 自定义动画演示元素,常驻显示,点击列表"自定义动画"后执行 step 队列 -->
+			<view class="uvx-custom-anim">
+				<uvx-transition ref="uAni" :show="true" :u-style="$uvx.style.stringify(customStyle)" />
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "@/uni_modules/uvx-ui";
+
+type ModeItem = {
+	mode : string
+	title : string
+	iconUrl : string
+}
+
+const mode = ref<string>('fade');
+const show = ref<boolean>(false);
+
+/** 自定义动画组件实例 */
+const uAni = ref<UvxTransitionComponentPublicInstance | null>(null);
+
+const windowInfo = $uvx.windowInfo();
+const overlayStyle: UTSJSONObject = {
+	position: 'fixed',
+	top: `${Math.round(windowInfo.windowHeight / 2 - 60)}px`,
+	left: `${Math.round(windowInfo.windowWidth / 2 - 60)}px`,
+	width: '120px',
+	height: '120px',
+	backgroundColor: '#3c9cff',
+	borderRadius: '8px',
+};
+
+/** 自定义动画演示元素样式 */
+const customStyle: UTSJSONObject = {
+	width: '40px',
+	height: '40px',
+	backgroundColor: '#3c9cff',
+	borderRadius: '4px',
+};
+
+const list = ref<ModeItem[]>([
+	{
+		mode: 'fade',
+		title: '渐隐渐出过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/fade.png',
+	},
+	{
+		mode: 'slide-top',
+		title: '由上至下过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/slideUp.png',
+	},
+	{
+		mode: 'slide-bottom',
+		title: '由下至上过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/slideDown.png',
+	},
+	{
+		mode: 'slide-left',
+		title: '由左至右过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/slideLeft.png',
+	},
+	{
+		mode: 'slide-right',
+		title: '由右至左过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/slideRight.png',
+	},
+	{
+		mode: 'zoom-in',
+		title: '由小到大过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/zoom.png',
+	},
+	{
+		mode: 'zoom-out',
+		title: '由大到小过渡',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/zoom.png',
+	},
+	{
+		mode: 'custom',
+		title: '自定义动画',
+		iconUrl: 'https://cdn.uviewui.com/uview/demo/transition/zoom.png',
+	},
+]);
+
+/**
+ * 自定义动画:右移 200px 同时旋转 360 度,再以 ease-in 500ms 回到原位
+ */
+const runCustom = () : void => {
+	const instance = uAni.value;
+	if (instance == null) return;
+	instance.step({ translateX: '200px', rotate: '360deg' }, {});
+	instance.step({ translateX: '0px', rotate: '0deg' }, { timingFunction: 'ease-in', duration: 500 });
+	instance.run();
+};
+
+const openTransition = (item : string) : void => {
+	if (item == 'custom') {
+		runCustom();
+		return;
+	}
+	mode.value = item;
+	show.value = true;
+	setTimeout(() => {
+		show.value = false;
+	}, 1500);
+};
+
+const onOverlayClick = () : void => {
+	show.value = false;
+};
+
+onReady(() => {
+	const instance = uAni.value;
+	if (instance == null) return;
+	instance.init({ duration: 300, timingFunction: 'linear', delay: 500 });
+});
+</script>
+
+<style lang="scss" scoped>
+.uvx-page {
+	padding: 0;
+}
+
+.uvx-cell-icon {
+	width: 36rpx;
+	height: 36rpx;
+	margin-right: 8rpx;
+}
+
+.uvx-custom-anim {
+	margin: 20px 15px;
+	height: 40px;
+	overflow: visible;
+}
+</style>

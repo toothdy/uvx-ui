@@ -1,0 +1,36 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo vtabs-entry">
+         <!-- 示例入口 -->
+         <uvx-cell-group>
+            <uvx-cell
+               title="垂直选项卡 - 联动"
+               icon="list"
+               url="/pages/layout/vtabs/vtabs-chain"
+               :is-link="true"
+               :clickable="true"
+            ></uvx-cell>
+            <uvx-cell
+               title="垂直选项卡 - 不联动"
+               icon="grid"
+               url="/pages/layout/vtabs/vtabs-basic"
+               :is-link="true"
+               :clickable="true"
+            ></uvx-cell>
+         </uvx-cell-group>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 垂直选项卡入口页
+.vtabs-entry {
+   padding-right: 0;
+   padding-left: 0;
+}
+</style>

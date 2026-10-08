@@ -1,0 +1,145 @@
+<template>
+	<!-- #ifdef APP -->
+	<scroll-view
+		class="uvx-page"
+		:class="theme"
+		:direction="direction"
+		:bounces="bounces"
+		:show-scrollbar="showScrollbar"
+		:upper-threshold="upperThreshold"
+		:lower-threshold="lowerThreshold"
+		:scroll-top="scrollTop"
+		:scroll-with-animation="scrollWithAnimation"
+		@scroll="onScroll"
+		@scrolltoupper="onScrollToUpper"
+		@scrolltolower="onScrollToLower"
+		@scrollend="onScrollEnd"
+	>
+		<slot></slot>
+	</scroll-view>
+	<!-- #endif -->
+	<!-- #ifndef APP -->
+	<view class="uvx-page" :class="theme">
+		<slot></slot>
+	</view>
+	<!-- #endif -->
+	<uvx-toast ref="uToast"></uvx-toast>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-page 页面容器组件
+ * @description 自动处理 APP/H5 平台的滚动容器差异
+ * @tutorial https://www.uvxui.cn/components/page.html
+ * @property {String} direction 滚动方向：none | vertical | horizontal | all，默认 'vertical'
+ * @property {Boolean} bounces 是否开启弹性滚动，默认 true
+ * @property {Boolean} showScrollbar 是否显示滚动条，默认 false
+ * @property {Number} upperThreshold 距顶部/左边多远时触发 scrolltoupper 事件，默认 50
+ * @property {Number} lowerThreshold 距底部/右边多远时触发 scrolltolower 事件，默认 50
+ * @property {Number} scrollTop 程序化设置 scroll-view 竖向滚动位置(回顶用),默认 0
+ * @property {Boolean} scrollWithAnimation 设置 scroll-top 时是否带滚动动画,默认 true
+ *
+ * @event {Function} scroll 滚动时触发
+ * @event {Function} scrolltoupper 滚动到顶部/左边时触发
+ * @event {Function} scrolltolower 滚动到底部/右边时触发
+ * @event {Function} scrollend 滚动结束时触发
+ * @example <uvx-page @scroll="onScroll"><view>内容</view></uvx-page>
+ */
+
+import { isDark } from "../../core/theme";
+import type { Options as ToastOptions } from "../uvx-toast/types/index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: 'uvx-page', options: { virtualHost: true } });
+
+/**
+ * 主题类：挂在页面根节点，根据主题切换背景颜色
+ * @returns string
+ */
+const theme = computed(() : string => isDark.value ? 'uvx-dark' : 'uvx-light');
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	direction: 'vertical',
+	bounces: false,
+	showScrollbar: false,
+	upperThreshold: 50,
+	lowerThreshold: 50,
+	scrollTop: 0,
+	scrollWithAnimation: true
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+// 页面 Toast 实例
+const uToast = ref<UvxToastComponentPublicInstance | null>(null);
+
+/**
+ * 显示页面 Toast
+ * @param options Toast 配置
+ * @returns null
+ */
+const toast = (options: ToastOptions): void => {
+	uToast.value?.show(options);
+};
+
+/**
+ * 滚动事件
+ * @param event 滚动事件对象
+ * @returns null
+ */
+const onScroll = (event: UniScrollEvent): void => {
+   emit("scroll", event);
+};
+
+/**
+ * 滚动到顶部事件
+ * @param e 滚动到顶部事件对象
+ * @returns null
+ */
+const onScrollToUpper = (e : UniScrollToUpperEvent) => {
+	emit('scrolltoupper', e);
+}
+
+/**
+ * 滚动到底部事件
+ * @param e 滚动到底部事件对象
+ * @returns null
+ */
+const onScrollToLower = (e : UniScrollToLowerEvent) => {
+	emit('scrolltolower', e);
+}
+
+/**
+ * 滚动结束事件
+ * @param e 滚动结束事件对象
+ * @returns null
+ */
+const onScrollEnd = (e : UniScrollEvent) => {
+	emit('scrollend', e);
+}
+
+defineExpose({ toast });
+</script>
+
+<style lang="scss">
+@import '../../core/scss/common.scss';
+
+.uvx-page {
+	// #ifdef APP
+	flex: 1;
+	// #endif
+	/* #ifdef WEB */
+	min-height: calc(100vh - 44px);
+	/* #endif */
+	/* #ifdef MP */
+	min-height: 100vh;
+	/* #endif */
+	background-color: var(--uvx-page);
+}
+</style>

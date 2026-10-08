@@ -1,0 +1,114 @@
+<template>
+	<view
+		class="uvx-col"
+		:class="[uClass]"
+		:style="colStyle"
+		@click="clickHandler"
+	>
+		<slot></slot>
+	</view>
+</template>
+
+<script setup lang="uts">
+/**
+ * uvx-col 栅格系统的列
+ * @description 配合 uvx-row 使用，基于 12 栅格实现布局
+ * @tutorial https://www.uvxui.cn/components/layout.html
+ * @property {Number} span 栅格占据的列数，总 12 等份（默认 12）
+ * @property {Number} offset 分栏左边偏移，计算方式与 span 相同（默认 0）
+ * @property {String} justify 水平排列方式：flex-start | flex-end | center | space-around | space-between（默认 flex-start）
+ * @property {String} align 垂直对齐方式：top | center | bottom | stretch（默认 stretch）
+ * @property {String} textAlign 文字水平对齐：left | center | right（默认 left）
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ *
+ * @event {Function} click 列点击事件
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Emits, Props } from './types/index.uts';
+
+defineOptions({ name: 'uvx-col', options: { virtualHost: true }, externalClasses: ['u-class'] });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	span: 12,
+	offset: 0,
+	justify: 'flex-start',
+	align: 'stretch',
+	textAlign: 'left',
+	uStyle: "",
+	uClass: ''
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/**
+ * 行上下文
+ */
+const ctx = inject<UTSJSONObject>('uvx-row-ctx');
+
+// 行组件提供的列间距
+const gutter = ref(0);
+// 栅格总列数
+const grid = 12;
+
+/**
+ * 初始化行组件提供的列间距
+ * @returns null
+ */
+const init = () => {
+	if (ctx != null) {
+		const n = ctx['gutter'] as number;
+		gutter.value = (typeof n == 'number' && !isNaN(n)) ? n : 0;
+	}
+}
+
+/**
+ * 组件挂载后初始化列间距
+ * @returns null
+ */
+onMounted(() => {
+	init();
+});
+
+/**
+ * 栅格列样式
+ * @returns UTSJSONObject
+ */
+const colStyle = computed(() => {
+	const percent = (100 / grid) * props.span;
+	const style : UTSJSONObject = {
+		'box-sizing': 'border-box',
+		'padding-left': $uvx.format.unit(gutter.value / 2),
+		'padding-right': $uvx.format.unit(gutter.value / 2),
+		'justify-content': props.justify,
+		'align-items': props.align == 'top' ? 'flex-start' : props.align == 'bottom' ? 'flex-end' : props.align,
+		'flex': `0 0 ${percent}%`,
+		'max-width': `${percent}%`,
+		'margin-left': `${(100 / grid) * props.offset}%`,
+	};
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 点击事件
+ * @param e 点击事件
+ * @returns null
+ */
+const clickHandler = (e : Event) => {
+	emit('click', e);
+};
+</script>
+
+<style lang="scss" scoped>
+	.uvx-col {
+		display: flex;
+		flex-direction: column;
+	}
+</style>

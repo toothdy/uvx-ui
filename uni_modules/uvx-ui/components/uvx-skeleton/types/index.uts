@@ -1,0 +1,48 @@
+/** 骨架屏节点类型 */
+export type NodeType = "line" | "avatar" | "flex" | "custom" | "gap";
+
+/** 骨架屏样式值 */
+export type Style = string | UTSJSONObject;
+
+/** 骨架屏配置节点 */
+export type Item = {
+   type?: NodeType;
+   num?: number;
+   style?: Style | Array<Style>;
+   gap?: string | number;
+   children?: Array<Item>;
+   height?: string | number;
+};
+
+/** 骨架屏配置数组项 */
+export type ConfigItem = Item | number;
+
+/** 骨架屏配置数组 */
+export type Config = Array<ConfigItem>;
+
+/** 骨架屏组件属性 */
+export type Props = {
+   loading: boolean;
+   skeleton: Config;
+   animate: boolean;
+   round: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 已展开的骨架屏节点 */
+export type RenderNode = {
+   key: string;
+   type: NodeType;
+   className: string;
+   style: UTSJSONObject;
+   height: string | number;
+   children: Array<RenderGroup>;
+};
+
+/** 横向布局子分组 */
+export type RenderGroup = {
+   key: string;
+   className: string;
+   elements: Array<RenderNode>;
+};

@@ -1,0 +1,32 @@
+import { config } from "./config";
+import { storage } from "./utils/storage";
+
+/**
+ * 按全局缩放倍数换算尺寸
+ * @param size 原始尺寸
+ * @returns 缩放后的尺寸
+ */
+export function toScale(size : number) : number {
+	return config.fontSize * size;
+}
+
+/**
+ * 设置全局字号缩放倍数
+ * @param scale 缩放倍数
+ */
+export function setFontSize(scale : number): void {
+	config.fontSize = scale;
+	storage.set('u-font-size', scale, 0);
+}
+
+/**
+ * 从本地缓存初始化全局字号缩放倍数
+ */
+export function getFontSize(): void {
+	try {
+		const size = storage.get('u-font-size');
+		if (size != null) {
+			config.fontSize = size;
+		}
+	} catch (e) { }
+}

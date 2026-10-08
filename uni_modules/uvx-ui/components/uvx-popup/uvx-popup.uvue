@@ -1,0 +1,394 @@
+<template>
+   <view class="uvx-popup" :class="uClass">
+      <!-- 遮罩层 -->
+      <uvx-overlay
+         :show="isOpen && isOverlayVisible && overlay"
+         :z-index="zIndexValue"
+         :duration="duration"
+         :opacity="overlayOpacity"
+         :u-style="overlayStyle"
+         @click="handleOverlayClick"
+      ></uvx-overlay>
+
+      <!-- 弹层内容 -->
+      <uvx-transition
+         :show="isOpen"
+         :mode="transitionMode"
+         :duration="duration"
+         :u-style="$uvx.style.stringify(wrapperStyle)"
+         @click="handleWrapperClick"
+      >
+         <view
+            class="uvx-popup__content"
+            :class="contentClasses"
+            :style="contentStyle"
+            @click.stop="handleContentClick"
+            <!-- #ifdef APP-HARMONY -->
+            @touchmove.stop="handleTouchMove"
+            <!-- #else -->
+            @touchmove.stop.prevent="handleTouchMove"
+            <!-- #endif -->
+         >
+            <!-- 顶部状态栏安全区 -->
+            <uvx-status-bar v-if="props.safeArea && props.safeAreaInsetTop"></uvx-status-bar>
+            <slot></slot>
+            <!-- 底部手势安全区 -->
+            <uvx-safe-bottom v-if="props.safeArea && props.safeAreaInsetBottom"></uvx-safe-bottom>
+            <!-- 关闭按钮 -->
+            <view
+               v-if="closeable"
+               class="uvx-popup__close"
+               :class="`uvx-popup__close--${closeIconPos}`"
+               hover-class="uvx-popup__close--active"
+               @click.stop="close"
+            >
+               <uvx-icon name="close" size="18"></uvx-icon>
+            </view>
+         </view>
+      </uvx-transition>
+
+      <!-- #ifdef WEB -->
+      <!-- Escape 键关闭辅助 -->
+      <Keypress v-if="isOpen && isOverlayVisible" @esc="handleOverlayClick"></Keypress>
+      <!-- #endif -->
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-popup 弹出层
+ * @description 提供顶部、底部、左右侧和居中弹出的通用容器。
+ * @tutorial https://www.uvxui.cn/components/popup.html
+ * @property {String} mode 弹出方向：top、center、bottom、left、right，默认 center
+ * @property {Number} duration 动画时长，单位毫秒，默认 300
+ * @property {String | Number} zIndex 弹层层级，默认使用全局弹层基础层级
+ * @property {String} bgColor 内容背景色，默认跟随主题容器色
+ * @property {Boolean} safeArea 是否启用安全区适配，默认 true
+ * @property {Boolean} overlay 是否显示遮罩，默认 true
+ * @property {Boolean} closeOnClickOverlay 点击遮罩是否关闭，默认 true
+ * @property {String | Number} overlayOpacity 遮罩透明度，默认 0.4
+ * @property {String} overlayStyle 遮罩自定义样式
+ * @property {Boolean} safeAreaInsetBottom 是否留出底部安全区，默认 true
+ * @property {Boolean} safeAreaInsetTop 是否留出顶部安全区，默认 false
+ * @property {Boolean} closeable 是否显示关闭按钮，默认 false
+ * @property {String} closeIconPos 关闭按钮位置，默认 top-right
+ * @property {Boolean} zoom 居中弹出时是否使用缩放动画，默认 true
+ * @property {String | Number} round 弹层圆角，单位 px，默认 0
+ * @property {String} uStyle 内容自定义样式
+ * @property {String} uClass 自定义类名
+ * @method open 打开弹层，可传入弹出方向
+ * @method close 关闭弹层
+ * @method closeMask 隐藏当前遮罩
+ * @event {Function} change 打开或关闭时触发
+ * @event {Function} maskClick 点击遮罩时触发
+ * @example <uvx-popup ref="popup" mode="bottom"><view>内容</view></uvx-popup>
+ */
+
+import { $uvx } from "../../index.uts";
+import { config } from "../../core/config.uts";
+import type {
+   Props,
+   Mode,
+   Emits,
+} from "./types/index.uts";
+// #ifdef WEB
+import Keypress from "./keypress.uvue";
+// #endif
+
+defineOptions({ name: "uvx-popup", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   mode: "center",
+   duration: 300,
+   zIndex: config.zIndex,
+   bgColor: "",
+   safeArea: true,
+   overlay: true,
+   closeOnClickOverlay: true,
+   overlayOpacity: 0.4,
+   overlayStyle: "",
+   safeAreaInsetBottom: true,
+   safeAreaInsetTop: false,
+   closeable: false,
+   closeIconPos: "top-right",
+   zoom: true,
+   round: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 弹层状态事件 */
+const emit = defineEmits<Emits>();
+// 是否打开弹层
+const isOpen = ref(false);
+// 当前遮罩是否显示
+const isOverlayVisible = ref(true);
+// 当前弹出方向
+const activeMode = ref<Mode>(props.mode);
+
+/**
+ * 弹层层级
+ * @returns number
+ */
+const zIndexValue = computed((): number => {
+   const parsedValue = parseInt(props.zIndex.toString());
+   return Number.isNaN(parsedValue) ? config.zIndex : parsedValue;
+});
+
+/**
+ * 弹层圆角
+ * @returns number
+ */
+const roundValue = computed((): number => {
+   const value = parseFloat(props.round.toString());
+   return Number.isNaN(value) || value < 0 ? 0 : value;
+});
+
+/**
+ * 内容入场动画
+ * @returns string
+ */
+const transitionMode = computed((): string => {
+   if (activeMode.value == "top") return "slide-top";
+   if (activeMode.value == "bottom") return "slide-bottom";
+   if (activeMode.value == "left") return "slide-left";
+   if (activeMode.value == "right") return "slide-right";
+   return props.zoom ? "zoom-in" : "fade";
+});
+
+/**
+ * 内容定位样式
+ * @returns UTSJSONObject
+ */
+const wrapperStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "position": "fixed",
+      "z-index": zIndexValue.value + 1,
+      "display": "flex",
+      "flex-direction": "column",
+   };
+   if (activeMode.value == "top") {
+      style.set("top", "0");
+      style.set("right", "0");
+      style.set("left", "0");
+   } else if (activeMode.value == "bottom") {
+      style.set("right", "0");
+      style.set("bottom", "0");
+      style.set("left", "0");
+   } else if (activeMode.value == "left") {
+      style.set("top", "0");
+      style.set("bottom", "0");
+      style.set("left", "0");
+   } else if (activeMode.value == "right") {
+      style.set("top", "0");
+      style.set("right", "0");
+      style.set("bottom", "0");
+   } else {
+      style.set("top", "0");
+      style.set("right", "0");
+      style.set("bottom", "0");
+      style.set("left", "0");
+      style.set("align-items", "center");
+      style.set("justify-content", "center");
+   }
+   // #ifdef WEB
+   // Web 固定定位需避开系统导航栏。
+   if (activeMode.value == "top" || activeMode.value == "left" || activeMode.value == "right") {
+      style.set("top", "var(--window-top)");
+   }
+   // #endif
+   return style;
+});
+
+/**
+ * 内容状态类名
+ * @returns string[]
+ */
+const contentClasses = computed((): string[] => {
+   const classes: string[] = [`uvx-popup__content--${activeMode.value}`];
+   if (props.bgColor == "page") classes.push("uvx-popup__content--page");
+   return classes;
+});
+
+/**
+ * 内容外观样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const radius = $uvx.format.unit(roundValue.value);
+   const style: UTSJSONObject = {};
+   if (props.bgColor == "none") {
+      style.set("background-color", "transparent");
+   } else if (props.bgColor != "page" && !$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   if (roundValue.value > 0) {
+      if (activeMode.value == "top") {
+         style.set("border-bottom-left-radius", radius);
+         style.set("border-bottom-right-radius", radius);
+      } else if (activeMode.value == "bottom") {
+         style.set("border-top-left-radius", radius);
+         style.set("border-top-right-radius", radius);
+      } else if (activeMode.value == "center") {
+         style.set("border-top-left-radius", radius);
+         style.set("border-top-right-radius", radius);
+         style.set("border-bottom-left-radius", radius);
+         style.set("border-bottom-right-radius", radius);
+      }
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 发送弹层状态
+ * @param show 是否打开
+ * @returns null
+ */
+const emitChange = (show: boolean): void => {
+   emit("change", {
+      show: show,
+      type: activeMode.value,
+   });
+};
+
+/**
+ * 打开弹层
+ * @param mode 临时弹出方向
+ * @returns null
+ */
+const open = (mode?: Mode): void => {
+   if (isOpen.value) return;
+   activeMode.value = mode == null ? props.mode : mode;
+   isOverlayVisible.value = true;
+   isOpen.value = true;
+   emitChange(true);
+};
+
+/**
+ * 关闭弹层
+ * @returns null
+ */
+const close = (): void => {
+   if (!isOpen.value) return;
+   isOpen.value = false;
+   emitChange(false);
+};
+
+/**
+ * 隐藏当前遮罩
+ * @returns null
+ */
+const closeMask = (): void => {
+   isOverlayVisible.value = false;
+};
+
+/**
+ * 处理遮罩点击
+ * @returns null
+ */
+const handleOverlayClick = (): void => {
+   emit("maskClick");
+   if (props.closeOnClickOverlay) close();
+};
+
+/**
+ * 将居中容器空白区点击转为遮罩点击
+ * @returns null
+ */
+const handleWrapperClick = (): void => {
+   if (activeMode.value == "center" && props.overlay) handleOverlayClick();
+};
+
+/**
+ * 阻止内容点击冒泡
+ * @returns null
+ */
+const handleContentClick = (): void => {};
+
+/**
+ * 阻止触摸移动穿透
+ * @returns null
+ */
+const handleTouchMove = (): void => {};
+
+/**
+ * 未打开时同步默认方向
+ * @param value 新的弹出方向
+ * @returns null
+ */
+watch((): Mode => props.mode, (value: Mode): void => {
+   if (!isOpen.value) activeMode.value = value;
+});
+
+defineExpose({ open, close, closeMask });
+</script>
+
+<style lang="scss">
+// 弹层根节点
+.uvx-popup {
+   position: relative;
+
+   // 内容容器
+   &__content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
+      background-color: var(--uvx-container);
+
+      &--page {
+         background-color: var(--uvx-page);
+      }
+
+      // 顶部与底部内容占满宽度
+      &--top,
+      &--bottom {
+         width: 100%;
+      }
+
+      // 左右内容占满高度
+      &--left,
+      &--right {
+         flex: 1;
+         height: 100%;
+      }
+   }
+
+   // 关闭按钮
+   &__close {
+      position: absolute;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+
+      &--top-left {
+         top: 8px;
+         left: 8px;
+      }
+
+      &--top-right {
+         top: 8px;
+         right: 8px;
+      }
+
+      &--bottom-left {
+         bottom: 8px;
+         left: 8px;
+      }
+
+      &--bottom-right {
+         right: 8px;
+         bottom: 8px;
+      }
+
+      &--active {
+         opacity: 0.6;
+      }
+   }
+}
+</style>

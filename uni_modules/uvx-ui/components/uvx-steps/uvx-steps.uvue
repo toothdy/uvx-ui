@@ -1,0 +1,157 @@
+<template>
+   <view
+      class="uvx-steps"
+      :class="[direction == 'column' ? 'uvx-steps--column' : 'uvx-steps--row', uClass]"
+      :style="rootStyle"
+   >
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-steps 步骤条
+ * @description 展示任务的步骤与当前进度。
+ * @tutorial https://www.uvxui.cn/components/steps.html
+ * @property {String} direction 排列方向，row 或 column
+ * @property {String | Number} current 当前步骤索引，从 0 开始
+ * @property {String} activeColor 已激活颜色，空值跟随主题
+ * @property {String} inactiveColor 未激活颜色，空值跟随主题
+ * @property {String} activeIcon 已激活图标名称
+ * @property {String} inactiveIcon 未激活图标名称
+ * @property {Boolean} dot 是否使用圆点样式
+ * @property {String} uStyle 根节点样式
+ * @property {String} uClass 根节点类名
+ * @slot default 步骤项
+ * @example <uvx-steps :current="1"><uvx-steps-item title="完成"></uvx-steps-item></uvx-steps>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { ComponentPublicInstance } from "vue";
+import type { Child, Config, Context, Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-steps",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   direction: "row",
+   current: 0,
+   activeColor: "",
+   inactiveColor: "",
+   activeIcon: "",
+   inactiveIcon: "",
+   dot: false,
+   uStyle: "",
+   uClass: "",
+});
+
+// 已挂载的步骤项
+const children = ref<Child[]>([]);
+
+/**
+ * 获取子项共享配置
+ * @returns Config
+ */
+const config = computed((): Config => {
+   const current = Number(props.current);
+   return {
+      direction: props.direction,
+      current: isNaN(current) ? 0 : current,
+      activeColor: props.activeColor,
+      inactiveColor: props.inactiveColor,
+      activeIcon: props.activeIcon,
+      inactiveIcon: props.inactiveIcon,
+      dot: props.dot,
+   };
+});
+
+/**
+ * 获取根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 同步步骤项的索引和数量
+ * @returns null
+ */
+const syncChildren = (): void => {
+   const total = children.value.length;
+   for (let index = 0; index < total; index++) {
+      children.value[index].instance.$callMethod("syncFromSteps", index, total);
+   }
+};
+
+/**
+ * 注册步骤项
+ * @param child 子组件实例
+ * @param isError 是否为错误步骤
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance, isError: boolean): void => {
+   if (children.value.findIndex((item: Child): boolean => item.instance == child) == -1) {
+      children.value.push({ instance: child, isError });
+   }
+   syncChildren();
+};
+
+/**
+ * 注销步骤项
+ * @param child 子组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.findIndex((item: Child): boolean => item.instance == child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+   syncChildren();
+};
+
+/**
+ * 更新步骤项错误状态
+ * @param child 子组件实例
+ * @param isError 是否为错误步骤
+ * @returns null
+ */
+const setError = (child: ComponentPublicInstance, isError: boolean): void => {
+   const index = children.value.findIndex((item: Child): boolean => item.instance == child);
+   if (index >= 0) children.value[index].isError = isError;
+};
+
+/**
+ * 判断下一步骤是否出错
+ * @param index 当前步骤索引
+ * @returns boolean
+ */
+const isNextError = (index: number): boolean => {
+   const next = index + 1;
+   return next >= 0 && next < children.value.length && children.value[next].isError;
+};
+
+provide<Context>("uvx-steps-context", { config, register, unregister, setError, isNextError });
+defineExpose({ register, unregister });
+</script>
+
+<style lang="scss">
+// 步骤条容器
+.uvx-steps {
+   display: flex;
+   width: 100%;
+   overflow: visible;
+}
+
+// 横向排列
+.uvx-steps--row {
+   flex-direction: row;
+}
+
+// 竖向排列
+.uvx-steps--column {
+   flex-direction: column;
+}
+</style>

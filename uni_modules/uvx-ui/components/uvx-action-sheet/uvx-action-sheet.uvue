@@ -1,0 +1,486 @@
+<template>
+   <uvx-popup
+      ref="uPopup"
+      mode="bottom"
+      :safe-area-inset-bottom="false"
+      :round="round"
+      :close-on-click-overlay="closeOnClickOverlay"
+      @change="handlePopupChange"
+   >
+      <view class="uvx-action-sheet">
+         <!-- 标题区域 -->
+         <view v-if="!$uvx.string.empty(title)" class="uvx-action-sheet__header">
+            <text class="uvx-action-sheet__title uvx-line-1">{{ title }}</text>
+            <view
+               class="uvx-action-sheet__close"
+               hover-class="uvx-action-sheet__close--hover"
+               @click.stop="handleCancel"
+            >
+               <uvx-icon name="close" size="17" :bold="true"></uvx-icon>
+            </view>
+         </view>
+
+         <!-- 描述区域 -->
+         <text
+            v-if="!$uvx.string.empty(description)"
+            class="uvx-action-sheet__description"
+            :class="descriptionClass"
+         >{{ description }}</text>
+
+         <!-- 操作项区域 -->
+         <slot>
+            <uvx-line v-if="!$uvx.string.empty(description)"></uvx-line>
+            <view class="uvx-action-sheet__items">
+               <view v-for="(item, index) in actionList" :key="index">
+                  <!-- #ifdef MP-WEIXIN -->
+                  <button
+                     class="uvx-action-sheet__button uvx-reset-button"
+                     :open-type="getItemOpenType(item)"
+                     :disabled="item.disabled == true || item.loading == true"
+                     :lang="lang"
+                     :session-from="sessionFrom"
+                     :send-message-title="sendMessageTitle"
+                     :send-message-path="sendMessagePath"
+                     :send-message-img="sendMessageImg"
+                     :show-message-card="showMessageCard"
+                     :app-parameter="appParameter"
+                     @getuserinfo="handleUserInfo"
+                     @contact="handleContact"
+                     @getphonenumber="handlePhoneNumber"
+                     @error="handleOpenTypeError"
+                     @launchapp="handleLaunchApp"
+                     @opensetting="handleOpenSetting"
+                  >
+                  <!-- #endif -->
+                     <view
+                        class="uvx-action-sheet__item"
+                        :class="item.disabled == true ? 'uvx-action-sheet__item--disabled' : ''"
+                        :hover-class="getItemHoverClass(item)"
+                        :hover-stay-time="150"
+                        @click.stop="handleSelect(index)"
+                     >
+                        <template v-if="item.loading != true">
+                           <text
+                              class="uvx-action-sheet__name"
+                              :class="item.disabled == true ? 'uvx-action-sheet__name--disabled' : ''"
+                              :style="getItemTextStyle(item)"
+                           >{{ item.name }}</text>
+                           <text
+                              v-if="hasItemSubname(item)"
+                              class="uvx-action-sheet__subname"
+                           >{{ item.subname }}</text>
+                        </template>
+                        <uvx-loading-icon
+                           v-else
+                           mode="circle"
+                           :vertical="false"
+                           :size="18"
+                        ></uvx-loading-icon>
+                     </view>
+                  <!-- #ifdef MP-WEIXIN -->
+                  </button>
+                  <!-- #endif -->
+                  <uvx-line v-if="index < actionList.length - 1"></uvx-line>
+               </view>
+            </view>
+         </slot>
+
+         <!-- 取消区域 -->
+         <template v-if="!$uvx.string.empty(cancelText)">
+            <uvx-gap :height="6"></uvx-gap>
+            <view
+               class="uvx-action-sheet__cancel"
+               hover-class="uvx-action-sheet__cancel--hover"
+               :hover-stay-time="150"
+               @click="handleCancel"
+            >
+               <text class="uvx-action-sheet__cancel-text">{{ cancelText }}</text>
+            </view>
+         </template>
+
+         <!-- 底部安全区 -->
+         <view v-if="safeAreaInsetBottom" class="uvx-action-sheet__safe-bottom">
+            <uvx-safe-bottom></uvx-safe-bottom>
+         </view>
+      </view>
+   </uvx-popup>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-action-sheet 上拉菜单
+ * @description 从页面底部弹出操作菜单，支持标题、描述、状态项、取消区域、自定义内容和微信开放能力。
+ * @tutorial https://www.uvxui.cn/components/action-sheet.html
+ * @property {String} title 菜单标题
+ * @property {String} description 选项上方的描述信息
+ * @property {Array<Item>} actions 操作项列表
+ * @property {String} cancelText 取消按钮文字，空字符串时不显示
+ * @property {Boolean} closeOnClickAction 点击有效操作项后是否关闭，默认 true
+ * @property {Boolean} safeAreaInsetBottom 是否留出底部安全区，默认 true
+ * @property {String} openType 操作项未设置 openType 时使用的微信开放能力
+ * @property {Boolean} closeOnClickOverlay 点击遮罩是否关闭，默认 true
+ * @property {Number} round 弹层顶部圆角，默认 0
+ * @property {String} lang 返回用户信息的语言，默认 zh_CN
+ * @property {String} sessionFrom 客服会话来源
+ * @property {String} sendMessageTitle 客服会话消息卡片标题
+ * @property {String} sendMessagePath 客服会话消息卡片跳转路径
+ * @property {String} sendMessageImg 客服会话消息卡片图片
+ * @property {Boolean} showMessageCard 是否显示客服会话消息卡片
+ * @property {String} appParameter 打开 App 时传递的参数
+ * @method open 打开菜单
+ * @method close 关闭菜单
+ * @event {Function} select 点击有效操作项时触发
+ * @event {Function} close 菜单关闭时触发
+ * @event {Function} getuserinfo 获取用户信息事件
+ * @event {Function} contact 客服会话事件
+ * @event {Function} getphonenumber 获取手机号事件
+ * @event {Function} error 微信开放能力失败事件
+ * @event {Function} launchapp 打开 App 事件
+ * @event {Function} opensetting 打开授权设置事件
+ * @example <uvx-action-sheet ref="actionSheet" :actions="actions"></uvx-action-sheet>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { ChangeEvent } from "../uvx-popup/types/index.uts";
+import type {
+   Emits,
+   Item,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-action-sheet", options: { virtualHost: true } });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+   title: "",
+   description: "",
+   actions: (): Item[] => [],
+   cancelText: "",
+   closeOnClickAction: true,
+   safeAreaInsetBottom: true,
+   openType: "",
+   closeOnClickOverlay: true,
+   round: 0,
+   lang: "zh_CN",
+   sessionFrom: "",
+   sendMessageTitle: "",
+   sendMessagePath: "",
+   sendMessageImg: "",
+   showMessageCard: false,
+   appParameter: "",
+});
+
+/**
+ * 模板操作项列表
+ * @returns Item[]
+ */
+const actionList = computed((): Item[] => props.actions);
+
+// 组件事件
+const emit = defineEmits<Emits>();
+// 内部弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+
+/**
+ * 描述区域状态类
+ * @returns string
+ */
+const descriptionClass = computed((): string => {
+   return $uvx.string.empty(props.title) ? "uvx-action-sheet__description--standalone" : "";
+});
+
+/**
+ * 获取操作项文字样式
+ * @param item 操作项
+ * @returns UTSJSONObject
+ */
+const getItemTextStyle = (item: Item): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (item.disabled != true && item.color != null && !$uvx.string.empty(item.color!)) {
+      style.set("color", item.color!);
+   }
+   if (item.fontSize != null) {
+      style.set("font-size", $uvx.format.unit(item.fontSize!));
+   }
+   return style;
+};
+
+/**
+ * 获取操作项按压类名
+ * @param item 操作项
+ * @returns string
+ */
+const getItemHoverClass = (item: Item): string => {
+   if (item.disabled == true || item.loading == true) return "none";
+   return "uvx-action-sheet__item--hover";
+};
+
+/**
+ * 获取操作项微信开放能力
+ * @param item 操作项
+ * @returns string
+ */
+const getItemOpenType = (item: Item): string => {
+   if (item.openType != null && !$uvx.string.empty(item.openType!)) return item.openType!;
+   return props.openType;
+};
+
+/**
+ * 操作项是否显示副标题
+ * @param item 操作项
+ * @returns boolean
+ */
+const hasItemSubname = (item: Item): boolean => {
+   return item.subname != null && !$uvx.string.empty(item.subname!);
+};
+
+/**
+ * 打开菜单
+ * @returns null
+ */
+const open = (): void => {
+   uPopup.value?.open();
+};
+
+/**
+ * 关闭菜单
+ * @returns null
+ */
+const close = (): void => {
+   uPopup.value?.close();
+};
+
+/**
+ * 处理内部弹层状态变化
+ * @param event 弹层状态
+ * @returns null
+ */
+const handlePopupChange = (event: ChangeEvent): void => {
+   if (!event.show) emit("close");
+};
+
+/**
+ * 处理取消操作
+ * @returns null
+ */
+const handleCancel = (): void => {
+   close();
+};
+
+/**
+ * 处理操作项选择
+ * @param index 操作项索引
+ * @returns null
+ */
+const handleSelect = (index: number): void => {
+   if (index < 0 || index >= props.actions.length) return;
+   const item = props.actions[index];
+   if (item.disabled == true || item.loading == true) return;
+   emit("select", item);
+   if (props.closeOnClickAction) close();
+};
+
+/**
+ * 转发获取用户信息事件
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handleUserInfo = (event: UniEvent): void => {
+   emit("getuserinfo", event);
+};
+
+/**
+ * 转发客服会话事件
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handleContact = (event: UniEvent): void => {
+   emit("contact", event);
+};
+
+/**
+ * 转发获取手机号事件
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handlePhoneNumber = (event: UniEvent): void => {
+   emit("getphonenumber", event);
+};
+
+/**
+ * 转发开放能力失败事件
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handleOpenTypeError = (event: UniEvent): void => {
+   emit("error", event);
+};
+
+/**
+ * 转发打开 App 事件
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handleLaunchApp = (event: UniEvent): void => {
+   emit("launchapp", event);
+};
+
+/**
+ * 转发打开授权设置事件
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handleOpenSetting = (event: UniEvent): void => {
+   emit("opensetting", event);
+};
+
+defineExpose({ open, close });
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 上拉菜单主体
+.uvx-action-sheet {
+   width: 100%;
+   flex-direction: column;
+   background-color: var(--uvx-container);
+
+   // 标题栏
+   &__header {
+      position: relative;
+      height: 44px;
+      padding: 0 44px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+   }
+
+   // 标题文字
+   &__title {
+      color: var(--uvx-text-main);
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 标题关闭按钮
+   &__close {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 标题关闭按钮按压态
+   &__close--hover {
+      background-color: var(--uvx-hover);
+   }
+
+   // 描述文字
+   &__description {
+      margin: 0 15px 18px 15px;
+      color: var(--uvx-text-tips);
+      font-size: 13px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 无标题时的描述间距
+   &__description--standalone {
+      margin-top: 18px;
+   }
+
+   // 操作项列表
+   &__items {
+      width: 100%;
+      flex-direction: column;
+   }
+
+   // 微信开放能力按钮
+   &__button {
+      width: 100%;
+   }
+
+   // 单个操作项
+   &__item {
+      min-height: 50px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+   }
+
+   // 操作项按压态
+   &__item--hover {
+      background-color: var(--uvx-hover);
+   }
+
+   // 禁用操作项
+   &__item--disabled {
+      background-color: var(--uvx-container);
+   }
+
+   // 操作项名称
+   &__name {
+      color: var(--uvx-text-main);
+      font-size: 16px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 禁用操作项名称
+   &__name--disabled {
+      color: var(--uvx-disabled);
+   }
+
+   // 操作项副标题
+   &__subname {
+      margin-top: 10px;
+      color: var(--uvx-text-placeholder);
+      font-size: 13px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 取消区域
+   &__cancel {
+      height: 50px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+   }
+
+   // 取消区域按压态
+   &__cancel--hover {
+      background-color: var(--uvx-hover);
+   }
+
+   // 取消文字
+   &__cancel-text {
+      color: var(--uvx-text-content);
+      font-size: 15px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 底部安全区
+   &__safe-bottom {
+      width: 100%;
+      flex-shrink: 0;
+      background-color: var(--uvx-page);
+   }
+}
+</style>

@@ -1,0 +1,23 @@
+export type Value = string | number;
+
+/** 数字滚动组件属性 */
+export type Props = {
+   startVal: Value;
+   endVal: Value;
+   duration: Value;
+   autoplay: boolean;
+   decimals: Value;
+   useEasing: boolean;
+   decimal: Value;
+   color: string;
+   fontSize: Value;
+   bold: boolean;
+   separator: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 数字滚动组件事件 */
+export type Emits = {
+   end: [];
+};

@@ -1,0 +1,480 @@
+<template>
+   <uvx-page ref="uPage" :bounces="false">
+      <!-- 地图与底部抽屉 -->
+      <uvx-float-drawer
+         :initial-height="34"
+         :min-height="18"
+         :max-height="82"
+         :inertia="1.1"
+         @position-change="onPositionChange"
+      >
+         <!-- 离线地图主区域 -->
+         <template #main>
+            <view class="float-drawer-demo__map">
+               <!-- 地图道路 -->
+               <view
+                  v-for="road in horizontalRoads"
+                  :key="`horizontal-${road}`"
+                  class="float-drawer-demo__road float-drawer-demo__road--horizontal"
+                  :style="{ top: road + '%' }"
+               ></view>
+               <view
+                  v-for="road in verticalRoads"
+                  :key="`vertical-${road}`"
+                  class="float-drawer-demo__road float-drawer-demo__road--vertical"
+                  :style="{ left: road + '%' }"
+               ></view>
+
+               <!-- 绿地和河道 -->
+               <view class="float-drawer-demo__park float-drawer-demo__park--top"></view>
+               <view class="float-drawer-demo__park float-drawer-demo__park--right"></view>
+               <view class="float-drawer-demo__river"></view>
+
+               <!-- 搜索栏 -->
+               <view class="float-drawer-demo__search" @click="showSearchToast">
+                  <uvx-icon name="search" color="var(--uvx-text-tips)" size="18"></uvx-icon>
+                  <uvx-text text="搜索地点、公交或路线" type="tips" size="13" margin="0 0 0 8px"></uvx-text>
+               </view>
+
+               <!-- 地图定位点 -->
+               <view class="float-drawer-demo__pin">
+                  <view class="float-drawer-demo__pin-dot"></view>
+                  <view class="float-drawer-demo__pin-ring"></view>
+               </view>
+
+               <!-- 地图控制按钮 -->
+               <view class="float-drawer-demo__control" @click="centerMap">
+                  <uvx-icon name="map-fill" color="var(--uvx-primary)" size="20"></uvx-icon>
+               </view>
+
+               <!-- 地图顶部标题 -->
+               <view class="float-drawer-demo__map-title">
+                  <uvx-text text="我的位置" type="main" size="16" :bold="true"></uvx-text>
+                  <uvx-text text="南宁市青秀区" type="tips" size="12" margin="3px 0 0 0"></uvx-text>
+               </view>
+            </view>
+         </template>
+
+         <!-- 路线抽屉内容，由组件内部 scroll-view 承载 -->
+         <template #float>
+            <view class="float-drawer-demo__drawer-content">
+               <!-- 路线概要 -->
+               <view class="float-drawer-demo__route-summary">
+                  <view class="float-drawer-demo__route-title">
+                     <view class="float-drawer-demo__route-icon">
+                        <uvx-icon name="car-fill" color="#ffffff" size="20"></uvx-icon>
+                     </view>
+                     <view class="float-drawer-demo__route-heading">
+                        <uvx-text text="驾车前往青秀山风景区" type="main" size="18" :bold="true"></uvx-text>
+                        <uvx-text text="当前路况畅通 · 推荐路线" type="success" size="12" margin="4px 0 0 0"></uvx-text>
+                     </view>
+                     <uvx-icon name="star" color="var(--uvx-warning)" size="22"></uvx-icon>
+                  </view>
+
+                  <view class="float-drawer-demo__route-stats">
+                     <view class="float-drawer-demo__stat">
+                        <text class="float-drawer-demo__stat-num">6.8</text>
+                        <text class="float-drawer-demo__stat-unit">公里</text>
+                     </view>
+                     <view class="float-drawer-demo__stat">
+                        <text class="float-drawer-demo__stat-num">18</text>
+                        <text class="float-drawer-demo__stat-unit">分钟</text>
+                     </view>
+                     <view class="float-drawer-demo__stat float-drawer-demo__stat--muted">
+                        <uvx-icon name="clock" color="var(--uvx-text-tips)" size="16"></uvx-icon>
+                        <uvx-text text="预计 14:36 到达" type="tips" size="12" margin="4px 0 0 4px"></uvx-text>
+                     </view>
+                  </view>
+
+                  <uvx-button
+                     text="开始导航"
+                     type="primary"
+                     icon="map-fill"
+                     :hairline="false"
+                     u-class="float-drawer-demo__navigation-button"
+                     @click="startNavigation"
+                  ></uvx-button>
+               </view>
+
+               <!-- 路线步骤 -->
+               <view class="float-drawer-demo__steps-title">
+                  <uvx-text text="路线详情" type="main" size="15" :bold="true"></uvx-text>
+                  <uvx-text text="共 7 个步骤" type="tips" size="12" align="right"></uvx-text>
+               </view>
+               <uvx-cell-group>
+                  <uvx-cell
+                     v-for="(step, index) in routeSteps"
+                     :key="step.id"
+                     :title="step.title"
+                     :label="step.description"
+                     :value="step.distance"
+                  >
+                     <template #icon>
+                        <view
+                           class="float-drawer-demo__step-index"
+                           :class="index == 0 ? 'float-drawer-demo__step-index--active' : ''"
+                        >
+                           <text
+                              class="float-drawer-demo__step-num"
+                              :class="index == 0 ? 'float-drawer-demo__step-num--active' : ''"
+                           >{{ index + 1 }}</text>
+                        </view>
+                     </template>
+                  </uvx-cell>
+               </uvx-cell-group>
+
+               <!-- 底部提示 -->
+               <view class="float-drawer-demo__drawer-footer">
+                  <uvx-icon name="phone" color="var(--uvx-primary)" size="16"></uvx-icon>
+                  <text class="float-drawer-demo__footer-text">路线实时更新，行驶中请注意安全</text>
+               </view>
+            </view>
+         </template>
+      </uvx-float-drawer>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type RouteStep = {
+   id: number;
+   title: string;
+   description: string;
+   distance: string;
+};
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+// 地图道路位置
+const horizontalRoads: number[] = [22, 43, 67, 86];
+const verticalRoads: number[] = [18, 44, 73];
+
+// 路线步骤数据
+const routeSteps: RouteStep[] = [
+   { id: 1, title: "沿民族大道向东", description: "经过金湖广场，保持直行", distance: "1.5 公里" },
+   { id: 2, title: "右转进入双拥路", description: "向南湖方向行驶", distance: "900 米" },
+   { id: 3, title: "左转进入桃源路", description: "经过南湖公园", distance: "1.6 公里" },
+   { id: 4, title: "进入青山路", description: "沿湖边道路继续行驶", distance: "1.4 公里" },
+   { id: 5, title: "靠右行驶", description: "驶入青环路辅路", distance: "720 米" },
+   { id: 6, title: "到达青秀山北门", description: "目的地在道路右侧", distance: "680 米" },
+   { id: 7, title: "抵达目的地", description: "导航结束", distance: "" },
+];
+
+/**
+ * 接收抽屉位置变化
+ * @param height 当前抽屉高度
+ * @param percentage 当前抽屉百分比
+ * @returns null
+ */
+const onPositionChange = (_height: number, _percentage: number): void => {};
+
+/**
+ * 开始导航
+ * @returns null
+ */
+const startNavigation = (): void => {
+   uPage.value?.toast({ message: "开始导航", type: "success" });
+};
+
+/**
+ * 将地图定位到当前位置
+ * @returns null
+ */
+const centerMap = (): void => {
+   uPage.value?.toast({ message: "已定位到当前位置", type: "success" });
+};
+
+/**
+ * 显示搜索提示
+ * @returns null
+ */
+const showSearchToast = (): void => {
+   uPage.value?.toast({ message: "请输入地点或路线", type: "warning" });
+};
+</script>
+
+<style lang="scss">
+// 浮动抽屉地图演示页
+.float-drawer-demo {
+   // 地图主区域
+   &__map {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--uvx-hover);
+   }
+
+   // 地图道路
+   &__road {
+      position: absolute;
+      z-index: 1;
+      background-color: var(--uvx-container);
+      box-shadow: 0px 0px 0px 1px var(--uvx-border);
+
+      &--horizontal {
+         right: -8%;
+         left: -8%;
+         height: 34px;
+      }
+
+      &--vertical {
+         top: -8%;
+         bottom: -8%;
+         width: 34px;
+      }
+   }
+
+   // 地图绿地区块
+   &__park {
+      position: absolute;
+      z-index: 0;
+      background-color: var(--uvx-container);
+      border: 1px solid var(--uvx-success);
+      opacity: 0.7;
+
+      &--top {
+         top: 12%;
+         left: 53%;
+         width: 34%;
+         height: 18%;
+         border-radius: 36px 12px 36px 12px;
+      }
+
+      &--right {
+         right: 7%;
+         bottom: 26%;
+         width: 27%;
+         height: 17%;
+         border-radius: 12px 36px 12px 36px;
+      }
+   }
+
+   // 地图河道
+   &__river {
+      position: absolute;
+      top: -10%;
+      right: 23%;
+      z-index: 0;
+      width: 62px;
+      height: 120%;
+      background-color: var(--uvx-primary);
+      opacity: 0.2;
+      transform: rotate(17deg);
+   }
+
+   // 地图搜索栏
+   &__search {
+      position: absolute;
+      top: 24px;
+      right: 18px;
+      left: 18px;
+      z-index: 4;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      height: 44px;
+      padding: 0 14px;
+      background-color: var(--uvx-container);
+      border-radius: 22px;
+      box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.25);
+   }
+
+   // 地图标题
+   &__map-title {
+      position: absolute;
+      top: 86px;
+      left: 20px;
+      z-index: 3;
+      padding: 10px 14px;
+      background-color: var(--uvx-container);
+      border-radius: 8px;
+      box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.25);
+   }
+
+   // 地图定位点
+   &__pin {
+      position: absolute;
+      top: 45%;
+      left: 52%;
+      z-index: 3;
+      width: 36px;
+      height: 36px;
+   }
+
+   &__pin-dot {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      width: 16px;
+      height: 16px;
+      background-color: var(--uvx-primary);
+      border: 3px solid var(--uvx-container);
+      border-radius: 50%;
+      box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.25);
+   }
+
+   &__pin-ring {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 32px;
+      height: 32px;
+      background-color: var(--uvx-primary);
+      border-radius: 50%;
+      opacity: 0.18;
+   }
+
+   // 地图控制按钮
+   &__control {
+      position: absolute;
+      right: 18px;
+      bottom: 39%;
+      z-index: 4;
+      // 框架给 view 默认 overflow:hidden 会裁掉阴影形成方形边界，显式关闭
+      overflow: visible;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      background-color: var(--uvx-container);
+      border-radius: 21px;
+      box-shadow: 0px 0px 5px 2px rgba(0, 0, 0, 0.25);
+   }
+
+   // 抽屉内容
+   &__drawer-content {
+      width: 100%;
+      padding: 0 18px 28px;
+      box-sizing: border-box;
+      background-color: var(--uvx-container);
+   }
+
+   // 路线概要
+   &__route-summary {
+      padding: 4px 0 18px;
+      border-bottom: 1px solid var(--uvx-border);
+   }
+
+   &__route-title {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 6px 0 14px;
+   }
+
+   &__route-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      margin-right: 10px;
+      background-color: var(--uvx-primary);
+      border-radius: 19px;
+   }
+
+   &__route-heading {
+      flex: 1;
+   }
+
+   &__route-stats {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-bottom: 16px;
+   }
+
+   &__stat {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding-right: 18px;
+      margin-right: 18px;
+      border-right: 1px solid var(--uvx-border);
+
+      &--muted {
+         flex: 1;
+         padding-right: 0;
+         margin-right: 0;
+         border-right: 0;
+      }
+   }
+
+   // 数字与单位用原生 text 并排，避开 uvx-text 默认 flex:1 互相挤压
+   &__stat-num {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--uvx-text-main);
+   }
+
+   &__stat-unit {
+      margin-left: 4px;
+      font-size: 12px;
+      color: var(--uvx-text-tips);
+   }
+
+   // 路线按钮
+   &__navigation-button {
+      width: 100%;
+   }
+
+   // 路线步骤标题
+   &__steps-title {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0 8px;
+   }
+
+   // 路线步骤
+   &__step-index {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      // cell 的 icon 槽自带 4px 右距，补 6px 合计保持 10px 间距
+      margin-right: 6px;
+      background-color: var(--uvx-hover);
+      border-radius: 12px;
+
+      // 修饰符独立类，避开复合选择器在端上的差异
+      &--active {
+         background-color: var(--uvx-primary);
+      }
+   }
+
+   // 序号用原生 text，避开 uvx-text 默认 flex:1 贴左与自带字色覆盖继承
+   &__step-num {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--uvx-text-tips);
+
+      &--active {
+         color: #ffffff;
+      }
+   }
+
+   // 抽屉底部提示
+   &__drawer-footer {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      padding-top: 18px;
+   }
+
+   // 原生 text 宽度由内容决定，配合容器居中，避免 uvx-text 默认 flex:1 贴左
+   &__footer-text {
+      margin-left: 6px;
+      font-size: 12px;
+      color: var(--uvx-text-tips);
+   }
+}
+</style>

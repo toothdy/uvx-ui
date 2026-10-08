@@ -1,0 +1,24 @@
+export type Value = string | number;
+
+export type TimeData = {
+   days: number;
+   hours: number;
+   minutes: number;
+   seconds: number;
+   milliseconds: number;
+};
+
+export type Props = {
+   time: Value;
+   format: string;
+   autoStart: boolean;
+   millisecond: boolean;
+};
+
+export type Emits = {
+   finish: [];
+   change: [timeData: TimeData];
+   start: [];
+   pause: [];
+   reset: [];
+};

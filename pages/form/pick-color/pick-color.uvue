@@ -1,0 +1,189 @@
+<template>
+   <uvx-page>
+      <view class="pick-color-demo">
+         <!-- 颜色选择器演示入口 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               :is-link="true"
+               @click="openPicker(index)"
+            >
+               <template #value>
+                  <view class="pick-color-demo__swatch" :style="getColorStyle(item.color)"></view>
+               </template>
+               <template #icon>
+                  <image
+                     class="uv-cell-icon"
+                     :src="item.iconUrl"
+                     mode="widthFix"
+                  ></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 基础使用 -->
+         <uvx-pick-color
+            ref="uPicker1"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+         ></uvx-pick-color>
+
+         <!-- 设置初始颜色 -->
+         <uvx-pick-color
+            ref="uPicker2"
+            :color="initialColor"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+         ></uvx-pick-color>
+
+         <!-- 设置预设颜色 -->
+         <uvx-pick-color
+            ref="uPicker3"
+            :prefab-color="prefabColor"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+         ></uvx-pick-color>
+
+         <!-- 设置标题 -->
+         <uvx-pick-color
+            ref="uPicker4"
+            title="颜色选择"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+         ></uvx-pick-color>
+
+         <!-- 禁止点击遮罩关闭 -->
+         <uvx-pick-color
+            ref="uPicker5"
+            :close-on-click-overlay="false"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+            @close="handleClose"
+         ></uvx-pick-color>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   Color,
+   ConfirmEvent,
+} from "@/uni_modules/uvx-ui/components/uvx-pick-color/types/index.uts";
+
+type DemoItem = {
+   title: string;
+   iconUrl: string;
+   color: string;
+};
+
+// 初始颜色
+const initialColor: Color = { r: 60, g: 156, b: 255, a: 1 };
+// 预设颜色
+const prefabColor: Color[] = [
+   { r: 60, g: 156, b: 255, a: 1 },
+   { r: 245, g: 108, b: 108, a: 1 },
+];
+// 演示入口
+const demoItems = ref<DemoItem[]>([
+   {
+      title: "基础使用",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/picker/2.png",
+      color: "rgba(0,0,0,0)",
+   },
+   {
+      title: "设置初始颜色",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/picker/5.png",
+      color: "rgba(60,156,255,1)",
+   },
+   {
+      title: "设置预设颜色",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/picker/1.png",
+      color: "rgba(0,0,0,0)",
+   },
+   {
+      title: "设置标题",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/picker/4.png",
+      color: "rgba(0,0,0,0)",
+   },
+   {
+      title: "禁止点击遮罩关闭",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/picker/6.png",
+      color: "rgba(0,0,0,0)",
+   },
+]);
+// 当前演示入口
+const activeIndex = ref(0);
+// 五个颜色选择器实例
+const uPicker1 = ref<UvxPickColorComponentPublicInstance | null>(null);
+const uPicker2 = ref<UvxPickColorComponentPublicInstance | null>(null);
+const uPicker3 = ref<UvxPickColorComponentPublicInstance | null>(null);
+const uPicker4 = ref<UvxPickColorComponentPublicInstance | null>(null);
+const uPicker5 = ref<UvxPickColorComponentPublicInstance | null>(null);
+
+/**
+ * 获取色块样式
+ * @param color 颜色字符串
+ * @returns UTSJSONObject
+ */
+const getColorStyle = (color: string): UTSJSONObject => {
+   return { "background-color": color };
+};
+
+/**
+ * 打开指定颜色选择器
+ * @param index 演示项索引
+ * @returns null
+ */
+const openPicker = (index: number): void => {
+   activeIndex.value = index;
+   if (index == 0) uPicker1.value?.open();
+   else if (index == 1) uPicker2.value?.open();
+   else if (index == 2) uPicker3.value?.open();
+   else if (index == 3) uPicker4.value?.open();
+   else uPicker5.value?.open();
+};
+
+/**
+ * 更新演示颜色
+ * @param event 颜色确认事件
+ * @returns null
+ */
+const handleConfirm = (event: ConfirmEvent): void => {
+   const color = event.rgba;
+   demoItems.value[activeIndex.value].color = `rgba(${color.r},${color.g},${color.b},${color.a})`;
+};
+
+/**
+ * 处理取消事件
+ * @returns null
+ */
+const handleCancel = (): void => {
+   console.log("cancel");
+};
+
+/**
+ * 处理遮罩关闭事件
+ * @returns null
+ */
+const handleClose = (): void => {
+   console.log("close");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 颜色选择器演示页面
+.pick-color-demo {
+   width: 100%;
+
+   // 颜色预览色块
+   &__swatch {
+      width: 50rpx;
+      height: 50rpx;
+      border-radius: 6rpx;
+   }
+}
+</style>

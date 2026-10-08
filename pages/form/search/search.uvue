@@ -1,0 +1,209 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value1"
+                     :show-action="false"
+                     @change="handleChange"
+                  ></uvx-search>
+               </view>
+            </view>
+         </view>
+         <!-- 设置初始值 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="设置初始值"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search v-model="value2" :show-action="false"></uvx-search>
+               </view>
+            </view>
+         </view>
+         <!-- 搜索框形状 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="搜索框形状"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value3"
+                     :show-action="false"
+                     shape="round"
+                  ></uvx-search>
+               </view>
+            </view>
+            <view class="uvx-demo-block__content uvx-search-demo__gap">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value4"
+                     :show-action="false"
+                     shape="square"
+                  ></uvx-search>
+               </view>
+            </view>
+         </view>
+         <!-- 右侧控件 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="右侧控件"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search v-model="value5"></uvx-search>
+               </view>
+            </view>
+         </view>
+         <!-- 禁用输入框 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁用输入框"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     placeholder="输入框被禁用,可以监听点击事件进行跳转"
+                     disabled
+                     :show-action="false"
+                  ></uvx-search>
+               </view>
+            </view>
+         </view>
+         <!-- 点击左侧图标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="点击左侧图标"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value6"
+                     :show-action="false"
+                     @clickIcon="handleIconClick"
+                  ></uvx-search>
+               </view>
+            </view>
+         </view>
+         <!-- 自定义样式与图标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value10"
+                     :show-action="false"
+                     border-color="rgb(230, 230, 230)"
+                     bg-color="#ffffff"
+                  ></uvx-search>
+               </view>
+            </view>
+            <view class="uvx-demo-block__content uvx-search-demo__gap">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value11"
+                     :show-action="false"
+                     search-icon-color="#ff0000"
+                  ></uvx-search>
+               </view>
+            </view>
+            <view class="uvx-demo-block__content uvx-search-demo__gap">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value12"
+                     :show-action="false"
+                     placeholder-color="#ff0000"
+                  ></uvx-search>
+               </view>
+            </view>
+            <view class="uvx-demo-block__content uvx-search-demo__gap">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value13"
+                     :show-action="false"
+                     color="#ff0000"
+                  ></uvx-search>
+               </view>
+            </view>
+            <view class="uvx-demo-block__content uvx-search-demo__gap">
+               <view class="uvx-search-demo__item">
+                  <uvx-search
+                     v-model="value14"
+                     search-icon="scan"
+                     :show-action="false"
+                  ></uvx-search>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基础示例内容
+const value1 = ref("");
+// 初始值示例内容
+const value2 = ref("天山雪莲");
+// 圆形搜索框内容
+const value3 = ref("");
+// 方形搜索框内容
+const value4 = ref("");
+// 右侧控件示例内容
+const value5 = ref("");
+// 图标点击示例内容
+const value6 = ref("");
+// 自定义边框与背景示例内容
+const value10 = ref("");
+// 自定义图标颜色示例内容
+const value11 = ref("");
+// 自定义占位文字颜色示例内容
+const value12 = ref("");
+// 自定义输入文字颜色示例内容
+const value13 = ref("");
+// 自定义搜索图标示例内容
+const value14 = ref("");
+
+/**
+ * 输出搜索内容变化
+ * @param value 当前搜索内容
+ * @returns null
+ */
+const handleChange = (value: string): void => {
+   console.log(value);
+};
+
+/**
+ * 输出左侧图标点击状态
+ * @returns null
+ */
+const handleIconClick = (): void => {
+   console.log("点击了左侧图标");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 搜索框示例占满内容宽度
+.uvx-search-demo {
+   &__item {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+   }
+
+   // 同一区块内搜索框间距
+   &__gap {
+      margin-top: 10px;
+   }
+}
+</style>

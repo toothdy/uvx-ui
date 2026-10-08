@@ -1,0 +1,66 @@
+/** Toast 显示位置 */
+export type Position = "top" | "center" | "bottom";
+
+/** Toast 主题类型 */
+export type Type = "default" | "primary" | "success" | "error" | "warning" | "loading";
+
+/** Toast 完成回调 */
+export type Complete = () => void;
+
+/** Toast 组件属性 */
+export type Props = {
+   zIndex: string | number;
+   loading: boolean;
+   message: string | number;
+   icon: boolean | string;
+   type: Type;
+   show: boolean;
+   overlay: boolean;
+   position: Position;
+   params: UTSJSONObject;
+   duration: string | number;
+   isTab: boolean;
+   url: string;
+   complete: Complete;
+   back: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** Toast 命令式配置 */
+export type Options = {
+   zIndex?: string | number;
+   loading?: boolean;
+   message?: string | number;
+   icon?: boolean | string;
+   type?: Type;
+   overlay?: boolean;
+   position?: Position;
+   params?: UTSJSONObject;
+   duration?: string | number;
+   isTab?: boolean;
+   url?: string;
+   complete?: Complete | null;
+   back?: boolean;
+   uStyle?: string;
+   uClass?: string;
+};
+
+/** Toast 内部完整配置 */
+export type Config = {
+   zIndex: number;
+   loading: boolean;
+   message: string | number;
+   icon: boolean | string;
+   type: Type;
+   overlay: boolean;
+   position: Position;
+   params: UTSJSONObject;
+   duration: number;
+   isTab: boolean;
+   url: string;
+   complete: Complete | null;
+   back: boolean;
+   uStyle: string;
+   uClass: string;
+};

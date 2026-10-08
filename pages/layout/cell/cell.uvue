@@ -1,0 +1,113 @@
+<template>
+	<uvx-page>
+		<view class="cell-page">
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="基础功能"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell title="UVXUI" value="内容" :is-link="true"></uvx-cell>
+					<uvx-cell title="利剑出鞘,一统江湖" value="内容" label="挣脱束缚,向往自由"></uvx-cell>
+				</uvx-cell-group>
+			</view>
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="自定义图标/图片"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell title="单元格" icon="lock-fill"></uvx-cell>
+					<uvx-cell title="单元格" icon="https://cdn.uviewui.com/uview/example/tag.png"></uvx-cell>
+				</uvx-cell-group>
+			</view>
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="自定义大小"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell size="large" title="单元格" value="内容" :is-link="true"></uvx-cell>
+					<uvx-cell size="large" title="单元格" value="内容" label="描述信息"></uvx-cell>
+				</uvx-cell-group>
+			</view>
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="显示右箭头"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell title="单元格" value="上" arrow-direction="up" :is-link="true"></uvx-cell>
+					<uvx-cell title="单元格" value="下" arrow-direction="down" :is-link="true"></uvx-cell>
+					<uvx-cell title="单元格" value="左" arrow-direction="left" :is-link="true"></uvx-cell>
+					<uvx-cell title="单元格" value="右" arrow-direction="right" :is-link="true"></uvx-cell>
+				</uvx-cell-group>
+			</view>
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="跳转页面"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell title="打开标签页" :is-link="true" url="/pages/componentsD/tag/tag"></uvx-cell>
+					<uvx-cell title="打开徽标页" :is-link="true" url="/pages/componentsB/badge/badge"></uvx-cell>
+				</uvx-cell-group>
+			</view>
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="右侧内容垂直居中"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell title="单元格" value="内容" label="描述信息" :center="true"></uvx-cell>
+				</uvx-cell-group>
+			</view>
+			<view class="uvx-page__item">
+				<view class="uvx-page__item__title"><uvx-text type="main" text="自定义插槽"></uvx-text></view>
+				<uvx-cell-group>
+					<uvx-cell value="内容">
+						<template #title>
+							<view class="uvx-slot-title">
+								<text class="uvx-cell-text">单元格</text>
+								<!-- <uvx-tags text="标签" plain size="mini" type="warning"></uvx-tags> -->
+							</view>
+						</template>
+					</uvx-cell>
+					<uvx-cell title="单元格" :is-link="true">
+						<template #value>
+							<text class="uvx-slot-value">99</text>
+						</template>
+					</uvx-cell>
+				</uvx-cell-group>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup>
+	
+</script>
+
+<style lang="scss" scoped>
+@import '@/common/demo.scss';
+
+.cell-page {
+	padding-bottom: 20px;
+}
+
+.uvx-page {
+	padding: 0px;
+
+	&__item {
+		&__title {
+			padding: 15px;
+		}
+	}
+}
+
+.uvx-slot-title {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.uvx-cell-text {
+	font-size: 15px;
+	line-height: 22px;
+	color: var(--uvx-text-main);
+	margin-right: 5px;
+}
+
+.uvx-slot-value {
+	line-height: 17px;
+	text-align: center;
+	font-size: 10px;
+	padding: 0px 5px;
+	height: 17px;
+	color: #ffffff;
+	border-radius: 100px;
+	background-color: var(--uvx-error);
+}
+</style>

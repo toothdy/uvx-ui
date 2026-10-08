@@ -1,0 +1,55 @@
+/** Notify 主题类型 */
+export type Type = "primary" | "success" | "warning" | "error";
+
+/** Notify 完成回调 */
+export type Complete = () => void;
+
+/** Notify 组件属性 */
+export type Props = {
+   top: string | number;
+   type: Type;
+   color: string;
+   bgColor: string;
+   message: string;
+   duration: string | number;
+   fontSize: string | number;
+   safeAreaInsetTop: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** Notify 命令式配置 */
+export type Options = {
+   top?: string | number;
+   type?: Type;
+   color?: string;
+   bgColor?: string;
+   message?: string;
+   duration?: string | number;
+   fontSize?: string | number;
+   safeAreaInsetTop?: boolean;
+   complete?: Complete | null;
+   uStyle?: string;
+   uClass?: string;
+};
+
+/** Notify 内部完整配置 */
+export type Config = {
+   top: string | number;
+   type: Type;
+   color: string;
+   bgColor: string;
+   message: string;
+   duration: number;
+   fontSize: string | number;
+   safeAreaInsetTop: boolean;
+   complete: Complete | null;
+   uStyle: string;
+   uClass: string;
+};
+
+/** Notify 组件事件 */
+export type Emits = {
+   open: [];
+   close: [];
+};

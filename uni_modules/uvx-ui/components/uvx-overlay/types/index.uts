@@ -1,0 +1,12 @@
+export type Props = {
+   show: boolean;
+   zIndex: string | number;
+   duration: number;
+   opacity: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [];
+};

@@ -1,0 +1,212 @@
+<template>
+   <uvx-overlay :show="!isConnected" :z-index="zIndex" :opacity="0">
+      <!-- 无网络提示内容 -->
+      <view class="uvx-no-network" :class="themeClass">
+         <!-- 无网图标：默认内置字体图标，传入图片地址时按图片显示 -->
+         <uvx-icon
+            :name="image"
+            :size="150"
+            img-mode="widthFix"
+         ></uvx-icon>
+         <!-- 提示文字 -->
+         <text class="uvx-no-network__tips">{{ tips }}</text>
+         <!-- 设置引导入口，跳转系统设置需原生能力，仅 APP 提供 -->
+         <!-- #ifdef APP -->
+         <view class="uvx-no-network__app">
+            <text class="uvx-no-network__app__setting">{{ t("请往") }}</text>
+            <text
+               class="uvx-no-network__app__to-setting"
+               @tap="handleOpenSettings"
+            >{{ t("设置") }}</text>
+            <text class="uvx-no-network__app__setting">{{ t("检查网络") }}</text>
+         </view>
+         <!-- #endif -->
+         <!-- 重试按钮 -->
+         <view class="uvx-no-network__retry">
+            <uvx-button
+               size="mini"
+               :text="t('重试')"
+               type="primary"
+               :plain="true"
+               @click="handleRetry"
+            ></uvx-button>
+         </view>
+      </view>
+   </uvx-overlay>
+
+   <!-- 重试结果反馈 -->
+   <uvx-toast ref="uToast"></uvx-toast>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-no-network 无网络提示
+ * @description 该组件无需任何配置，引入即可，内部自动监听网络状态并在断网时全屏提示。
+ * @tutorial https://www.uvxui.cn/components/no-network.html
+ * @property {String} tips 无网络时的提示语（默认：哎呀，网络信号丢失）
+ * @property {String | Number} zIndex 组件的 z-index 值，默认使用全局弹层层级
+ * @property {String} image 无网络时展示的图标，支持内置图标名、图片地址与 base64（默认：内置 wifi-off 图标）
+ * @event {Function} retry 用户点击"重试"按钮时触发
+ * @event {Function} connected 网络连接时触发
+ * @event {Function} disconnected 网络断开时触发
+ * @example <uvx-no-network></uvx-no-network>
+ */
+
+import { config } from "../../core/config.uts";
+import { t } from "../../core/i18n";
+import { isDark } from "../../core/theme";
+// #ifdef APP
+import { openSystemSettings } from "@/uni_modules/uvx-tools";
+// #endif
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-no-network", options: { virtualHost: true } });
+
+// 组件属性
+withDefaults(defineProps<Props>(), {
+   tips: t("哎呀，网络信号丢失"),
+   zIndex: config.zIndex,
+   image: "empty-wifi-off",
+});
+
+// 组件事件
+const emit = defineEmits<Emits>();
+
+// 是否有网络连接
+const isConnected = ref(true);
+// 当前网络类型
+const networkType = ref("unknown");
+// Toast 实例，用于重试结果反馈
+const uToast = ref<UvxToastComponentPublicInstance | null>(null);
+
+/**
+ * 主题类名：全屏层游离于页面主题容器之外，自行挂载亮暗 CSS 变量
+ * @returns string
+ */
+const themeClass = computed((): string => {
+   return isDark.value ? "uvx-dark" : "uvx-light";
+});
+
+/**
+ * 根据网络类型派发连接/断开事件
+ * @param type 网络类型
+ * @returns null
+ */
+const emitEvent = (type: string): void => {
+   if (type == "none") {
+      emit("disconnected");
+   } else {
+      emit("connected");
+   }
+};
+
+/**
+ * 点击重试：重新检查网络状态并反馈结果
+ * @returns null
+ */
+const handleRetry = (): void => {
+   uni.getNetworkType({
+      success: (res: GetNetworkTypeSuccess) => {
+         networkType.value = res.networkType;
+         emitEvent(res.networkType);
+         if (res.networkType == "none") {
+            isConnected.value = false;
+            uToast.value?.show({ message: t("无网络连接") });
+         } else {
+            isConnected.value = true;
+            uToast.value?.show({ message: t("网络已连接") });
+         }
+      },
+   });
+   emit("retry");
+};
+
+// #ifdef APP
+/**
+ * 点击「设置」：无网络时跳转系统设置页（仅 APP）
+ * @returns null
+ */
+const handleOpenSettings = (): void => {
+   if (networkType.value == "none") {
+      openSystemSettings();
+   }
+};
+// #endif
+
+/**
+ * 网络状态变化回调
+ * @param result 网络状态
+ * @returns null
+ */
+const onNetworkChange = (result: OnNetworkStatusChangeCallbackResult): void => {
+   isConnected.value = result.isConnected;
+   networkType.value = result.networkType;
+   emitEvent(result.networkType);
+};
+
+/** 挂载时获取当前网络状态并注册监听 */
+onMounted((): void => {
+   uni.getNetworkType({
+      success: (res: GetNetworkTypeSuccess) => {
+         networkType.value = res.networkType;
+         isConnected.value = res.networkType != "none";
+         emitEvent(res.networkType);
+      },
+   });
+   uni.onNetworkStatusChange(onNetworkChange);
+});
+
+/** 卸载时解除监听，避免重复回调 */
+onUnmounted((): void => {
+   uni.offNetworkStatusChange(onNetworkChange);
+});
+</script>
+
+<style lang="scss">
+.uvx-no-network {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   width: 100%;
+   height: 100%;
+   background-color: var(--uvx-page);
+   // 基线：内容整体上移，视觉中心略高于屏幕中心
+   margin-top: -100px;
+
+   // 提示文字
+   &__tips {
+      color: var(--uvx-text-tips);
+      font-size: 14px;
+      margin-top: 15px;
+   }
+
+   // APP 端设置引导行
+   &__app {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-top: 6px;
+
+      &__setting {
+         color: var(--uvx-text-tips);
+         font-size: 13px;
+      }
+
+      &__to-setting {
+         color: var(--uvx-primary);
+         font-size: 13px;
+         margin-left: 3px;
+         margin-right: 3px;
+      }
+   }
+
+   // 重试按钮容器
+   &__retry {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      margin-top: 15px;
+   }
+}
+</style>

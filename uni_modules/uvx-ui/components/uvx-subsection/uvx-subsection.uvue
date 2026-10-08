@@ -1,0 +1,293 @@
+<template>
+   <view
+      class="uvx-subsection"
+      :class="[mode == 'button' ? 'uvx-subsection--button' : 'uvx-subsection--subsection', uClass]"
+      :style="rootStyle"
+   >
+      <view class="uvx-subsection__track">
+         <!-- 等宽选项 -->
+         <view
+            v-for="(item, index) in sectionItems"
+            :key="index"
+            class="uvx-subsection__item"
+            :class="getItemClass(index)"
+            :style="getItemStyle(index)"
+            @tap="handleClick(index)"
+         >
+            <text
+               class="uvx-subsection__text"
+               :class="getTextClass(index)"
+               :style="getTextStyle(index)"
+            >{{ getItemText(item) }}</text>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-subsection 分段器
+ * @description 在若干等宽选项中选择一项，支持按钮和分段两种模式。
+ * @tutorial https://www.uvxui.cn/components/subsection.html
+ * @property {Array<Item>} list 字符串或对象选项列表
+ * @property {String | Number} current 当前选项索引，默认 0
+ * @property {String} activeColor 激活颜色，默认跟随主题主色
+ * @property {String} inactiveColor 未激活文字颜色，默认跟随主题主文本色
+ * @property {String} mode button 或 subsection，默认 button
+ * @property {String | Number} fontSize 文字大小，默认 12px
+ * @property {Boolean} bold 是否加粗激活文字，默认 true
+ * @property {String} bgColor 按钮模式背景颜色，默认跟随主题容器色
+ * @property {String} keyName 对象选项的文字字段，默认 name
+ * @property {String} uItemStyle 选中项的自定义样式
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} change 点击选项时触发，参数为选项索引
+ * @example <uvx-subsection :list="list" :current="current" @change="handleChange"></uvx-subsection>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Emits, Item, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-subsection", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   list: (): Item[] => [],
+   current: 0,
+   activeColor: "",
+   inactiveColor: "",
+   mode: "button",
+   fontSize: 12,
+   bold: true,
+   bgColor: "",
+   keyName: "name",
+   uItemStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 模板选项列表
+ * @returns Item[]
+ */
+const sectionItems = computed((): Item[] => props.list);
+
+/** 选项变化事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 当前选项索引
+ * @returns number
+ */
+const currentIndex = computed((): number => {
+   return Number(props.current);
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (props.mode == "button" && !$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   if (props.mode == "subsection" && !$uvx.string.empty(props.activeColor)) {
+      style.set("border-color", props.activeColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 获取选项文字
+ * @param item 选项数据
+ * @returns string
+ */
+const getItemText = (item: Item): string => {
+   if (typeof item == "string") return item;
+   const text = item.getString(props.keyName);
+   return text == null ? "" : text;
+};
+
+/**
+ * 获取选项状态类
+ * @param index 选项索引
+ * @returns string[]
+ */
+const getItemClass = (index: number): string[] => {
+   const classes: string[] = [];
+   if (index == currentIndex.value) {
+      classes.push(props.mode == "button" ? "uvx-subsection__item--button-active" : "uvx-subsection__item--subsection-active");
+   }
+   if (props.mode == "subsection") {
+      if (index > 0) classes.push("uvx-subsection__item--divided");
+   }
+   return classes;
+};
+
+/**
+ * 获取选项样式
+ * @param index 选项索引
+ * @returns UTSJSONObject
+ */
+const getItemStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (props.mode == "subsection" && index > 0 && !$uvx.string.empty(props.activeColor)) {
+      style.set("border-color", props.activeColor);
+   }
+   if (props.mode == "subsection" && index == currentIndex.value && !$uvx.string.empty(props.activeColor)) {
+      style.set("background-color", props.activeColor);
+   }
+   if (index == currentIndex.value && !$uvx.string.empty(props.uItemStyle)) {
+      return $uvx.object.deepMerge(style, $uvx.style.parse(props.uItemStyle));
+   }
+   return style;
+};
+
+/**
+ * 获取文字状态类
+ * @param index 选项索引
+ * @returns string
+ */
+const getTextClass = (index: number): string => {
+   if (index != currentIndex.value) return "";
+   return props.mode == "button" ? "uvx-subsection__text--button-active" : "uvx-subsection__text--subsection-active";
+};
+
+/**
+ * 获取文字样式
+ * @param index 选项索引
+ * @returns UTSJSONObject
+ */
+const getTextStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = { "font-size": $uvx.format.unit(props.fontSize) };
+   if (props.bold && index == currentIndex.value) style.set("font-weight", "bold");
+   if (index != currentIndex.value && !$uvx.string.empty(props.inactiveColor)) {
+      style.set("color", props.inactiveColor);
+   }
+   if (props.mode == "button" && index == currentIndex.value && !$uvx.string.empty(props.activeColor)) {
+      style.set("color", props.activeColor);
+   }
+   return style;
+};
+
+/**
+ * 点击选项
+ * @param index 选项索引
+ * @returns null
+ */
+const handleClick = (index: number): void => {
+   emit("change", index);
+};
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 分段器容器
+.uvx-subsection {
+   display: flex;
+   flex-direction: row;
+   align-items: stretch;
+   box-sizing: border-box;
+   overflow: hidden;
+   border-radius: 3px;
+
+   /* #ifndef APP-ANDROID */
+   width: 100%;
+   /* #endif */
+
+   /* #ifdef APP-ANDROID */
+   // Android 为边框预留绘制空间
+   width: 99%;
+   margin: 1px;
+   /* #endif */
+
+   // 按钮模式
+   &--button {
+      height: 32px;
+      padding: 3px;
+      background-color: var(--uvx-container);
+   }
+
+   // 描边分段模式
+   &--subsection {
+      height: 30px;
+      border-width: 1px;
+      border-style: solid;
+      border-color: var(--uvx-primary);
+      background-color: var(--uvx-page);
+   }
+
+   // 等宽选项布局
+   &__track {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      /* #ifdef APP-ANDROID */
+      overflow: visible;
+      /* #endif */
+   }
+
+   // 等宽选项
+   &__item {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      z-index: 1;
+      transition-property: background-color, border-radius, border-color;
+      transition-duration: 0.3s;
+      transition-timing-function: ease-in-out;
+   }
+
+   // 分段线
+   &__item--divided {
+      border-left-width: 1px;
+      border-left-style: solid;
+      border-color: var(--uvx-primary);
+   }
+
+   // 激活选项
+   &__item--button-active {
+      background-color: var(--uvx-page);
+      border-radius: 3px;
+   }
+
+   // 分段模式激活选项
+   &__item--subsection-active {
+      background-color: var(--uvx-primary);
+   }
+
+   // 选项文字
+   &__text {
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      color: var(--uvx-text-main);
+      font-size: 12px;
+      line-height: 1.2em;
+      text-align: center;
+      transition-property: color;
+      transition-duration: 0.3s;
+   }
+
+   // 按钮模式激活文字
+   &__text--button-active {
+      color: var(--uvx-primary);
+   }
+
+   // 分段模式激活文字
+   &__text--subsection-active {
+      color: #ffffff;
+   }
+}
+</style>

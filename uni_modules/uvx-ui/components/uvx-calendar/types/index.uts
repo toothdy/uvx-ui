@@ -1,0 +1,179 @@
+/** 日历选择模式 */
+export type Mode = "" | "multiple" | "range";
+
+/** 日历默认值 */
+export type DateValue = string | string[];
+
+/** 日期打点信息 */
+export type SelectedItem = {
+   date: string;
+   info?: string;
+   infoColor?: string;
+   topinfo?: string;
+   topinfoColor?: string;
+   badge?: boolean;
+   disable?: boolean;
+   data?: UTSJSONObject | null;
+};
+
+/** 农历信息 */
+export type LunarInfo = {
+   lYear: number;
+   lMonth: number;
+   lDay: number;
+   IMonthCn: string;
+   IDayCn: string;
+   isLeap: boolean;
+};
+
+/** 标准日期信息 */
+export type DateInfo = {
+   fullDate: string;
+   year: number;
+   month: number;
+   date: number;
+   day: number;
+   timestamp: number;
+};
+
+/** 单个日期格数据 */
+export type Day = {
+   fullDate: string;
+   year: number;
+   month: number;
+   date: number;
+   day: number;
+   isCurrentMonth: boolean;
+   isToday: boolean;
+   isDisabled: boolean;
+   isSelected: boolean;
+   isRangeStart: boolean;
+   isRangeEnd: boolean;
+   isInRange: boolean;
+   isMultiple: boolean;
+   isSameRange: boolean;
+   lunar: LunarInfo;
+   extraInfo: SelectedItem | null;
+};
+
+/** 范围选择状态 */
+export type RangeStatus = {
+   before: string;
+   after: string;
+   data: string[];
+};
+
+/** 多选状态 */
+export type MultipleStatus = {
+   data: string[];
+};
+
+/** 月份切换事件 */
+export type MonthSwitchEvent = {
+   year: number;
+   month: number;
+};
+
+/** 日历选择结果 */
+export type ChangeEvent = {
+   range: RangeStatus;
+   multiple: MultipleStatus;
+   year: number;
+   month: number;
+   date: number;
+   fulldate: string;
+   lunar: LunarInfo;
+   extraInfo: SelectedItem | null;
+};
+
+/** 日历属性 */
+export type Props = {
+   cancelColor: string;
+   confirmColor: string;
+   title: string;
+   color: string;
+   date: DateValue;
+   selected: SelectedItem[];
+   lunar: boolean;
+   startDate: string;
+   endDate: string;
+   mode: Mode;
+   insert: boolean;
+   showMonth: boolean;
+   clearDate: boolean;
+   round: string | number;
+   closeOnClickOverlay: boolean;
+   startText: string;
+   endText: string;
+   allowSameDay: boolean;
+   readonly: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 日历事件 */
+export type Emits = {
+   close: [];
+   confirm: [event: ChangeEvent];
+   change: [event: ChangeEvent];
+   monthSwitch: [event: MonthSwitchEvent];
+};
+
+/** 日期网格构建参数 */
+export type BuildOptions = {
+   viewDate: DateInfo;
+   today: DateInfo;
+   selectedDate: string;
+   multipleDates: string[];
+   rangeBefore: string;
+   rangeAfter: string;
+   selected: SelectedItem[];
+   startDate: string;
+   endDate: string;
+};
+
+/** 日历主体页面 */
+export type BodyPage = {
+   days: Day[];
+   viewDate: DateInfo;
+};
+
+/** 单月页面属性 */
+export type MonthProps = {
+   days: Day[];
+   viewDate: DateInfo;
+   lunar: boolean;
+   showMonth: boolean;
+   color: string;
+   startText: string;
+   endText: string;
+   todayText: string;
+};
+
+/** 单月页面事件 */
+export type MonthEmits = {
+   dayClick: [day: Day];
+};
+
+/** 日历主体属性 */
+export type BodyProps = {
+   days: BodyPage[];
+   weekNames: string[];
+   viewDate: DateInfo;
+   mode: Mode;
+   lunar: boolean;
+   showMonth: boolean;
+   color: string;
+   startText: string;
+   endText: string;
+   todayText: string;
+};
+
+/** 日历主体事件 */
+export type BodyEmits = {
+   pre: [];
+   next: [];
+   today: [];
+   monthClick: [];
+   dayClick: [day: Day];
+};

@@ -1,0 +1,220 @@
+<template>
+   <!-- 加载更多主体 -->
+   <view
+      class="uvx-load-more"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <!-- 左侧分割线 -->
+      <uvx-line
+         v-if="line"
+         length="140rpx"
+         :color="lineColor"
+         :hairline="false"
+         :dashed="dashed"
+      ></uvx-line>
+
+      <!-- 状态内容 -->
+      <view class="uvx-load-more__content">
+         <view
+            v-if="status == 'loading' && icon"
+            class="uvx-load-more__icon"
+         >
+            <uvx-loading-icon
+               :color="iconColor"
+               :size="iconSize"
+               :mode="loadingIcon"
+               :vertical="false"
+            ></uvx-loading-icon>
+         </view>
+         <text
+            :class="[isDotState ? 'uvx-load-more__dot' : 'uvx-load-more__text']"
+            :style="textStyle"
+            @tap="handleLoadMore"
+         >{{ currentText }}</text>
+      </view>
+
+      <!-- 右侧分割线 -->
+      <uvx-line
+         v-if="line"
+         length="140rpx"
+         :color="lineColor"
+         :hairline="false"
+         :dashed="dashed"
+      ></uvx-line>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-load-more 加载更多
+ * @description 用于展示列表加载前、加载中和没有更多数据三种状态。
+ * @tutorial https://www.uvxui.cn/components/load-more.html
+ * @property {String} status 组件状态：loadmore/loading/nomore（默认 loadmore）
+ * @property {String} bgColor 背景颜色，为空时保持透明
+ * @property {Boolean} icon 加载中是否显示图标（默认 true）
+ * @property {String | Number} fontSize 提示文字大小（默认 14）
+ * @property {String | Number} iconSize 加载图标大小（默认 16）
+ * @property {String} color 提示文字颜色，为空时使用主题色
+ * @property {String} loadingIcon 加载图标模式（默认 spinner）
+ * @property {String} loadmoreText 加载前提示文字
+ * @property {String} loadingText 加载中提示文字
+ * @property {String} nomoreText 没有更多数据时的提示文字
+ * @property {Boolean} isDot 没有更多数据时是否显示粗点（默认 false）
+ * @property {String} iconColor 加载图标颜色，为空时使用主题色
+ * @property {String | Number} marginTop 上边距（默认 10）
+ * @property {String | Number} marginBottom 下边距（默认 10）
+ * @property {String | Number} height 组件高度（默认 auto）
+ * @property {Boolean} line 是否显示两侧分割线（默认 false）
+ * @property {String} lineColor 分割线颜色，为空时使用主题色
+ * @property {Boolean} dashed 分割线是否为虚线（默认 false）
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} loadmore loadmore 状态下点击提示文字时触发
+ * @example <uvx-load-more status="loading"></uvx-load-more>
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-load-more", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+/** 属性 */
+const props = withDefaults(defineProps<Props>(), {
+   status: "loadmore",
+   bgColor: "",
+   icon: true,
+   fontSize: 14,
+   iconSize: 16,
+   color: "",
+   loadingIcon: "spinner",
+   loadmoreText: "",
+   loadingText: "",
+   nomoreText: "",
+   isDot: false,
+   iconColor: "",
+   marginTop: 10,
+   marginBottom: 10,
+   height: "auto",
+   line: false,
+   lineColor: "",
+   dashed: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "margin-top": $uvx.format.unit(props.marginTop),
+      "margin-bottom": $uvx.format.unit(props.marginBottom),
+      "height": $uvx.format.unit(props.height),
+   };
+   if (!$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 提示文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const size = $uvx.format.unit(props.fontSize);
+   const style: UTSJSONObject = {
+      "font-size": size,
+   };
+   if (!$uvx.string.empty(props.color)) {
+      style.set("color", props.color);
+   }
+   return style;
+});
+
+/**
+ * 是否显示没有更多数据的粗点
+ * @returns boolean
+ */
+const isDotState = computed((): boolean => {
+   return props.status == "nomore" && props.isDot;
+});
+
+/**
+ * 当前提示文字
+ * @returns string
+ */
+const currentText = computed((): string => {
+   if (props.status == "loadmore") {
+      return $uvx.string.empty(props.loadmoreText) ? t("加载更多") : props.loadmoreText;
+   }
+   if (props.status == "loading") {
+      return $uvx.string.empty(props.loadingText) ? t("正在加载...") : props.loadingText;
+   }
+   if (props.isDot) return "●";
+   return $uvx.string.empty(props.nomoreText) ? t("没有更多了") : props.nomoreText;
+});
+
+/**
+ * 触发加载更多事件
+ * @returns null
+ */
+const handleLoadMore = (): void => {
+   if (props.status == "loadmore") emit("loadmore");
+};
+</script>
+
+<style lang="scss">
+// 加载更多主体
+.uvx-load-more {
+   display: flex;
+   flex: 1;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   width: 100%;
+   padding-bottom: 10px;
+   box-sizing: border-box;
+   background-color: transparent;
+}
+
+// 状态内容
+.uvx-load-more__content {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   margin: 0 15px;
+}
+
+// 加载图标
+.uvx-load-more__icon {
+   display: flex;
+   margin-right: 8px;
+}
+
+// 普通提示文字
+.uvx-load-more__text {
+   flex-shrink: 0;
+   font-size: 14px;
+   line-height: 1.2em;
+   color: var(--uvx-text-content);
+   white-space: nowrap;
+}
+
+// 没有更多数据的粗点
+.uvx-load-more__dot {
+   flex-shrink: 0;
+   font-size: 15px;
+   line-height: 1.2em;
+   color: var(--uvx-text-placeholder);
+   white-space: nowrap;
+}
+</style>

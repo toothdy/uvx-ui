@@ -1,0 +1,45 @@
+<template>
+   <uvx-page @scroll="handleScroll">
+      <view class="uvx-page-demo sticky-demo">
+         <!-- 基础用法说明 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <uvx-text type="content" text="滚动页面，即可看到下方的按钮吸顶。"></uvx-text>
+         </view>
+
+         <!-- 吸顶区域 -->
+         <uvx-sticky ref="uSticky">
+            <uvx-button text="吸顶区域" type="success"></uvx-button>
+         </uvx-sticky>
+
+         <!-- 滚动内容 -->
+         <uvx-gap height="1500px"></uvx-gap>
+         <uvx-divider text="已到底部"></uvx-divider>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 吸顶组件实例
+const uSticky = ref<UvxStickyComponentPublicInstance | null>(null);
+
+/**
+ * 页面滚动时更新 App 端吸顶位置
+ * @param _event 页面滚动事件
+ * @returns null
+ */
+const handleScroll = (_event: UniScrollEvent): void => {
+   uSticky.value?.init();
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 吸顶演示页
+.sticky-demo {
+   min-height: 1600px;
+}
+</style>

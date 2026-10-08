@@ -1,0 +1,471 @@
+<template>
+   <!-- 骨架屏主体 -->
+   <view
+      class="uvx-skeleton"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <!-- 加载中的占位结构 -->
+      <view v-if="loading">
+         <view
+            v-for="item in elements"
+            :key="item.key"
+         >
+            <!-- 横向并列布局 -->
+            <view
+               v-if="item.type == 'flex'"
+               class="uvx-skeleton__group"
+               :style="item.style"
+            >
+               <view
+                  v-for="group in item.children"
+                  :key="group.key"
+                  :class="[group.className]"
+               >
+                  <view
+                     v-for="node in group.elements"
+                     :key="node.key"
+                  >
+                     <!-- 垂直间距 -->
+                     <view
+                        v-if="node.type == 'gap'"
+                        class="uvx-skeleton__gap"
+                        :style="gapStyle(node.height)"
+                     ></view>
+                     <!-- 横向布局中的占位节点 -->
+                     <view
+                        v-else
+                        :class="[node.className, roundClass, animateClass]"
+                        :style="node.style"
+                     >
+                        <!-- 横向扫光高亮 -->
+                        <view
+                           v-if="animate"
+                           ref="shimmerElements"
+                           class="uvx-skeleton__shimmer"
+                        >
+                           <view class="uvx-skeleton__shimmer-edge"></view>
+                           <view class="uvx-skeleton__shimmer-core"></view>
+                           <view class="uvx-skeleton__shimmer-edge"></view>
+                        </view>
+                     </view>
+                  </view>
+               </view>
+            </view>
+
+            <!-- 自定义占位节点 -->
+            <view
+               v-else-if="item.type == 'custom'"
+               :class="[item.className, animateClass]"
+               :style="item.style"
+            >
+               <!-- 横向扫光高亮 -->
+               <view
+                  v-if="animate"
+                  ref="shimmerElements"
+                  class="uvx-skeleton__shimmer"
+               >
+                  <view class="uvx-skeleton__shimmer-edge"></view>
+                  <view class="uvx-skeleton__shimmer-core"></view>
+                  <view class="uvx-skeleton__shimmer-edge"></view>
+               </view>
+            </view>
+
+            <!-- 顶层垂直间距 -->
+            <view
+               v-else-if="item.type == 'gap'"
+               class="uvx-skeleton__gap"
+               :style="gapStyle(item.height)"
+            ></view>
+
+            <!-- line、avatar 等基础占位节点 -->
+            <view
+               v-else
+               :class="[item.className, roundClass, animateClass]"
+               :style="item.style"
+            >
+               <!-- 横向扫光高亮 -->
+               <view
+                  v-if="animate"
+                  ref="shimmerElements"
+                  class="uvx-skeleton__shimmer"
+               >
+                  <view class="uvx-skeleton__shimmer-edge"></view>
+                  <view class="uvx-skeleton__shimmer-core"></view>
+                  <view class="uvx-skeleton__shimmer-edge"></view>
+               </view>
+            </view>
+         </view>
+      </view>
+
+      <!-- 加载完成后显示真实内容 -->
+      <slot v-else />
+   </view>
+</template>
+
+<script setup lang="uts">
+/**
+ * uvx-skeleton 骨架屏
+ * @description 数据加载期间展示占位结构，支持基础节点、横向布局、自定义节点和间距节点。
+ * @tutorial https://www.uvxui.cn/components/skeleton.html
+ * @property {Boolean} loading 是否显示骨架屏，默认 true
+ * @property {Array} skeleton 骨架屏配置数组，默认空数组
+ * @property {Boolean} animate 是否开启动画，默认 true
+ * @property {Boolean} round 是否使用圆角样式，默认 false
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @slot default 加载完成后显示的真实内容
+ * @example <uvx-skeleton :loading="true" :skeleton="skeletonConfig"></uvx-skeleton>
+ */
+
+import { createAnimation, AnimationEngine } from "../../core/animation/index.uts";
+import { $uvx } from "../../index.uts";
+import type {
+   Config,
+   ConfigItem,
+   Item,
+   NodeType,
+   Props,
+   RenderGroup,
+   RenderNode,
+   Style,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-skeleton",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+/** 组件属性 */
+const props = withDefaults(defineProps<Props>(), {
+   loading: true,
+   skeleton: () => [] as Config,
+   animate: true,
+   round: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 扫光高亮节点引用 */
+const shimmerElements = ref<UniElement[]>([]);
+/** 当前运行中的原生动画 */
+const animations = ref<AnimationEngine[]>([]);
+
+/**
+ * 获取节点默认类型
+ * @param item 配置节点
+ * @returns NodeType
+ */
+const getNodeType = (item: Item): NodeType => {
+   return item.type != null ? item.type : "line";
+};
+
+/**
+ * 获取节点样式
+ * @param style 配置样式
+ * @param index 重复节点下标
+ * @returns UTSJSONObject
+ */
+const getNodeStyle = (
+   style: Style | Array<Style>,
+   index: number,
+): UTSJSONObject => {
+   let currentStyle: Style = "";
+   currentStyle = Array.isArray(style) ? (index < style.length ? style[index] : "") : style;
+   if (typeof currentStyle == "string") {
+      return $uvx.style.parse(currentStyle);
+   }
+   return currentStyle;
+};
+
+class SkeletonBuilder {
+   /**
+    * 展开配置数组
+    * @param config 配置数组
+    * @param path 节点路径
+    * @returns RenderNode[]
+    */
+   expandConfig(config: Config, path: string): Array<RenderNode> {
+      const elements: Array<RenderNode> = [];
+      for (let index = 0; index < config.length; index++) {
+         elements.push(...this.expandItem(config[index], `${path}-${index}`));
+      }
+      return elements;
+   }
+
+   /**
+    * 展开配置节点
+    * @param item 配置节点
+    * @param path 节点路径
+    * @returns RenderNode[]
+    */
+   expandItem(item: ConfigItem, path: string): Array<RenderNode> {
+      if (typeof item == "number") {
+         return [{
+            key: path,
+            type: "gap",
+            className: "",
+            style: {},
+            height: item,
+            children: [],
+         }];
+      }
+
+      const type = getNodeType(item);
+      let count = 1;
+      if (item.num != null) count = Math.max(0, Math.floor(item.num));
+
+      let gap: string | number = "20rpx";
+      if (item.gap != null) gap = item.gap;
+
+      let style: Style | Array<Style> = "";
+      if (item.style != null) style = item.style;
+
+      const children: Array<RenderGroup> = [];
+      if (item.children != null) {
+         for (let childIndex = 0; childIndex < item.children.length; childIndex++) {
+            const child = item.children[childIndex];
+            const childType = getNodeType(child);
+            const childClass = childType == "avatar" || childType == "custom"
+               ? ""
+               : "uvx-skeleton__group-sub";
+            children.push({
+               key: `${path}-child-${childIndex}`,
+               className: childClass,
+               elements: this.expandConfig(
+                  child.children != null ? child.children : [child],
+                  `${path}-child-${childIndex}`,
+               ),
+            });
+         }
+      }
+
+      const elements: Array<RenderNode> = [];
+      for (let index = 0; index < count; index++) {
+         if (index > 0 && gap != 0 && gap != "") {
+            elements.push({
+               key: `${path}-gap-${index}`,
+               type: "gap",
+               className: "",
+               style: {},
+               height: gap,
+               children: [],
+            });
+         }
+         elements.push({
+            key: `${path}-${index}`,
+            type,
+            className: `uvx-skeleton__${type}`,
+            style: getNodeStyle(style, index),
+            height: item.height != null ? item.height : 0,
+            children,
+         });
+      }
+      return elements;
+   }
+}
+
+/** 配置展开器 */
+const skeletonBuilder = new SkeletonBuilder();
+
+/** 已展开的渲染节点 */
+const elements = computed((): Array<RenderNode> => {
+   return skeletonBuilder.expandConfig(props.skeleton, "skeleton");
+});
+
+/** 根节点样式 */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.string.empty(props.uStyle) ? {} : $uvx.style.parse(props.uStyle);
+});
+
+/** 动画状态类 */
+const animateClass = computed((): string => {
+   return props.animate ? "uvx-skeleton--animation" : "uvx-skeleton--static";
+});
+
+/** 圆角状态类 */
+const roundClass = computed((): string => {
+   return props.round ? "uvx-skeleton--round" : "uvx-skeleton--radius";
+});
+
+/**
+ * 间距节点样式
+ * @param height 间距高度
+ * @returns UTSJSONObject
+ */
+const gapStyle = (height: string | number): UTSJSONObject => {
+   return { "height": $uvx.format.unit(height, "rpx") };
+};
+
+/**
+ * 停止所有原生动画
+ * @returns null
+ */
+const stopAnimations = (): void => {
+   for (const animation of animations.value) animation.reset();
+   animations.value = [];
+};
+
+/**
+ * 启动所有占位节点动画
+ * @returns null
+ */
+const startAnimations = (): void => {
+   stopAnimations();
+   if (!props.loading || !props.animate) return;
+
+   nextTick(() => {
+      if (!props.loading || !props.animate) return;
+      for (const element of shimmerElements.value) {
+         const animation = createAnimation(element, {
+            duration: 1800,
+            loop: -1,
+            timingFunction: "ease",
+         });
+         animation.translateX("-100%", "200%").play();
+         animations.value.push(animation);
+      }
+   });
+};
+
+/** 组件挂载后启动动画 */
+onMounted(() => {
+   startAnimations();
+});
+
+/** 加载状态变化时重启或停止动画 */
+watch((): boolean => props.loading, () => {
+   startAnimations();
+});
+
+/** 动画开关变化时重启或停止动画 */
+watch((): boolean => props.animate, () => {
+   startAnimations();
+});
+
+/** 配置长度变化时重新绑定节点动画 */
+watch((): number => elements.value.length, () => {
+   startAnimations();
+});
+
+/** 组件卸载时清理动画 */
+onUnmounted(() => {
+   stopAnimations();
+});
+</script>
+
+<style lang="scss">
+// 骨架屏根节点
+.uvx-skeleton {
+   width: 100%;
+}
+
+// 基础占位色
+.uvx-skeleton--static {
+   position: relative;
+   overflow: hidden;
+   background-color: var(--uvx-container);
+}
+
+// 动画占位色
+.uvx-skeleton--animation {
+   position: relative;
+   overflow: hidden;
+   background-color: var(--uvx-container);
+}
+
+// 横向扫光高亮带
+.uvx-skeleton__shimmer {
+   position: absolute;
+   top: 0;
+   left: 0;
+   display: flex;
+   flex-direction: row;
+   width: 50%;
+   height: 100%;
+   transform: translateX(-100%);
+}
+
+// 扫光高亮边缘
+.uvx-skeleton__shimmer-edge {
+   width: 25%;
+   height: 100%;
+   background-color: var(--uvx-hover);
+   opacity: 0.35;
+}
+
+// 扫光高亮中心
+.uvx-skeleton__shimmer-core {
+   width: 50%;
+   height: 100%;
+   background-color: var(--uvx-hover);
+   opacity: 0.9;
+}
+
+// 普通线条
+.uvx-skeleton__line {
+   height: 32rpx;
+}
+
+// 小号线条
+.uvx-skeleton__line--sm {
+   height: 24rpx;
+   margin-bottom: 30rpx;
+}
+
+// 大号线条
+.uvx-skeleton__line--lg {
+   height: 48rpx;
+   margin-bottom: 30rpx;
+}
+
+// 默认圆角
+.uvx-skeleton--radius {
+   border-radius: 8rpx;
+}
+
+// 圆角模式
+.uvx-skeleton--round {
+   border-radius: 30rpx;
+}
+
+// 头像占位
+.uvx-skeleton__avatar {
+   width: 100rpx;
+   height: 100rpx;
+   border-radius: 50rpx;
+}
+
+// 小号头像占位
+.uvx-skeleton__avatar--sm {
+   width: 50rpx;
+   height: 50rpx;
+   border-radius: 25rpx;
+}
+
+// 大号头像占位
+.uvx-skeleton__avatar--lg {
+   width: 200rpx;
+   height: 200rpx;
+   border-radius: 100rpx;
+}
+
+// 横向布局
+.uvx-skeleton__group {
+   display: flex;
+   flex-direction: row;
+   align-items: flex-start;
+   width: 100%;
+}
+
+// 横向布局中的弹性子项
+.uvx-skeleton__group-sub {
+   flex: 1;
+}
+
+// 间距节点
+.uvx-skeleton__gap {
+   flex-shrink: 0;
+}
+</style>

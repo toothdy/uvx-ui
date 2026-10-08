@@ -1,0 +1,203 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo tags-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item">
+                  <uvx-tags text="标签" plain size="mini" type="warning"></uvx-tags>
+               </view>
+            </view>
+         </view>
+
+         <!-- 自定义主题 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义主题"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="success"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="error"></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 圆形标签 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="圆形标签"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签" plain shape="circle"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning" shape="circle"></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 镂空标签 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="镂空标签"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签" plain></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning" plain></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="success" plain></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="error" plain></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 镂空带背景色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="镂空带背景色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签" plain plain-fill></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning" plain plain-fill></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="success" plain plain-fill></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="error" plain plain-fill></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 自定义尺寸 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义尺寸"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签" plain size="mini"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="success" plain size="large"></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 可关闭标签 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="可关闭标签"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签" size="mini" closable :show="close1" @close="handleClose1"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning" closable :show="close2" @close="handleClose2"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="success" plain size="large" closable :show="close3" @close="handleClose3"></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 带图片和图标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="带图片和图标"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item"><uvx-tags text="标签" size="mini" icon="map" plain></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="warning" icon="tags-fill"></uvx-tags></view>
+               <view class="tags-demo__item"><uvx-tags text="标签" type="success" plain size="large" icon="star"></uvx-tags></view>
+            </view>
+         </view>
+
+         <!-- 单选标签 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="单选标签"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item" v-for="(item, index) in radios" :key="index">
+                  <uvx-tags :text="`选项${index + 1}`" :plain="!item.checked" type="warning" :name="index" @click="handleRadioClick"></uvx-tags>
+               </view>
+            </view>
+         </view>
+
+         <!-- 多选标签 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="多选标签"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content tags-demo__content">
+               <view class="tags-demo__item" v-for="(item, index) in checkboxs" :key="index">
+                  <uvx-tags :text="`选项${index + 1}`" :plain="!item.checked" type="warning" :name="index" @click="handleCheckboxClick"></uvx-tags>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type TagOption = {
+   checked: boolean;
+};
+
+// 可关闭标签的显示状态
+const close1 = ref(true);
+const close2 = ref(true);
+const close3 = ref(true);
+// 单选标签状态
+const radios = ref<TagOption[]>([
+   { checked: true },
+   { checked: false },
+   { checked: false },
+]);
+// 多选标签状态
+const checkboxs = ref<TagOption[]>([
+   { checked: true },
+   { checked: false },
+   { checked: false },
+]);
+
+/**
+ * 隐藏第一个可关闭标签
+ * @returns null
+ */
+const handleClose1 = (): void => { close1.value = false; };
+/**
+ * 隐藏第二个可关闭标签
+ * @returns null
+ */
+const handleClose2 = (): void => { close2.value = false; };
+/**
+ * 隐藏第三个可关闭标签
+ * @returns null
+ */
+const handleClose3 = (): void => { close3.value = false; };
+/**
+ * 更新单选标签
+ * @param name 标签索引
+ * @returns null
+ */
+const handleRadioClick = (name: string | number): void => {
+   const selectedIndex = Number(name);
+   for (let index = 0; index < radios.value.length; index++) {
+      radios.value[index].checked = index == selectedIndex;
+   }
+};
+
+/**
+ * 更新多选标签
+ * @param name 标签索引
+ * @returns null
+ */
+const handleCheckboxClick = (name: string | number): void => {
+   const selectedIndex = Number(name);
+   checkboxs.value[selectedIndex].checked = !checkboxs.value[selectedIndex].checked;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 标签演示项
+.tags-demo__item {
+   margin-right: 20px;
+}
+
+// 标签演示内容
+.tags-demo__content {
+   flex-direction: row;
+   flex-wrap: wrap;
+   align-items: center;
+}
+</style>

@@ -1,0 +1,28 @@
+import type { Mode } from "../../uvx-image/types/index.uts";
+
+export type Shape = "circle" | "square";
+
+/** 头像属性 */
+export type Props = {
+   src: string;
+   shape: Shape;
+   size: string | number;
+   mode: Mode;
+   text: string;
+   bgColor: string;
+   color: string;
+   fontSize: string | number;
+   icon: string;
+   mpAvatar: boolean;
+   randomBgColor: boolean;
+   defaultUrl: string;
+   colorIndex: string | number;
+   name: string;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 头像事件 */
+export type Emits = {
+   click: [name: string];
+};

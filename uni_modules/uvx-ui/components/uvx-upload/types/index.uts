@@ -1,0 +1,75 @@
+import type { Mode } from "../../uvx-image/types/index.uts";
+
+export type UploadFile = {
+   url: string;
+   thumb?: string;
+   size?: number;
+   name?: string;
+   type?: string;
+   status?: string;
+   message?: string;
+   deletable?: boolean;
+};
+
+export type UploadDetail = {
+   name: string;
+   index: number;
+};
+
+export type UploadReadEvent = {
+   file: UploadFile | UploadFile[];
+   name: string;
+   index: number;
+};
+
+export type UploadBeforeReadEvent = {
+   file: UploadFile | UploadFile[];
+   name: string;
+   index: number;
+   callback: (accepted: boolean) => void;
+};
+
+export type UploadDeleteEvent = {
+   file: UploadFile;
+   name: string;
+   index: number;
+};
+
+export type Props = {
+   accept: string;
+   capture: string | string[];
+   compressed: boolean;
+   camera: string;
+   maxDuration: number;
+   uploadIcon: string;
+   uploadIconColor: string;
+   useBeforeRead: boolean;
+   beforeRead?: (file: UploadFile | UploadFile[], detail: UploadDetail) => boolean | UploadFile | UploadFile[] | Promise<boolean | UploadFile | UploadFile[]>;
+   afterRead?: (file: UploadFile | UploadFile[], detail: UploadDetail) => void;
+   previewFullImage: boolean;
+   previewFullVideo: boolean;
+   maxCount: string | number;
+   disabled: boolean;
+   imageMode: Mode;
+   name: string;
+   sizeType: string[];
+   multiple: boolean;
+   deletable: boolean;
+   maxSize: string | number;
+   fileList: UploadFile[];
+   uploadText: string;
+   width: string | number;
+   height: string | number;
+   previewImage: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   error: [message: string];
+   beforeRead: [event: UploadBeforeReadEvent];
+   oversize: [event: UploadReadEvent];
+   afterRead: [event: UploadReadEvent];
+   delete: [event: UploadDeleteEvent];
+   clickPreview: [event: UploadDeleteEvent];
+};

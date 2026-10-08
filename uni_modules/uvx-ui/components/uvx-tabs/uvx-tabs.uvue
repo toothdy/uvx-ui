@@ -1,0 +1,714 @@
+<template>
+   <view
+      class="uvx-tabs"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <view class="uvx-tabs__wrapper">
+         <!-- 左侧扩展内容 -->
+         <slot name="left"></slot>
+
+         <!-- 横向标签列表 -->
+         <view class="uvx-tabs__scroll-wrapper">
+            <scroll-view
+               :id="scrollId"
+               class="uvx-tabs__scroll"
+               :direction="scrollable ? 'horizontal' : 'none'"
+               :scroll-left="scrollLeft"
+               :scroll-with-animation="isLineReady"
+               :show-scrollbar="false"
+            >
+               <view
+                  :id="navId"
+                  class="uvx-tabs__nav"
+                  :class="scrollable ? 'uvx-tabs__nav--scrollable' : 'uvx-tabs__nav--fill'"
+                  :style="navStyle"
+               >
+                  <view
+                     v-for="(item, index) in tabList"
+                     :id="getItemId(index)"
+                     :key="index"
+                     class="uvx-tabs__item"
+                     :class="getItemClasses(item)"
+                     :style="itemStyleValue"
+                     @tap="handleClick(item, index)"
+                  >
+                     <text
+                        class="uvx-tabs__text"
+                        :class="getTextClasses(item, index)"
+                        :style="getTextStyle(index)"
+                     >{{ getItemText(item) }}</text>
+                     <uvx-badge
+                        v-if="hasBadge(item)"
+                        :show="true"
+                        :is-dot="getBadgeBoolean(item, 'isDot', false)"
+                        :value="getBadgeValue(item, 'value', '')"
+                        :max="getBadgeValue(item, 'max', 999)"
+                        :type="getBadgeType(item)"
+                        :show-zero="getBadgeBoolean(item, 'showZero', false)"
+                        :bg-color="getBadgeString(item, 'bgColor', '')"
+                        :color="getBadgeString(item, 'color', '')"
+                        :shape="getBadgeShape(item)"
+                        :number-type="getBadgeNumberType(item)"
+                        :inverted="getBadgeBoolean(item, 'inverted', false)"
+                        u-style="margin-left: 4px;"
+                     ></uvx-badge>
+                  </view>
+
+                  <!-- 当前标签滑块 -->
+                  <view
+                     v-if="isLineReady && list.length > 0"
+                     class="uvx-tabs__line"
+                     :class="isLineImage ? 'uvx-tabs__line--image' : 'uvx-tabs__line--color'"
+                     :style="lineStyle"
+                  >
+                     <image
+                        v-if="isLineImage"
+                        class="uvx-tabs__line-image"
+                        :src="lineImageSource"
+                        :mode="lineImageMode"
+                     ></image>
+                  </view>
+               </view>
+            </scroll-view>
+         </view>
+
+         <!-- 右侧扩展内容 -->
+         <slot name="right"></slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-tabs 标签
+ * @description 支持滚动、等分、徽标、禁用状态和自动居中的标签导航。
+ * @tutorial https://www.uvxui.cn/components/tabs.html
+ * @property {String | Number} duration 滑块移动时间，单位 ms
+ * @property {Array} list 标签数组
+ * @property {String} lineColor 滑块背景
+ * @property {String} activeStyle 选中文字样式
+ * @property {String} inactiveStyle 未选中文字样式
+ * @property {String | Number} lineWidth 滑块宽度
+ * @property {String | Number} lineHeight 滑块高度
+ * @property {String} lineBgSize 滑块背景图尺寸
+ * @property {String} itemStyle 标签项样式
+ * @property {Boolean} scrollable 是否允许横向滚动
+ * @property {String | Number} current 当前选中索引
+ * @property {String} keyName 标签文字字段名
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} click 点击标签时触发
+ * @event {Function} change 选中标签变化时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Mode } from "../uvx-image/types/index.uts";
+import type {
+   NumberType,
+   Shape,
+   Type,
+   Value,
+} from "../uvx-badge/types/index.uts";
+import type {
+   Emits,
+   Event,
+   Item,
+   ItemRect,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-tabs",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   duration: 300,
+   list: () => [] as Item[],
+   lineColor: "",
+   activeStyle: "",
+   inactiveStyle: "",
+   lineWidth: 20,
+   lineHeight: 3,
+   lineBgSize: "cover",
+   itemStyle: "",
+   scrollable: true,
+   current: 0,
+   keyName: "name",
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 模板标签列表
+ * @returns Item[]
+ */
+const tabList = computed((): Item[] => props.list);
+
+// 滑块与导航底部的间距
+const LINE_BOTTOM_PX = 2;
+
+/** 标签事件 */
+const emit = defineEmits<Emits>();
+
+// 组件实例唯一标识
+const tabsInstanceId = "uvx-tabs-" + Date.now().toString() + "-" + Math.floor(Math.random() * 100000).toString();
+// 滚动容器元素 id
+const scrollId = tabsInstanceId + "-scroll";
+// 标签导航元素 id
+const navId = tabsInstanceId + "-nav";
+// 当前选中索引
+const innerCurrent = ref(0);
+// 横向滚动位置
+const scrollLeft = ref(0);
+// 滑块横向偏移
+const lineOffsetLeft = ref(0);
+// 标签项布局信息
+const itemRects = ref<ItemRect[]>([]);
+// 滚动容器宽度
+const scrollWidth = ref(0);
+// 标签内容总宽度
+const contentWidth = ref(0);
+// 滑块是否已完成首次定位
+const isLineReady = ref(false);
+
+/**
+ * 归一化选中索引
+ * @param value 外部索引
+ * @returns number
+ */
+const normalizeCurrent = (value: string | number): number => {
+   if (props.list.length == 0) return 0;
+   const numberValue = Number(value);
+   const index = Number.isNaN(numberValue) ? 0 : Math.floor(numberValue);
+   return Math.max(0, Math.min(props.list.length - 1, index));
+};
+
+innerCurrent.value = normalizeCurrent(props.current);
+
+/**
+ * 获取标签项元素 id
+ * @param index 标签索引
+ * @returns string
+ */
+const getItemId = (index: number): string => {
+   return tabsInstanceId + "-item-" + index.toString();
+};
+
+/**
+ * 获取标签文字
+ * @param item 标签项
+ * @returns string
+ */
+const getItemText = (item: Item): string => {
+   const text = item.getString(props.keyName);
+   if (text != null) return text;
+   const numberValue = item.getNumber(props.keyName);
+   return numberValue == null ? "" : numberValue.toString();
+};
+
+/**
+ * 判断标签是否禁用
+ * @param item 标签项
+ * @returns boolean
+ */
+const isItemDisabled = (item: Item): boolean => {
+   const value = item["disabled"] as boolean | null;
+   return value != null && value;
+};
+
+/**
+ * 获取标签项状态类
+ * @param item 标签项
+ * @returns string[]
+ */
+const getItemClasses = (item: Item): string[] => {
+   const classes: string[] = [];
+   classes.push(props.scrollable ? "uvx-tabs__item--scrollable" : "uvx-tabs__item--fill");
+   if (isItemDisabled(item)) classes.push("uvx-tabs__item--disabled");
+   return classes;
+};
+
+/**
+ * 获取标签文字状态类
+ * @param item 标签项
+ * @param index 标签索引
+ * @returns string[]
+ */
+const getTextClasses = (item: Item, index: number): string[] => {
+   const classes: string[] = [];
+   classes.push(
+      index == innerCurrent.value
+         ? "uvx-tabs__text--active"
+         : "uvx-tabs__text--inactive",
+   );
+   if (isItemDisabled(item)) classes.push("uvx-tabs__text--disabled");
+   return classes;
+};
+
+/**
+ * 获取标签文字样式
+ * @param index 标签索引
+ * @returns UTSJSONObject
+ */
+const getTextStyle = (index: number): UTSJSONObject => {
+   return $uvx.style.parse(
+      index == innerCurrent.value ? props.activeStyle : props.inactiveStyle,
+   );
+};
+
+/**
+ * 获取标签项样式
+ * @returns UTSJSONObject
+ */
+const itemStyleValue = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.itemStyle);
+});
+
+/**
+ * 获取徽标配置
+ * @param item 标签项
+ * @returns UTSJSONObject | null
+ */
+const getBadge = (item: Item): UTSJSONObject | null => {
+   const value = item["badge"];
+   if (value == null || typeof value != "object" || value instanceof Array) return null;
+   return value as UTSJSONObject;
+};
+
+/**
+ * 获取徽标布尔配置
+ * @param item 标签项
+ * @param key 配置字段
+ * @param fallback 默认值
+ * @returns boolean
+ */
+const getBadgeBoolean = (item: Item, key: string, fallback: boolean): boolean => {
+   const badge = getBadge(item);
+   if (badge == null) return fallback;
+   const value = badge[key] as boolean | null;
+   return value == null ? fallback : value;
+};
+
+/**
+ * 获取徽标字符串配置
+ * @param item 标签项
+ * @param key 配置字段
+ * @param fallback 默认值
+ * @returns string
+ */
+const getBadgeString = (item: Item, key: string, fallback: string): string => {
+   const badge = getBadge(item);
+   if (badge == null) return fallback;
+   const value = badge.getString(key);
+   return value == null ? fallback : value;
+};
+
+/**
+ * 获取徽标数值或字符串配置
+ * @param item 标签项
+ * @param key 配置字段
+ * @param fallback 默认值
+ * @returns Value
+ */
+const getBadgeValue = (item: Item, key: string, fallback: Value): Value => {
+   const badge = getBadge(item);
+   if (badge == null) return fallback;
+   const stringValue = badge.getString(key);
+   if (stringValue != null) return stringValue;
+   const numberValue = badge.getNumber(key);
+   return numberValue == null ? fallback : numberValue;
+};
+
+/**
+ * 获取徽标主题类型
+ * @param item 标签项
+ * @returns Type
+ */
+const getBadgeType = (item: Item): Type => {
+   return getBadgeString(item, "type", "error") as Type;
+};
+
+/**
+ * 获取徽标形状
+ * @param item 标签项
+ * @returns Shape
+ */
+const getBadgeShape = (item: Item): Shape => {
+   return getBadgeString(item, "shape", "circle") as Shape;
+};
+
+/**
+ * 获取徽标数字模式
+ * @param item 标签项
+ * @returns NumberType
+ */
+const getBadgeNumberType = (item: Item): NumberType => {
+   return getBadgeString(item, "numberType", "overflow") as NumberType;
+};
+
+/**
+ * 判断标签是否配置徽标
+ * @param item 标签项
+ * @returns boolean
+ */
+const hasBadge = (item: Item): boolean => {
+   const badge = getBadge(item);
+   if (badge == null) return false;
+   if (getBadgeBoolean(item, "show", false)) return true;
+   if (getBadgeBoolean(item, "isDot", false)) return true;
+   const value = getBadgeValue(item, "value", "");
+   return typeof value == "number" ? value != 0 : !$uvx.string.empty(value);
+};
+
+/**
+ * 将尺寸转换为 px 数值
+ * @param value 尺寸值
+ * @param fallback 无效值回退
+ * @returns number
+ */
+const getPxSize = (value: string | number, fallback: number): number => {
+   if (typeof value == "number") return value >= 0 ? value : fallback;
+   const text = value.trim();
+   const size = parseFloat(text);
+   if (Number.isNaN(size) || size < 0) return fallback;
+   if (text.endsWith("rpx")) {
+      return size * uni.getWindowInfo().windowWidth / 750;
+   }
+   return size;
+};
+
+/**
+ * 滑块是否使用位图背景
+ * @returns boolean
+ */
+const isLineImage = computed((): boolean => {
+   return props.lineColor.trim().startsWith("url(");
+});
+
+/**
+ * 获取导航行样式
+ * @returns UTSJSONObject
+ */
+const navStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!isLineImage.value) return style;
+   const lineHeight = getPxSize(props.lineHeight, 3);
+   style.set("padding-bottom", (lineHeight + LINE_BOTTOM_PX).toString() + "px");
+   return style;
+});
+
+/**
+ * 获取滑块位图地址
+ * @returns string
+ */
+const lineImageSource = computed((): string => {
+   if (!isLineImage.value) return "";
+   const value = props.lineColor.trim();
+   const endIndex = value.indexOf(")");
+   if (endIndex <= 4) return "";
+   let source = value.substring(4, endIndex).trim();
+   if (
+      source.length >= 2
+      && ((source.startsWith("\"") && source.endsWith("\""))
+         || (source.startsWith("'") && source.endsWith("'")))
+   ) {
+      source = source.substring(1, source.length - 1);
+   }
+   return source;
+});
+
+/**
+ * 获取滑块位图填充模式
+ * @returns Mode
+ */
+const lineImageMode = computed((): Mode => {
+   if (props.lineBgSize == "contain") return "aspectFit";
+   return "scaleToFill";
+});
+
+/**
+ * 获取滑块样式
+ * @returns UTSJSONObject
+ */
+const lineStyle = computed((): UTSJSONObject => {
+   const duration = Math.max(0, Number(props.duration));
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(props.lineWidth),
+      "height": $uvx.format.unit(props.lineHeight),
+      "bottom": LINE_BOTTOM_PX.toString() + "px",
+      "transform": "translateX(" + lineOffsetLeft.value.toString() + "px)",
+      "transition-duration": (Number.isNaN(duration) ? 0 : duration).toString() + "ms",
+   };
+   if (!$uvx.string.empty(props.lineColor) && !isLineImage.value) {
+      style.set("background", props.lineColor);
+   }
+   return style;
+});
+
+/**
+ * 获取根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 根据布局更新滑块和滚动位置
+ * @returns null
+ */
+const updatePosition = (): void => {
+   if (itemRects.value.length == 0) {
+      isLineReady.value = false;
+      scrollLeft.value = 0;
+      return;
+   }
+   innerCurrent.value = normalizeCurrent(innerCurrent.value);
+   const rect = itemRects.value[innerCurrent.value];
+   const lineWidth = getPxSize(props.lineWidth, 20);
+   lineOffsetLeft.value = rect.left + Math.max(0, rect.width - lineWidth) / 2;
+   const centered = rect.left - (scrollWidth.value - rect.width) / 2;
+   const maxScroll = Math.max(0, contentWidth.value - scrollWidth.value);
+   scrollLeft.value = props.scrollable
+      ? Math.max(0, Math.min(maxScroll, centered))
+      : 0;
+   isLineReady.value = true;
+};
+
+/**
+ * 测量标签布局
+ * @returns null
+ */
+const measureLayout = (): void => {
+   if (props.list.length == 0) {
+      itemRects.value = [];
+      updatePosition();
+      return;
+   }
+   const scrollElement = uni.getElementById<UniScrollViewElement>(scrollId);
+   const navElement = uni.getElementById<UniElement>(navId);
+   if (scrollElement == null || navElement == null) return;
+   try {
+      const scrollRect = scrollElement.getBoundingClientRect();
+      const navRect = navElement.getBoundingClientRect();
+      const rects: ItemRect[] = [];
+      let totalWidth = 0;
+      for (let index = 0; index < props.list.length; index++) {
+         const itemElement = uni.getElementById<UniElement>(getItemId(index));
+         if (itemElement == null) return;
+         const itemRect = itemElement.getBoundingClientRect();
+         const left = itemRect.left - navRect.left;
+         rects.push({ left, width: itemRect.width });
+         totalWidth = Math.max(totalWidth, left + itemRect.width);
+      }
+      itemRects.value = rects;
+      scrollWidth.value = scrollRect.width;
+      contentWidth.value = totalWidth;
+      updatePosition();
+   } catch (_error) {
+      // 原生节点尚未完成布局时保留现状，等待下一次同步
+      return;
+   }
+};
+
+/**
+ * 下一渲染周期同步布局
+ * @returns null
+ */
+const syncLayout = (): void => {
+   nextTick((): void => {
+      measureLayout();
+   });
+};
+
+/**
+ * 创建标签事件值
+ * @param item 标签项
+ * @param index 标签索引
+ * @returns Event
+ */
+const getEventValue = (item: Item, index: number): Event => {
+   const indexValue: UTSJSONObject = { "index": index };
+   return $uvx.object.deepMerge(item, indexValue);
+};
+
+/**
+ * 处理标签点击
+ * @param item 标签项
+ * @param index 标签索引
+ * @returns null
+ */
+const handleClick = (item: Item, index: number): void => {
+   const eventValue = getEventValue(item, index);
+   emit("click", eventValue);
+   if (isItemDisabled(item)) return;
+   if (innerCurrent.value != index) emit("change", eventValue);
+   innerCurrent.value = index;
+   syncLayout();
+};
+
+/** 外部索引变化时同步选中项 */
+watch(() => props.current, (value: string | number): void => {
+   innerCurrent.value = normalizeCurrent(value);
+   syncLayout();
+});
+
+/** 标签数据变化时重新测量 */
+watch(() => props.list, (): void => {
+   innerCurrent.value = normalizeCurrent(props.current);
+   syncLayout();
+}, { deep: true });
+
+/** 标签项样式变化时重新测量 */
+watch(() => props.itemStyle, (): void => {
+   syncLayout();
+});
+
+/** 滑块宽度变化时重新定位 */
+watch(() => props.lineWidth, (): void => {
+   syncLayout();
+});
+
+/** 标题字段变化时重新测量 */
+watch(() => props.keyName, (): void => {
+   syncLayout();
+});
+
+/** 挂载后执行首次布局同步 */
+onMounted((): void => {
+   syncLayout();
+});
+</script>
+
+<style lang="scss">
+// 标签根节点
+.uvx-tabs {
+   display: flex;
+   width: 100%;
+   overflow: visible;
+}
+
+// 标签整体布局
+.uvx-tabs__wrapper {
+   display: flex;
+   flex: 1;
+   flex-direction: row;
+   align-items: center;
+   min-width: 0;
+   overflow: visible;
+}
+
+// 滚动区域外层
+.uvx-tabs__scroll-wrapper {
+   display: flex;
+   flex: 1;
+   min-width: 0;
+   overflow: visible;
+}
+
+// 横向滚动区域
+.uvx-tabs__scroll {
+   display: flex;
+   flex: 1;
+   width: 100%;
+}
+
+// 标签导航行
+.uvx-tabs__nav {
+   display: flex;
+   position: relative;
+   flex-direction: row;
+   align-items: center;
+   overflow: visible;
+}
+
+// 可滚动导航行
+.uvx-tabs__nav--scrollable {
+   align-self: flex-start;
+}
+
+// 等分导航行
+.uvx-tabs__nav--fill {
+   width: 100%;
+}
+
+// 标签项
+.uvx-tabs__item {
+   display: flex;
+   position: relative;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   height: 44px;
+   padding: 0 11px;
+   overflow: visible;
+}
+
+// 可滚动标签项
+.uvx-tabs__item--scrollable {
+   flex-shrink: 0;
+}
+
+// 等分标签项
+.uvx-tabs__item--fill {
+   flex: 1;
+   min-width: 0;
+}
+
+// 禁用标签项
+.uvx-tabs__item--disabled {
+   opacity: 0.8;
+}
+
+// 标签文字
+.uvx-tabs__text {
+   flex-shrink: 0;
+   font-size: 15px;
+   letter-spacing: 0;
+}
+
+// 选中文字
+.uvx-tabs__text--active {
+   color: var(--uvx-text-main);
+}
+
+// 未选中文字
+.uvx-tabs__text--inactive {
+   color: var(--uvx-text-content);
+}
+
+// 禁用文字
+.uvx-tabs__text--disabled {
+   color: var(--uvx-disabled) !important;
+}
+
+// 当前标签滑块
+.uvx-tabs__line {
+   position: absolute;
+   left: 0;
+   transition-property: transform;
+   transition-timing-function: ease;
+}
+
+// 普通滑块背景
+.uvx-tabs__line--color {
+   border-radius: 100px;
+   background-color: var(--uvx-primary);
+}
+
+// 位图滑块背景
+.uvx-tabs__line--image {
+   overflow: visible;
+}
+
+// 滑块位图
+.uvx-tabs__line-image {
+   width: 100%;
+   height: 100%;
+   overflow: visible;
+}
+</style>

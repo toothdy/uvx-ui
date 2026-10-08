@@ -1,0 +1,210 @@
+<template>
+   <view class="uvx-collapse">
+      <uvx-line v-if="border"></uvx-line>
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-collapse 折叠面板
+ * @description 通过折叠面板收纳内容区域，支持普通模式和手风琴模式。
+ * @tutorial https://www.uvxui.cn/components/collapse.html
+ * @property {String | Number | Array} value 当前展开面板名称
+ * @property {Boolean} accordion 是否开启手风琴模式
+ * @property {Boolean} border 是否显示外边框
+ * @event {Function} change 面板状态变化时触发
+ * @event {Function} open 面板打开时触发
+ * @event {Function} close 面板关闭时触发
+ * @example <uvx-collapse><uvx-collapse-item title="标题"></uvx-collapse-item></uvx-collapse>
+ */
+
+import type { ComponentPublicInstance } from "vue";
+import type {
+   ChangeItem,
+   Config,
+   Context,
+   Emits,
+   Name,
+   Props,
+   Value,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-collapse", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: "",
+   accordion: false,
+   border: true,
+});
+
+/** 折叠面板事件 */
+const emit = defineEmits<Emits>();
+
+// 已注册的折叠面板子项
+const children = ref<ComponentPublicInstance[]>([]);
+
+/**
+ * 子项共享配置
+ * @returns Config
+ */
+const config = computed((): Config => {
+   return {
+      accordion: props.accordion,
+      border: props.border,
+   };
+});
+
+/**
+ * 获取子项最终名称
+ * @param child 子组件实例
+ * @param index 子项索引
+ * @returns Name
+ */
+const getChildName = (child: ComponentPublicInstance, index: number): Name => {
+   const name = child.$callMethod("getName") as Name;
+   if (typeof name == "string" && name.length == 0) return index;
+   return name;
+};
+
+/**
+ * 检查当前值类型是否符合模式要求
+ * @returns boolean
+ */
+const isValueValid = (): boolean => {
+   if (props.accordion) {
+      if (Array.isArray(props.value)) {
+         console.error("uvx-collapse 手风琴模式下 value 不能为数组");
+         return false;
+      }
+      return true;
+   }
+   if (typeof props.value == "string" && props.value.length == 0) return true;
+   if (!Array.isArray(props.value)) {
+      console.error("uvx-collapse 非手风琴模式下 value 必须为数组或空字符串");
+      return false;
+   }
+   return true;
+};
+
+/**
+ * 判断指定子项是否应展开
+ * @param name 子项名称
+ * @returns boolean
+ */
+const isSelected = (name: Name): boolean => {
+   if (typeof props.value == "string" && props.value.length == 0) return false;
+   if (props.accordion) return props.value == name;
+   const values = props.value as Name[];
+   return values.indexOf(name) != -1;
+};
+
+/**
+ * 同步全部子项的外部展开状态
+ * @returns null
+ */
+const syncChildren = (): void => {
+   const isValid = isValueValid();
+   for (let index = 0; index < children.value.length; index++) {
+      const child = children.value[index];
+      const name = getChildName(child, index);
+      child.$callMethod("syncFromCollapse", isValid && isSelected(name));
+   }
+};
+
+/**
+ * 注册子项并同步当前状态
+ * @param child 子组件实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+   syncChildren();
+};
+
+/**
+ * 移除已卸载的子项
+ * @param child 子组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+   syncChildren();
+};
+
+/**
+ * 生成全部子项状态
+ * @returns ChangeItem[]
+ */
+const getChangeItems = (): ChangeItem[] => {
+   const items: ChangeItem[] = [];
+   for (let index = 0; index < children.value.length; index++) {
+      const child = children.value[index];
+      items.push({
+         name: getChildName(child, index),
+         status: (child.$callMethod("getExpanded") as boolean) ? "open" : "close",
+      });
+   }
+   return items;
+};
+
+/**
+ * 切换目标子项并发布事件
+ * @param target 目标子组件实例
+ * @returns null
+ */
+const toggle = (target: ComponentPublicInstance): void => {
+   const targetIndex = children.value.indexOf(target);
+   if (targetIndex == -1) return;
+
+   const targetExpanded = target.$callMethod("getExpanded") as boolean;
+   const nextExpanded = !targetExpanded;
+   for (let index = 0; index < children.value.length; index++) {
+      const child = children.value[index];
+      if (child == target) {
+         child.$callMethod("setExpanded", nextExpanded);
+      } else if (props.accordion && (child.$callMethod("getExpanded") as boolean)) {
+         child.$callMethod("setExpanded", false);
+      }
+   }
+
+   const targetName = getChildName(target, targetIndex);
+   emit("change", getChangeItems());
+   if (nextExpanded) {
+      emit("open", targetName);
+   } else {
+      emit("close", targetName);
+   }
+};
+
+/** 向后代子项提供响应式配置和组操作 */
+provide<Context>("uvx-collapse-context", {
+   config,
+   register,
+   unregister,
+   toggle,
+});
+
+/** 外部展开值变化时同步子项 */
+watch((): Value => props.value, (): void => {
+   syncChildren();
+});
+
+/** 模式变化时重新校验并同步子项 */
+watch((): boolean => props.accordion, (): void => {
+   syncChildren();
+});
+
+defineExpose({ register, unregister, toggle });
+</script>
+
+<style lang="scss">
+// 折叠面板容器
+.uvx-collapse {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+}
+</style>

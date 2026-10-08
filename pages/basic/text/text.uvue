@@ -1,0 +1,153 @@
+<template>
+	<uvx-page ref="uPage">
+		<view class="uvx-page-demo">
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="基础功能"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<uvx-text text="我用十年青春,赴你最后之约"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="设置主题"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<uvx-text text="主色" type="primary"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<uvx-text type="error" text="错误"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<uvx-text type="success" text="成功"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<uvx-text type="warning" text="警告"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<uvx-text type="info" text="信息"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="拨打电话"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<!-- 仅显示号码 -->
+						<uvx-text mode="phone" text="15019479320"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<!-- 号码脱敏 -->
+						<uvx-text mode="phone" text="15019479320" :call="true" format="encrypt"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<!-- 点击直接拨号 -->
+						<uvx-text mode="phone" text="15019479320" :call="true" type="primary"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="日期格式化"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<uvx-text mode="date" text="1612959739"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="姓名脱敏"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<uvx-text mode="name" text="张三三" format="encrypt"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="超链接"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<uvx-text mode="link" text="打开文档" href="https://www.uvxui.cn"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="显示金额"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item">
+						<uvx-text mode="price" text="728732.32"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="前后图标"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<view class="uvx-page__text-item" style="margin-right: 50px">
+						<uvx-text prefixIcon="photo" iconStyle="font-size: 18px;line-height: 18px" text="百度一下"></uvx-text>
+					</view>
+					<view class="uvx-page__text-item">
+						<uvx-text suffixIcon="arrow-leftward" align="right" iconStyle="font-size: 18px;line-height: 18px" text="查看更多"></uvx-text>
+					</view>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="超出隐藏"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-text :lines="2"
+						text="关于uvx-ui的取名来由，首字母u来自于uni-app首字母，uni-app是基于Vue.js，Vue和View(延伸为UI、视图之意)同音，故取名uvx-ui，表达源于uni-app和Vue和uView之意，同时在此也对它们表示感谢。"></uvx-text>
+				</view>
+			</view>
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="小程序开放能力"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-text text="分享到微信" openType="share" type="success" @click="clickHandler"></uvx-text>
+				</view>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+/**
+ * 显示小程序能力提示
+ * @returns null
+ */
+const clickHandler = (): void => {
+	// #ifndef MP-WEIXIN
+	uPage.value?.toast({
+		message: "请在微信小程序内查看效果",
+	});
+	// #endif
+};
+</script>
+
+<style lang="scss" scoped>
+	@import '@/common/demo.scss';
+
+	.uvx-page__text-item {
+		margin-right: 10px;
+		flex: 1;
+	}
+</style>

@@ -1,0 +1,54 @@
+<template>
+   <view class="uvx-status-bar" :style="statusBarStyle">
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-status-bar 状态栏占位
+ * @description 用于自定义导航栏或顶部弹层，自动填充系统状态栏高度。
+ * @tutorial https://www.uvxui.cn/components/status-bar.html
+ * @property {String} bgColor 背景色，默认 transparent
+ * @property {String} uStyle 自定义样式
+ * @example <uvx-status-bar bg-color="transparent"></uvx-status-bar>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-status-bar", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   bgColor: "transparent",
+   uStyle: "",
+});
+
+// 系统状态栏高度
+const STATUS_BAR_HEIGHT = uni.getWindowInfo().statusBarHeight;
+
+/**
+ * 状态栏占位样式
+ * @returns UTSJSONObject
+ */
+const statusBarStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": $uvx.format.unit(STATUS_BAR_HEIGHT),
+   };
+   if (props.bgColor.indexOf("gradient") > -1) {
+      style.set("background-image", props.bgColor);
+   } else if (!$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+</script>
+
+<style lang="scss">
+// 状态栏占位容器
+.uvx-status-bar {
+   width: 100%;
+   flex-shrink: 0;
+}
+</style>

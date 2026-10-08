@@ -1,0 +1,24 @@
+export type Props = {
+   value: number | string;
+   modelValue: number | string;
+   count: number | string;
+   disabled: boolean;
+   readonly: boolean;
+   size: number | string;
+   inactiveColor: string;
+   activeColor: string;
+   gutter: number | string;
+   minCount: number | string;
+   allowHalf: boolean;
+   activeIcon: string;
+   inactiveIcon: string;
+   touchable: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   change: [value: number];
+   input: [value: number];
+   "update:modelValue": [value: number];
+};

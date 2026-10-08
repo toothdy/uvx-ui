@@ -1,0 +1,391 @@
+<template>
+   <view class="uvx-collapse-item">
+      <!-- 面板标题 -->
+      <uvx-cell
+         :title="title"
+         :value="value"
+         :label="label"
+         :icon="icon"
+         :is-link="isLink"
+         :clickable="clickable"
+         :border="parentBorder && isHeaderBorderVisible"
+         :arrow-direction="isExpanded ? 'up' : 'down'"
+         :disabled="disabled"
+         @click="handleClick"
+      >
+         <template #title>
+            <slot name="title">
+               <text
+                  v-if="title.length > 0"
+                  class="uvx-collapse-item__title"
+                  :class="disabled ? 'uvx-collapse-item__title--disabled' : ''"
+               >{{ title }}</text>
+            </slot>
+         </template>
+         <template #icon>
+            <slot name="icon">
+               <uvx-icon v-if="icon.length > 0" :name="icon" :size="18"></uvx-icon>
+            </slot>
+         </template>
+         <template #value>
+            <slot name="value">
+               <text
+                  v-if="value.length > 0"
+                  class="uvx-collapse-item__value"
+                  :class="disabled ? 'uvx-collapse-item__value--disabled' : ''"
+               >{{ value }}</text>
+            </slot>
+         </template>
+         <template #right-icon>
+            <slot name="right-icon">
+               <uvx-icon v-if="isLink" name="arrow-right" :size="16"></uvx-icon>
+            </slot>
+         </template>
+      </uvx-cell>
+
+      <!-- 折叠内容 -->
+      <view
+         ref="contentContainer"
+         class="uvx-collapse-item__content"
+         :style="contentStyle"
+      >
+         <view ref="contentInner" class="uvx-collapse-item__content-inner">
+            <slot></slot>
+         </view>
+      </view>
+      <uvx-line v-if="parentBorder"></uvx-line>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-collapse-item 折叠面板子项
+ * @description 搭配 uvx-collapse 使用，展示可展开和收起的内容区域。
+ * @tutorial https://www.uvxui.cn/components/collapse.html
+ * @property {String} title 标题
+ * @property {String} value 标题右侧内容
+ * @property {String} label 标题下方描述
+ * @property {Boolean} disabled 是否禁用
+ * @property {Boolean} isLink 是否显示右侧箭头
+ * @property {Boolean} clickable 是否开启点击反馈
+ * @property {Boolean} border 是否显示内边框
+ * @property {String} align 标题对齐方式
+ * @property {String | Number} name 唯一标识符
+ * @property {String} icon 标题左侧图标
+ * @property {Number} duration 展开收起动画时长
+ * @example <uvx-collapse-item title="标题">内容</uvx-collapse-item>
+ */
+
+import type { Context, Name } from "../uvx-collapse/types/index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-collapse-item", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   title: "",
+   value: "",
+   label: "",
+   disabled: false,
+   isLink: true,
+   clickable: true,
+   border: true,
+   align: "left",
+   name: "",
+   icon: "",
+   duration: 300,
+});
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 最近的折叠面板上下文
+const collapse = inject<Context | null>("uvx-collapse-context", null);
+if (collapse == null) throw new Error("uvx-collapse-item 必须在 uvx-collapse 内使用");
+// 内容裁剪容器
+const contentContainer = ref<UniElement | null>(null);
+// 内容实际尺寸节点
+const contentInner = ref<UniElement | null>(null);
+// 当前动画实例
+const contentAnimation = ref<UniAnimation | null>(null);
+// 当前是否展开
+const isExpanded = ref(false);
+// 当前是否正在执行动画
+const isAnimating = ref(false);
+// 小程序端内容容器高度
+const contentHeight = ref(0);
+// 标题下边框是否可见
+const isHeaderBorderVisible = ref(false);
+// 动画结束计时器
+let animationTimer = 0;
+// 边框延迟计时器
+let borderTimer = 0;
+// 当前动画序号
+let animationSequence = 0;
+
+/**
+ * 父级是否显示边框
+ * @returns boolean
+ */
+const parentBorder = computed((): boolean => {
+   return collapse.config.value.border;
+});
+
+/**
+ * 内容容器样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   // #ifdef MP
+   style.set("height", `${contentHeight.value}px`);
+   style.set("transition-property", "height");
+   style.set("transition-duration", `${Math.max(props.duration, 0)}ms`);
+   style.set("transition-timing-function", "ease-in-out");
+   // #endif
+   return style;
+});
+
+/**
+ * 获取当前子项名称
+ * @returns Name
+ */
+const getName = (): Name => {
+   return props.name;
+};
+
+/**
+ * 获取当前展开状态
+ * @returns boolean
+ */
+const getExpanded = (): boolean => {
+   return isExpanded.value;
+};
+
+/** 清理动画结束计时器 */
+const clearAnimationTimer = (): void => {
+   if (animationTimer == 0) return;
+   clearTimeout(animationTimer);
+   animationTimer = 0;
+};
+
+/** 清理边框延迟计时器 */
+const clearBorderTimer = (): void => {
+   if (borderTimer == 0) return;
+   clearTimeout(borderTimer);
+   borderTimer = 0;
+};
+
+/**
+ * 更新标题下边框显示状态
+ * @param expanded 是否展开
+ * @returns null
+ */
+const updateHeaderBorder = (expanded: boolean): void => {
+   clearBorderTimer();
+   borderTimer = setTimeout((): void => {
+      isHeaderBorderVisible.value = expanded;
+      borderTimer = 0;
+   }, expanded ? 10 : Math.max(props.duration - 10, 0));
+};
+
+/**
+ * 完成当前高度动画
+ * @param sequence 动画序号
+ * @param targetHeight 目标高度
+ * @returns null
+ */
+const finishAnimation = (sequence: number, targetHeight: number): void => {
+   if (sequence != animationSequence) return;
+   // #ifdef MP
+   contentHeight.value = targetHeight;
+   // #endif
+   // #ifndef MP
+   const container = contentContainer.value;
+   if (container != null && container.style != null) {
+      container.style!.setProperty("height", `${targetHeight}px`);
+   }
+   // #endif
+   contentAnimation.value = null;
+   isAnimating.value = false;
+   clearAnimationTimer();
+};
+
+/**
+ * 执行内容高度动画
+ * @returns null
+ */
+const animateContent = (): void => {
+   const sequence = ++animationSequence;
+   clearAnimationTimer();
+   if (contentAnimation.value != null) {
+      contentAnimation.value!.cancel();
+      contentAnimation.value = null;
+   }
+   isAnimating.value = true;
+
+   // #ifdef MP
+   nextTick((): void => {
+      if (sequence != animationSequence) return;
+      const query = uni.createSelectorQuery().in(instance);
+      query.select(".uvx-collapse-item__content").boundingClientRect();
+      query.select(".uvx-collapse-item__content-inner").boundingClientRect();
+      query.exec((result): void => {
+         if (sequence != animationSequence) return;
+         if (result.length < 2 || result[0] == null || result[1] == null) {
+            isAnimating.value = false;
+            return;
+         }
+         const containerRect = result[0] as NodeInfo;
+         const innerRect = result[1] as NodeInfo;
+         if (containerRect.height == null || innerRect.height == null) {
+            isAnimating.value = false;
+            return;
+         }
+
+         const currentHeight = containerRect.height;
+         const targetHeight = isExpanded.value ? innerRect.height : 0;
+         contentHeight.value = currentHeight;
+         if (props.duration <= 0 || currentHeight == targetHeight) {
+            finishAnimation(sequence, targetHeight);
+            return;
+         }
+
+         nextTick((): void => {
+            if (sequence != animationSequence) return;
+            contentHeight.value = targetHeight;
+            animationTimer = setTimeout((): void => {
+               finishAnimation(sequence, targetHeight);
+            }, props.duration);
+         });
+      });
+   });
+   // #endif
+
+   // #ifndef MP
+   nextTick((): void => {
+      if (sequence != animationSequence) return;
+      const container = contentContainer.value;
+      const inner = contentInner.value;
+      if (container == null || inner == null || container.style == null) {
+         isAnimating.value = false;
+         return;
+      }
+
+      const currentHeight = container.getBoundingClientRect().height;
+      const targetHeight = isExpanded.value ? inner.getBoundingClientRect().height : 0;
+      container.style!.setProperty("height", `${currentHeight}px`);
+
+      if (props.duration <= 0 || currentHeight == targetHeight) {
+         finishAnimation(sequence, targetHeight);
+         return;
+      }
+
+      contentAnimation.value = container.animate([
+         { height: `${currentHeight}px` },
+         { height: `${targetHeight}px` },
+      ], {
+         duration: props.duration,
+         easing: "ease-in-out",
+         fill: "forwards",
+      });
+
+      if (contentAnimation.value != null) {
+         contentAnimation.value!.onfinish = (_event: UniAnimationPlaybackEvent): void => {
+            finishAnimation(sequence, targetHeight);
+         };
+      }
+      animationTimer = setTimeout((): void => {
+         finishAnimation(sequence, targetHeight);
+      }, props.duration);
+   });
+   // #endif
+};
+
+/**
+ * 设置当前展开状态
+ * @param expanded 是否展开
+ * @returns null
+ */
+const setExpanded = (expanded: boolean): void => {
+   if (isExpanded.value == expanded) return;
+   isExpanded.value = expanded;
+   updateHeaderBorder(expanded);
+   animateContent();
+};
+
+/**
+ * 根据父级外部值同步展开状态
+ * @param expanded 是否展开
+ * @returns null
+ */
+const syncFromCollapse = (expanded: boolean): void => {
+   setExpanded(expanded);
+};
+
+/** 点击标题切换当前面板 */
+const handleClick = (): void => {
+   if (props.disabled || isAnimating.value) return;
+   collapse.toggle(instance);
+};
+
+/** 挂载时注册到折叠面板 */
+onMounted((): void => {
+   collapse.register(instance);
+});
+
+/** 卸载时清理动画并注销 */
+onUnmounted((): void => {
+   animationSequence++;
+   clearAnimationTimer();
+   clearBorderTimer();
+   if (contentAnimation.value != null) contentAnimation.value!.cancel();
+   contentAnimation.value = null;
+   collapse.unregister(instance);
+});
+
+defineExpose({ getName, getExpanded, setExpanded, syncFromCollapse });
+</script>
+
+<style lang="scss">
+// 折叠面板子项
+.uvx-collapse-item {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+
+   // 标题文字
+   &__title {
+      color: var(--uvx-text-main);
+      font-size: 15px;
+      line-height: 22px;
+   }
+
+   // 禁用标题文字
+   &__title--disabled {
+      color: var(--uvx-disabled);
+   }
+
+   // 标题右侧文字
+   &__value {
+      color: var(--uvx-text-content);
+      font-size: 14px;
+      line-height: 24px;
+      text-align: right;
+   }
+
+   // 禁用标题右侧文字
+   &__value--disabled {
+      color: var(--uvx-disabled);
+   }
+
+   // 内容裁剪区域
+   &__content {
+      height: 0;
+      overflow: hidden;
+   }
+
+   // 内容内边距
+   &__content-inner {
+      padding: 12px 15px;
+   }
+}
+</style>

@@ -1,0 +1,328 @@
+<template>
+   <uvx-page @scroll="handlePageScroll">
+         <!-- 下拉筛选菜单 -->
+         <uvx-drop-down
+            ref="uDropDown"
+            sign="drop-down-demo"
+            :default-value="DEFAULT_VALUES"
+            :extra-icon="NORMAL_ICON"
+            :extra-active-icon="ACTIVE_ICON"
+            u-style="padding: 0 15px;"
+            @click="handleMenuClick"
+         >
+            <uvx-drop-down-item
+               name="order"
+               type="2"
+               :label="getDisplayItem('order').label"
+               :value="getDisplayItem('order').value"
+            ></uvx-drop-down-item>
+            <uvx-drop-down-item
+               name="type"
+               type="2"
+               :label="getDisplayItem('type').label"
+               :value="getDisplayItem('type').value"
+            ></uvx-drop-down-item>
+            <uvx-drop-down-item
+               name="vip_type"
+               type="1"
+               label="VIP文档"
+               :value="getDisplayItem('vip_type').value"
+            ></uvx-drop-down-item>
+         </uvx-drop-down>
+
+         <!-- 下拉筛选弹层 -->
+         <uvx-drop-down-popup
+            sign="drop-down-demo"
+            :click-overlay-on-close="true"
+            :current-drop-item="currentDropItem"
+            @clickItem="handleItemClick"
+            @popupChange="handlePopupChange"
+         ></uvx-drop-down-popup>
+
+         <!-- 筛选结果提示 -->
+         <uvx-modal
+            ref="uModal"
+            title="筛选结果"
+            :content="modalContent"
+         ></uvx-modal>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   Icon,
+   ItemClickEvent,
+   Value,
+} from "@/uni_modules/uvx-ui/components/uvx-drop-down/types/index.uts";
+import type {
+   Menu,
+   ChangeEvent,
+} from "@/uni_modules/uvx-ui/components/uvx-drop-down-popup/types/index.uts";
+
+type DropDownResult = {
+   name: string;
+   label: string;
+   value: Value;
+};
+
+type DropDownDisplayItem = {
+   label: string;
+   value: Value;
+};
+
+/**
+ * 创建筛选选项
+ * @param label 选项文字
+ * @param value 选项值
+ * @returns UTSJSONObject
+ */
+const createOption = (label: string, value: Value): UTSJSONObject => {
+   return {
+      "label": label,
+      "value": value,
+   };
+};
+
+// 未筛选状态值
+const DEFAULT_VALUES: Value[] = [0, "all", "0"];
+// 默认菜单图标
+const NORMAL_ICON: Icon = {
+   name: "arrow-down-fill",
+   color: "",
+   size: 13,
+};
+// 激活菜单图标
+const ACTIVE_ICON: Icon = {
+   name: "arrow-up-fill",
+   color: "primary",
+   size: 13,
+};
+// 下拉筛选组件实例
+const uDropDown = ref<UvxDropDownComponentPublicInstance | null>(null);
+// 筛选结果弹窗实例
+const uModal = ref<UvxModalComponentPublicInstance | null>(null);
+// 筛选结果弹窗正文
+const modalContent = ref("");
+// 当前激活菜单名称
+const activeName = ref("order");
+// 已生效的筛选结果
+const result = ref<DropDownResult[]>([
+   {
+      name: "order",
+      label: "最新发布",
+      value: "new",
+   },
+]);
+// 排序菜单
+const orderMenu = ref<Menu>({
+   label: "综合排序",
+   value: "all",
+   activeIndex: 0,
+   child: [
+      createOption("综合排序", "all"),
+      createOption("最新发布", "new"),
+      createOption("低价优先", "money"),
+   ],
+});
+// 文档类型菜单
+const typeMenu = ref<Menu>({
+   label: "文档格式",
+   value: "all",
+   activeIndex: 0,
+   child: [
+      createOption("全部", "all"),
+      createOption("PDF", "pdf"),
+      createOption("WORD", "word"),
+      createOption("PPT", "ppt"),
+   ],
+});
+// VIP 菜单
+const vipMenu = ref<Menu>({
+   label: "VIP文档",
+   value: 0,
+   activeIndex: 0,
+   child: [],
+});
+
+/**
+ * 获取菜单数据
+ * @param name 菜单名称
+ * @returns Menu
+ */
+const getMenu = (name: string): Menu => {
+   if (name == "order") return orderMenu.value;
+   if (name == "type") return typeMenu.value;
+   return vipMenu.value;
+};
+
+/**
+ * 查找已生效的筛选结果
+ * @param name 菜单名称
+ * @returns DropDownResult | null
+ */
+const getResult = (name: string): DropDownResult | null => {
+   for (let index = 0; index < result.value.length; index++) {
+      if (result.value[index].name == name) return result.value[index];
+   }
+   return null;
+};
+
+/**
+ * 获取菜单展示数据
+ * @param name 菜单名称
+ * @returns DropDownDisplayItem
+ */
+const getDisplayItem = (name: string): DropDownDisplayItem => {
+   const selected = getResult(name);
+   if (selected != null) {
+      return {
+         label: selected.label,
+         value: selected.value,
+      };
+   }
+   const menu = getMenu(name);
+   return {
+      label: menu.label == null ? "" : menu.label!,
+      value: menu.value == null ? "" : menu.value!,
+   };
+};
+
+/**
+ * 当前下拉筛选菜单
+ * @returns Menu
+ */
+const currentDropItem = computed((): Menu => {
+   return getMenu(activeName.value);
+});
+
+/**
+ * 获取选项文字
+ * @param item 选项数据
+ * @returns string
+ */
+const getOptionLabel = (item: UTSJSONObject): string => {
+   return item.getString("label", "");
+};
+
+/**
+ * 获取选项值
+ * @param item 选项数据
+ * @returns Value
+ */
+const getOptionValue = (item: UTSJSONObject): Value => {
+   const stringValue = item.getString("value");
+   if (stringValue != null) return stringValue;
+   const numberValue = item.getNumber("value");
+   return numberValue == null ? "" : numberValue;
+};
+
+/**
+ * 判断是否为默认值
+ * @param value 筛选值
+ * @returns boolean
+ */
+const isDefaultValue = (value: Value): boolean => {
+   return DEFAULT_VALUES.indexOf(value) != -1;
+};
+
+/**
+ * 同步菜单选中索引
+ * @param menu 菜单数据
+ * @param selected 已选结果
+ * @returns null
+ */
+const syncActiveIndex = (menu: Menu, selected: DropDownResult | null): void => {
+   menu.activeIndex = 0;
+   if (selected == null) return;
+   for (let index = 0; index < menu.child.length; index++) {
+      const option = menu.child[index];
+      if (
+         getOptionLabel(option) == selected.label
+         && getOptionValue(option) == selected.value
+      ) {
+         menu.activeIndex = index;
+         return;
+      }
+   }
+};
+
+/**
+ * 处理筛选选项点击
+ * @param item 选项数据
+ * @returns null
+ */
+const handleItemClick = (item: UTSJSONObject): void => {
+   const menu = getMenu(activeName.value);
+   const value = getOptionValue(item);
+   let label = getOptionLabel(item);
+   if (isDefaultValue(value) && menu.label != null) label = menu.label!;
+
+   const selected = getResult(activeName.value);
+   const nextResult: DropDownResult = {
+      name: activeName.value,
+      label: label,
+      value: value,
+   };
+   if (selected == null) {
+      result.value.push(nextResult);
+   } else {
+      const selectedIndex = result.value.indexOf(selected);
+      result.value[selectedIndex] = nextResult;
+   }
+
+   const filtered: DropDownResult[] = [];
+   for (let index = 0; index < result.value.length; index++) {
+      if (!isDefaultValue(result.value[index].value)) filtered.push(result.value[index]);
+   }
+   result.value = filtered;
+   syncActiveIndex(menu, isDefaultValue(value) ? null : nextResult);
+
+   modalContent.value = "筛选的值：" + JSON.stringify(result.value);
+   nextTick((): void => {
+      uModal.value?.open();
+   });
+};
+
+/**
+ * 处理菜单点击
+ * @param event 菜单点击参数
+ * @returns null
+ */
+const handleMenuClick = (event: ItemClickEvent): void => {
+   activeName.value = event.name.toString();
+   if (event.type.toString() == "1") {
+      handleItemClick(createOption("VIP文档", event.active ? 1 : 0));
+      return;
+   }
+   const menu = getMenu(activeName.value);
+   syncActiveIndex(menu, getResult(activeName.value));
+};
+
+/**
+ * 输出弹层状态
+ * @param event 弹层状态
+ * @returns null
+ */
+const handlePopupChange = (event: ChangeEvent): void => {
+   console.log("弹窗打开状态：", event.show);
+};
+
+/**
+ * 页面滚动时更新菜单位置
+ * @param _event 滚动事件
+ * @returns null
+ */
+const handlePageScroll = (_event: UniScrollEvent): void => {
+   uDropDown.value?.init();
+};
+
+// #ifndef APP
+/** 非 App 页面滚动时更新菜单位置 */
+onPageScroll((): void => {
+   uDropDown.value?.init();
+});
+// #endif
+</script>
+
+<style lang="scss">
+</style>

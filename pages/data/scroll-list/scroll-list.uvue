@@ -1,0 +1,247 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo scroll-list-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <uvx-scroll-list
+               indicator-color="#fff0f0"
+               indicator-active-color="#f56c6c"
+               @left="handleLeft"
+               @right="handleRight"
+            >
+               <view class="scroll-list-demo__goods-row">
+                  <view
+                     v-for="(item, index) in GOODS_LIST"
+                     :key="index"
+                     class="scroll-list-demo__goods-item"
+                  >
+                     <image
+                        class="scroll-list-demo__goods-image"
+                        :src="GOODS_BASE_URL + item.thumbnail"
+                        mode="aspectFill"
+                     ></image>
+                     <text class="scroll-list-demo__goods-price">￥{{ item.price }}</text>
+                  </view>
+                  <view
+                     class="scroll-list-demo__more"
+                     @tap="handleShowMore"
+                  >
+                     <text class="scroll-list-demo__more-text">查看更多</text>
+                     <uvx-icon
+                        name="arrow-leftward"
+                        color="#f56c6c"
+                        :size="12"
+                     ></uvx-icon>
+                  </view>
+               </view>
+            </uvx-scroll-list>
+         </view>
+
+         <!-- 多菜单扩展 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="多菜单扩展"></uvx-text>
+            </view>
+            <uvx-scroll-list>
+               <view class="scroll-list-demo__menu-list">
+                  <view
+                     v-for="(row, rowIndex) in MENU_LIST"
+                     :key="rowIndex"
+                     class="scroll-list-demo__menu-row"
+                  >
+                     <view
+                        v-for="(item, itemIndex) in row"
+                        :key="itemIndex"
+                        class="scroll-list-demo__menu-item"
+                        :class="itemIndex == row.length - 1 ? 'scroll-list-demo__menu-item-last' : ''"
+                     >
+                        <image
+                           class="scroll-list-demo__menu-image"
+                           :src="MENU_BASE_URL + item.icon"
+                           mode="aspectFill"
+                        ></image>
+                        <text class="scroll-list-demo__menu-text">{{ item.name }}</text>
+                     </view>
+                  </view>
+               </view>
+            </uvx-scroll-list>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type GoodsItem = {
+   price: string;
+   thumbnail: string;
+};
+
+type MenuItem = {
+   name: string;
+   icon: string;
+};
+
+const GOODS_BASE_URL = "https://cdn.uviewui.com/uview/goods/";
+const MENU_BASE_URL = "https://cdn.uviewui.com/uview/menu/";
+
+// 商品演示数据
+const GOODS_LIST: GoodsItem[] = [
+   { price: "230.5", thumbnail: "1.jpg" },
+   { price: "74.1", thumbnail: "2.jpg" },
+   { price: "8457", thumbnail: "6.jpg" },
+   { price: "1442", thumbnail: "5.jpg" },
+   { price: "541", thumbnail: "2.jpg" },
+   { price: "234", thumbnail: "3.jpg" },
+   { price: "562", thumbnail: "4.jpg" },
+   { price: "251.5", thumbnail: "1.jpg" },
+];
+
+// 菜单演示数据
+const MENU_LIST: MenuItem[][] = [
+   [
+      { name: "天猫新品", icon: "11.png" },
+      { name: "今日爆款", icon: "9.png" },
+      { name: "天猫国际", icon: "17.png" },
+      { name: "饿了么", icon: "6.png" },
+      { name: "天猫超市", icon: "11.png" },
+      { name: "分类", icon: "2.png" },
+      { name: "天猫美食", icon: "3.png" },
+      { name: "阿里健康", icon: "12.png" },
+      { name: "口碑生活", icon: "7.png" },
+   ],
+   [
+      { name: "充值中心", icon: "4.png" },
+      { name: "机票酒店", icon: "10.png" },
+      { name: "金币庄园", icon: "18.png" },
+      { name: "阿里拍卖", icon: "15.png" },
+      { name: "淘宝吃货", icon: "16.png" },
+      { name: "闲鱼", icon: "4.png" },
+      { name: "会员中心", icon: "6.png" },
+      { name: "造点新货", icon: "13.png" },
+      { name: "土货鲜食", icon: "14.png" },
+   ],
+];
+
+/**
+ * 处理查看更多点击
+ * @returns null
+ */
+const handleShowMore = (): void => {
+   console.log("scroll-list show more");
+};
+
+/**
+ * 处理左边界事件
+ * @returns null
+ */
+const handleLeft = (): void => {
+   console.log("scroll-list left");
+};
+
+/**
+ * 处理右边界事件
+ * @returns null
+ */
+const handleRight = (): void => {
+   console.log("scroll-list right");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 商品横向列表
+.scroll-list-demo__goods-row {
+   display: flex;
+   flex-direction: row;
+   align-items: flex-start;
+}
+
+// 商品卡片
+.scroll-list-demo__goods-item {
+   display: flex;
+   flex-direction: column;
+   flex-shrink: 0;
+   width: 60px;
+   margin-right: 20px;
+}
+
+// 商品图片
+.scroll-list-demo__goods-image {
+   width: 60px;
+   height: 60px;
+   border-radius: 4px;
+}
+
+// 商品价格
+.scroll-list-demo__goods-price {
+   margin-top: 5px;
+   color: #f56c6c;
+   font-size: 12px;
+   text-align: center;
+}
+
+// 查看更多按钮
+.scroll-list-demo__more {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   flex-shrink: 0;
+   padding: 3px 6px;
+   background-color: #fff0f0;
+   border-radius: 3px;
+}
+
+// 查看更多文字
+.scroll-list-demo__more-text {
+   width: 12px;
+   color: #f56c6c;
+   font-size: 12px;
+   line-height: 16px;
+}
+
+// 菜单列表
+.scroll-list-demo__menu-list {
+   display: flex;
+   flex-direction: column;
+}
+
+// 菜单行
+.scroll-list-demo__menu-row {
+   display: flex;
+   flex-direction: row;
+   margin-top: 10px;
+}
+
+// 菜单项
+.scroll-list-demo__menu-item {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   flex-shrink: 0;
+   width: 61px;
+   margin-right: 15px;
+}
+
+// 行末菜单项
+.scroll-list-demo__menu-item-last {
+   margin-right: 0;
+}
+
+// 菜单图标
+.scroll-list-demo__menu-image {
+   width: 61px;
+   height: 48px;
+}
+
+// 菜单文字
+.scroll-list-demo__menu-text {
+   margin-top: 5px;
+   color: var(--uvx-text-content);
+   font-size: 12px;
+   text-align: center;
+}
+</style>

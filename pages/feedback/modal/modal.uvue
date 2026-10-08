@@ -1,0 +1,240 @@
+<template>
+   <uvx-page>
+      <view class="modal-demo">
+         <!-- Modal 演示列表 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               :is-link="true"
+               @click="handleOpen(index)"
+            >
+               <template #icon>
+                  <image
+                     class="uv-cell-icon"
+                     :src="item.iconUrl"
+                     mode="widthFix"
+                  ></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 基础使用 -->
+         <uvx-modal
+            ref="uModal1"
+            title="标题"
+            :content="content"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-modal>
+
+         <!-- 无标题 -->
+         <uvx-modal
+            ref="uModal2"
+            :content="content"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-modal>
+
+         <!-- 带取消按钮 -->
+         <uvx-modal
+            ref="uModal3"
+            :content="content"
+            :show-cancel-button="true"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+            @close="handleClose"
+         ></uvx-modal>
+
+         <!-- 异步关闭 -->
+         <uvx-modal
+            ref="uModal4"
+            :content="content"
+            :show-cancel-button="true"
+            :async-close="true"
+            @confirm="handleAsyncConfirm"
+            @cancel="handleCancel"
+            @close="handleClose"
+         ></uvx-modal>
+
+         <!-- 对调按钮 -->
+         <uvx-modal
+            ref="uModal5"
+            :content="content"
+            :show-cancel-button="true"
+            :button-reverse="true"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+            @close="handleClose"
+         ></uvx-modal>
+
+         <!-- 禁止遮罩关闭 -->
+         <uvx-modal
+            ref="uModal6"
+            title="标题"
+            :content="content"
+            :close-on-click-overlay="false"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-modal>
+
+         <!-- 默认插槽内容 -->
+         <uvx-modal
+            ref="uModal7"
+            title="利剑出鞘，一统江湖"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         >
+            <image
+               class="modal-demo__logo"
+               src="/static/logo.jpeg"
+               mode="aspectFit"
+            ></image>
+         </uvx-modal>
+
+         <!-- 自定义按钮 -->
+         <uvx-modal
+            ref="uModal8"
+            title="标题"
+            :content="content"
+            :show-cancel-button="true"
+            :show-close-icon="true"
+            @close="handleClose"
+         >
+            <template #confirmButton>
+               <view class="modal-demo__custom-button">
+                  <uvx-button
+                     text="确定"
+                     type="success"
+                     shape="circle"
+                     @click="handleCustomConfirm"
+                  ></uvx-button>
+               </view>
+            </template>
+         </uvx-modal>
+
+         <!-- 淡入淡出动画 -->
+         <uvx-modal
+            ref="uModal9"
+            title="标题"
+            :content="content"
+            :zoom="false"
+            @confirm="handleConfirm"
+            @close="handleClose"
+         ></uvx-modal>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+type ModalDemoItem = {
+   title: string;
+   iconUrl: string;
+};
+
+// 模态框正文
+const content = "模态框，常用于消息提示、消息确认、在当前页面内完成特定的交互操作";
+// Modal 演示项
+const demoItems: ModalDemoItem[] = [
+   { title: "基础使用", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/4.png" },
+   { title: "无标题", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/5.png" },
+   { title: "带取消按钮", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/2.png" },
+   { title: "异步关闭", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/6.png" },
+   { title: "对调取消和确认按钮", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/3.png" },
+   { title: "禁止点击遮罩关闭", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/7.png" },
+   { title: "传入slot", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/1.png" },
+   { title: "自定义按钮", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/8.png" },
+   { title: "淡入淡出动画", iconUrl: "https://cdn.uviewui.com/uview/demo/modal/9.png" },
+];
+// 九个 Modal 实例
+const uModal1 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal2 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal3 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal4 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal5 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal6 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal7 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal8 = ref<UvxModalComponentPublicInstance | null>(null);
+const uModal9 = ref<UvxModalComponentPublicInstance | null>(null);
+
+/**
+ * 打开指定 Modal
+ * @param index 演示项索引
+ * @returns null
+ */
+const handleOpen = (index: number): void => {
+   if (index == 0) uModal1.value?.open();
+   else if (index == 1) uModal2.value?.open();
+   else if (index == 2) uModal3.value?.open();
+   else if (index == 3) uModal4.value?.open();
+   else if (index == 4) uModal5.value?.open();
+   else if (index == 5) uModal6.value?.open();
+   else if (index == 6) uModal7.value?.open();
+   else if (index == 7) uModal8.value?.open();
+   else if (index == 8) uModal9.value?.open();
+};
+
+/**
+ * 记录确认事件
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   console.log("confirm");
+};
+
+/**
+ * 处理异步确认
+ * @returns null
+ */
+const handleAsyncConfirm = (): void => {
+   setTimeout((): void => {
+      uModal4.value?.closeLoading();
+      uModal4.value?.close();
+   }, 2000);
+};
+
+/**
+ * 关闭自定义按钮 Modal
+ * @returns null
+ */
+const handleCustomConfirm = (): void => {
+   uModal8.value?.close();
+};
+
+/**
+ * 记录取消事件
+ * @returns null
+ */
+const handleCancel = (): void => {
+   console.log("cancel");
+};
+
+/**
+ * 记录关闭事件
+ * @returns null
+ */
+const handleClose = (): void => {
+   console.log("close");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// Modal 演示页面
+.modal-demo {
+   width: 100%;
+
+   // 默认插槽图片
+   &__logo {
+      width: 80px;
+      height: 80px;
+   }
+
+   // 自定义按钮区域
+   &__custom-button {
+      padding: 0 25px 15px 25px;
+   }
+}
+</style>

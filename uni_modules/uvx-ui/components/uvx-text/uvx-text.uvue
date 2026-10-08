@@ -1,0 +1,447 @@
+<template>
+	<view
+		v-if="show"
+		class="uvx-text"
+		:class="[uClass]"
+		:style="containerStyle"
+		@tap="clickHandler"
+	>
+		<!-- 金额模式 -->
+		<text
+			v-if="mode == 'price'"
+			class="uvx-text__price"
+			:class="[typeClass]"
+			:style="valueStyle"
+		>￥</text>
+
+		<!-- 前缀图标 -->
+		<uvx-icon
+			v-if="prefixIcon"
+			:name="prefixIcon"
+			:u-style="iconStyle"
+			// #ifdef APP
+			:top="1"
+			// #endif
+		></uvx-icon>
+
+		<!-- 内容渲染链 -->
+		<!-- #ifdef MP -->
+		<button
+			v-if="openType"
+			class="uvx-text__value uvx-reset-button"
+			:class="[typeClass, linesClass]"
+			:style="valueStyle"
+			:open-type="openType"
+			@getphonenumber="handlePhoneNumber"
+			@getuserinfo="handleUserInfo"
+			@error="handleOpenTypeError"
+			@opensetting="handleOpenSetting"
+			@launchapp="handleLaunchApp"
+			@contact="handleContact"
+			@chooseavatar="handleChooseAvatar"
+		>{{ displayValue }}</button>
+		<uvx-link
+			v-else-if="mode == 'link'"
+			:text="displayValue"
+			:href="href"
+			:color="linkColor"
+			:font-size="linkFontSize"
+			:under-line="true"
+			:u-style="linkStyle"
+			:u-class="linesClass"
+			@click="clickHandler"
+		></uvx-link>
+		<text
+			v-else
+			class="uvx-text__value"
+			:class="[typeClass, linesClass]"
+			:style="valueStyle"
+			:max-lines="lines"
+		>{{ displayValue }}</text>
+		<!-- #endif -->
+
+		<!-- #ifndef MP -->
+		<uvx-link
+			v-if="mode == 'link'"
+			:text="displayValue"
+			:href="href"
+			:color="linkColor"
+			:font-size="linkFontSize"
+			:under-line="true"
+			:u-style="linkStyle"
+			:u-class="linesClass"
+			@click="clickHandler"
+		></uvx-link>
+		<text
+			v-else
+			class="uvx-text__value"
+			:class="[typeClass, linesClass]"
+			:style="valueStyle"
+			:max-lines="lines"
+		>{{ displayValue }}</text>
+		<!-- #endif -->
+
+		<!-- 后缀图标 -->
+		<uvx-icon
+			v-if="suffixIcon"
+			:name="suffixIcon"
+			:u-style="iconStyle"
+			// #ifdef WEB
+			:top="1"
+			// #endif
+		></uvx-icon>
+	</view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-text 文本
+ * @description 此组件集成了文本类在项目中的常用功能，包括状态，拨打电话，格式化日期，*替换，超链接...等功能。
+ * @tutorial https://www.uvxui.cn/components/text.html
+ * @property {String} type 主题颜色，可选 primary/success/warning/error/info/main/content/tips
+ * @property {Boolean} show 是否显示（默认 true）
+ * @property {String} text 显示的值
+ * @property {String} prefixIcon 前置图标名称
+ * @property {String} suffixIcon 后置图标名称
+ * @property {String} mode 文本处理模式：text/price/phone/name/date/link
+ * @property {String} href mode=link 时的链接地址
+ * @property {String} format 格式化规则：date 模式下为日期格式字符串；phone/name 模式下传 'encrypt' 脱敏
+ * @property {Boolean} call mode=phone 时点击是否拨打电话（默认 false）
+ * @property {String} openType 小程序开放能力
+ * @property {Boolean} bold 是否粗体（默认 false）
+ * @property {Boolean} block 是否块状（默认 false）
+ * @property {Number} lines 超出隐藏的行数，可选 0-5（默认 0）
+ * @property {String} color 文本颜色，为空时由主题变量控制
+ * @property {String | Number} size 字体大小（默认 14）
+ * @property {String} iconStyle 图标样式
+ * @property {String} decoration 文字装饰：none/underline/line-through（默认 none）
+ * @property {String | Number} margin 外边距
+ * @property {String} lineHeight 行高
+ * @property {String} align 对齐方式：left/center/right（默认 left）
+ * @property {String} wordWrap 文字换行：break-word/normal/anywhere（默认 normal）
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ *
+ * @event {Function} click 点击触发
+ * @event {Function} getphonenumber 获取手机号事件
+ * @event {Function} getuserinfo 获取用户信息事件
+ * @event {Function} error 开放能力调用失败事件
+ * @event {Function} opensetting 打开授权设置页事件
+ * @event {Function} launchapp 打开 APP 事件
+ * @event {Function} contact 客服会话事件
+ * @event {Function} chooseavatar 选择头像事件
+ */
+
+import { $uvx } from '../../index.uts';
+import { toScale } from "../../core/size";
+import type { Props, Emits } from './types/index.uts';
+
+defineOptions({ name: 'uvx-text', options: { virtualHost: true }, externalClasses: ['u-class'] });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	type: "",
+	show: true,
+	text: "",
+	prefixIcon: "",
+	suffixIcon: "",
+	mode: "text",
+	href: "",
+	format: "",
+	call: false,
+	openType: "",
+	bold: false,
+	block: false,
+	lines: 0,
+	color: "",
+	size: 14,
+	iconStyle: "",
+	decoration: "none",
+	margin: 0,
+	lineHeight: "",
+	align: "left",
+	wordWrap: "normal",
+	uStyle: "",
+	uClass: ""
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/**
+ * 外层容器样式：控制外边距与水平对齐
+ * @returns UTSJSONObject
+ */
+const containerStyle = computed(() : UTSJSONObject => {
+	const style : UTSJSONObject = {};
+	style.set('margin', $uvx.format.unit(props.margin));
+	if (props.align == 'center') {
+		style.set('justify-content', 'center');
+	} else if (props.align == 'right') {
+		style.set('justify-content', 'flex-end');
+	} else {
+		style.set('justify-content', 'flex-start');
+	}
+	return style;
+});
+
+/**
+ * 文本样式：字号、粗细、换行、装饰线、行高、block 等
+ * color 只在没有 type 且用户有传值时写入 style，否则由 SCSS 主题变量控制
+ * @returns UTSJSONObject
+ */
+const valueStyle = computed(() : UTSJSONObject => {
+	const style : UTSJSONObject = {};
+	style.set("text-align", props.align);
+	style.set('text-decoration', props.decoration);
+	style.set('font-weight', props.bold ? 'bold' : 'normal');
+	style.set('word-wrap', props.wordWrap);
+	
+	// 数字字号按全局缩放倍数动态换算；字符串(如 '20px')原样不缩放
+	if (typeof props.size == 'number') {
+		style.set('font-size', $uvx.format.unit(toScale(props.size)));
+	} else {
+		style.set('font-size', $uvx.format.unit(props.size));
+	}
+	
+	// 无 type 且用户传入了颜色时，才用 inline style 设置（不受暗色模式控制）
+	if ($uvx.string.empty(props.type) && !$uvx.string.empty(props.color)) {
+		style.set('color', props.color);
+	}
+	if (!$uvx.string.empty(props.lineHeight)) {
+		style.set('line-height', $uvx.format.unit(props.lineHeight));
+	}
+	// #ifndef APP
+	if (props.block) {
+		style.set('display', 'block');
+	}
+	// #endif
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 链接颜色
+ * @returns string
+ */
+const linkColor = computed(() : string => {
+	if (props.type == "main" || props.type == "content" || props.type == "tips") {
+		return `var(--uvx-text-${props.type})`;
+	}
+	if (!$uvx.string.empty(props.type)) {
+		return `var(--uvx-${props.type})`;
+	}
+	return props.color;
+});
+
+/**
+ * 链接字号
+ * @returns string | number
+ */
+const linkFontSize = computed(() : string | number => {
+	return typeof props.size == "number" ? toScale(props.size) : props.size;
+});
+
+/**
+ * 链接文本样式
+ * @returns string
+ */
+const linkStyle = computed(() : string => {
+	let style = `font-weight: ${props.bold ? "bold" : "normal"}; text-align: ${props.align}; word-wrap: ${props.wordWrap};`;
+	if (!$uvx.string.empty(props.lineHeight)) {
+		style += ` line-height: ${$uvx.format.unit(props.lineHeight)};`;
+	}
+	return `${style} ${props.uStyle}`;
+});
+
+/**
+ * 行数
+ * @returns string
+ */
+const linesClass = computed(() : string => {
+	return props.lines != 0 ? `uvx-line-${props.lines}` : "";
+});
+
+/**
+ * 类型
+ * @returns string
+*/
+const typeClass = computed(() : string => {
+	return !$uvx.string.empty(props.type) ? `uvx-text__value--${props.type}` : '';
+});
+
+/**
+ * 计算展示文本，根据 mode 做对应格式化处理
+ * @returns string
+ */
+const displayValue = computed(() : string => {
+	if (props.mode == 'price') {
+		return $uvx.format.price(props.text, 2);
+	}
+
+	if (props.mode == 'date') {
+		const fmt = !$uvx.string.empty(props.format) ? props.format : 'yyyy-MM-dd';
+		return $uvx.format.time(props.text, fmt);
+	}
+
+	if (props.mode == 'phone') {
+		if (props.format == 'encrypt') {
+			// 手机号中间四位脱敏：138****8888
+			return `${props.text.substring(0, 3)}****${props.text.substring(7)}`;
+		}
+		return props.text;
+	}
+
+	if (props.mode == 'name') {
+		if (props.format == 'encrypt') {
+			return $uvx.format.name(props.text);
+		}
+		return props.text;
+	}
+
+	if (props.mode == 'link') {
+		return props.text;
+	}
+
+	return props.text;
+});
+
+/**
+ * 点击事件：phone 模式在支持的平台拨号，其它平台不调用缺失的 API
+ * @returns null
+ */
+const clickHandler = () => {
+	if (props.mode == 'phone' && props.call) {
+		uni.makePhoneCall({
+			phoneNumber: props.text,
+			fail: (err) => {
+				console.log('拨号失败', err);
+			}
+		});
+	}
+	emit('click');
+};
+
+/**
+ * 转发获取手机号事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handlePhoneNumber = (event : UniEvent): void => {
+	emit("getphonenumber", event);
+};
+
+/**
+ * 转发获取用户信息事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleUserInfo = (event : UniEvent): void => {
+	emit("getuserinfo", event);
+};
+
+/**
+ * 转发开放能力错误事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleOpenTypeError = (event : UniEvent): void => {
+	emit("error", event);
+};
+
+/**
+ * 转发打开设置事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleOpenSetting = (event : UniEvent): void => {
+	emit("opensetting", event);
+};
+
+/**
+ * 转发打开应用事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleLaunchApp = (event : UniEvent): void => {
+	emit("launchapp", event);
+};
+
+/**
+ * 转发客服会话事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleContact = (event : UniEvent): void => {
+	emit("contact", event);
+};
+
+/**
+ * 转发选择头像事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleChooseAvatar = (event : UniEvent): void => {
+	emit("chooseavatar", event);
+};
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+.uvx-text {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: nowrap;
+	flex: 1;
+	width: 100%;
+	/* #ifdef WEB */
+	min-width: 0;
+	/* #endif */
+
+	/* 金额前缀 */
+	&__price {
+		font-size: 14px;
+		color: var(--uvx-text-content);
+	}
+
+	/* 主文本 */
+	&__value {
+		font-size: 14px;
+		color: var(--uvx-text-content);
+		display: flex;
+		/* #ifdef WEB || MP */
+		flex-wrap: wrap;
+		align-items: center;
+		/* #endif */
+		/* #ifdef WEB */
+		display: block;
+		flex: 1;
+		min-width: 0;
+		max-width: 100%;
+		white-space: normal;
+		overflow-wrap: break-word;
+		&.uvx-line-1 {
+			white-space: nowrap;
+		}
+		/* #endif */
+		text-overflow: ellipsis;
+
+		/* 主题色类型 */
+		&--primary { color: var(--uvx-primary); }
+		&--success { color: var(--uvx-success); }
+		&--warning { color: var(--uvx-warning); }
+		&--error   { color: var(--uvx-error); }
+		&--info    { color: var(--uvx-info); }
+
+		/* 文本语义色类型 */
+		&--main    { color: var(--uvx-text-main); }
+		&--content { color: var(--uvx-text-content); }
+		&--tips    { color: var(--uvx-text-tips); }
+	}
+}
+</style>

@@ -1,0 +1,18 @@
+/**
+ * 全局配置类型
+ */
+export type Config = {
+	// 全局字号缩放倍数
+	fontSize : number;
+	// 弹层类组件的基础层级
+	zIndex : number;
+};
+
+/**
+ * 全局响应式配置实例
+ * @description 通过 reactive 包裹，组件与工具可共享同一份配置并响应其变化
+ */
+export const config = reactive<Config>({
+	fontSize: 1,
+	zIndex: 600
+});

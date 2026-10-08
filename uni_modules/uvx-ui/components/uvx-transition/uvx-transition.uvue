@@ -1,0 +1,492 @@
+<template>
+	<!-- #ifdef MP -->
+	<view
+		ref="uTransition"
+		:class="uClass"
+		:style="rootStyle"
+		@click="onClick"
+	>
+		<slot></slot>
+	</view>
+	<!-- #endif -->
+	<!-- #ifndef MP -->
+	<view
+		v-if="render"
+		ref="uTransition"
+		:class="uClass"
+		:style="rootStyle"
+		@click="onClick"
+	>
+		<slot></slot>
+	</view>
+	<!-- #endif -->
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-transition 过渡动画
+ * @description 基于逐帧动画引擎的进/出场动画组件,支持 fade/slide/zoom
+ * @tutorial https://www.uvxui.cn/components/transition.html
+ * @property {Boolean} show 控制显隐 (默认 false)
+ * @property {String} mode 动画类型:fade / slide-top / slide-bottom / slide-left / slide-right / zoom-in / zoom-out (默认 'fade')
+ * @property {Number} duration 动画时长 ms (默认 300)
+ * @property {String} easing 缓动函数(CSS 名) (默认 'ease-out')
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击组件触发,detail 为当前 show
+ * @event {Function} change 进/出场动画结束触发,detail 为当前 show
+ * @method init(options) 初始化命令式动画基础配置 { duration, timingFunction, delay },并清空已有 step 队列
+ * @method step(props, config) 添加动画步骤,props 如 { translateX: '200px', rotate: '360deg' },config 可覆盖本步 { duration, timingFunction },无需覆盖时传 {}
+ * @method run() 依次执行队列中的所有 step,返回 Promise,完成时机用 await 或 .then 获取
+ * @method open() 手动触发入场动画
+ * @method close() 手动触发出场动画
+ * @example <uvx-transition mode="fade" :show="show"><view>内容</view></uvx-transition>
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Props, Emits } from './types/index.uts';
+import { createAnimation, AnimationEngine, AnimationStepConfig } from '../../core/animation/index.uts';
+
+defineOptions({
+	name: 'uvx-transition',
+	options: { virtualHost: true },
+	externalClasses: ['u-class']
+});
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	show: false,
+	mode: 'fade',
+	duration: 300,
+	easing: 'ease-out',
+	uStyle: "",
+	uClass: ''
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/** 模板 ref */
+const uTransition = ref<UniElement | null>(null);
+/** 是否渲染(出场动画结束后才卸载) */
+const render = ref(false);
+/** 入场起始隐藏态:必须随挂载同一次 patch 写入 style。APP 端若等 nextTick 再用 setProperty 隐藏,节点会先以可见态绘制一帧,造成入场闪烁 */
+const hidden = ref(true);
+/** 当前动画实例 */
+let engine : AnimationEngine | null = null;
+/** 当前动画标识，用于忽略已过期的异步回调 */
+let animationId = 0;
+
+/**
+ * 按 mode 返回入场起始隐藏样式
+ * @returns UTSJSONObject
+ */
+function hiddenStyle() : UTSJSONObject {
+	const style : UTSJSONObject = {};
+	if (props.mode == 'fade') {
+		style.set('opacity', '0');
+	} else if (props.mode == 'slide-top') {
+		style.set('transform', 'translateY(-100%)');
+	} else if (props.mode == 'slide-bottom') {
+		style.set('transform', 'translateY(100%)');
+	} else if (props.mode == 'slide-left') {
+		style.set('transform', 'translateX(-100%)');
+	} else if (props.mode == 'slide-right') {
+		style.set('transform', 'translateX(100%)');
+	} else if (props.mode == 'zoom-in') {
+		style.set('transform', 'scale(0.92)');
+		style.set('opacity', '0');
+	} else if (props.mode == 'zoom-out') {
+		style.set('transform', 'scale(1.2)');
+		style.set('opacity', '0');
+	}
+	return style;
+}
+
+/**
+ * 外层样式:合并 uStyle;入场动画完成前附带隐藏态,动画属性(opacity/transform)由引擎直接写 element.style
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed(() : UTSJSONObject => {
+	let base: UTSJSONObject = $uvx.style.parse(props.uStyle);
+	if (hidden.value) {
+		base = $uvx.object.deepMerge(base, hiddenStyle());
+	}
+	// #ifdef MP
+	// v-show(hidden 属性)在 virtualHost 组件根节点上恒不生效,改用内联 display:none 控制显隐
+	if (!render.value) {
+		base = $uvx.object.deepMerge(base, { 'display': 'none' });
+	}
+	// #endif
+	return base;
+});
+
+/**
+ * CSS 缓动名 → 引擎预设名
+ * @param name CSS 缓动名
+ * @returns 引擎预设名
+ */
+function mapEasing(name : string) : string {
+	if (name == 'linear') return 'linear';
+	if (name == 'ease') return 'ease';
+	if (name == 'ease-in') return 'easeIn';
+	if (name == 'ease-out') return 'easeOut';
+	if (name == 'ease-in-out') return 'easeInOut';
+	return name; // 其余按引擎预设名直接透传(如 easeInQuad),未知名称引擎按线性处理
+}
+
+/**
+ * 入场前写一次起始隐藏态,兜底首帧闪烁
+ * @param el 动画元素
+ * @returns null
+ */
+function applyHidden(el : UniElement) : void {
+	const style = el.style;
+	if (style == null) return;
+	// #ifdef MP
+	// 小程序端节点常驻,引擎上一次写入的终态样式会持久残留:
+	// fade 出场残留 opacity:0 会让后续 slide/zoom 进场全程透明,
+	// slide/zoom 出场残留 transform 会让后续 fade 进场位置偏移。
+	// 每次进场先把另一类属性重置为中性值。
+	if (props.mode == 'fade') {
+		style.setProperty('transform', 'none');
+	} else {
+		style.setProperty('opacity', '1');
+	}
+	// #endif
+	if (props.mode == 'fade') {
+		style.setProperty('opacity', '0');
+	} else if (props.mode == 'slide-top') {
+		style.setProperty('transform', 'translateY(-100%)');
+	} else if (props.mode == 'slide-bottom') {
+		style.setProperty('transform', 'translateY(100%)');
+	} else if (props.mode == 'slide-left') {
+		style.setProperty('transform', 'translateX(-100%)');
+	} else if (props.mode == 'slide-right') {
+		style.setProperty('transform', 'translateX(100%)');
+	} else if (props.mode == 'zoom-in') {
+		style.setProperty('transform', 'scale(0.92)');
+		style.setProperty('opacity', '0');
+	} else if (props.mode == 'zoom-out') {
+		style.setProperty('transform', 'scale(1.2)');
+		style.setProperty('opacity', '0');
+	}
+}
+
+/**
+ * 按 mode 与方向给引擎配置动画(enter=true 入场)
+ * @param eng 动画引擎
+ * @param enter 是否为入场动画
+ * @returns null
+ */
+function buildAnim(eng : AnimationEngine, enter : boolean) : void {
+	if (props.mode == 'fade') {
+		eng.opacity(enter ? '0' : '1', enter ? '1' : '0');
+	} else if (props.mode == 'slide-top') {
+		eng.translateY(enter ? '-100%' : '0%', enter ? '0%' : '-100%');
+	} else if (props.mode == 'slide-bottom') {
+		eng.translateY(enter ? '100%' : '0%', enter ? '0%' : '100%');
+	} else if (props.mode == 'slide-left') {
+		eng.translateX(enter ? '-100%' : '0%', enter ? '0%' : '-100%');
+	} else if (props.mode == 'slide-right') {
+		eng.translateX(enter ? '100%' : '0%', enter ? '0%' : '100%');
+	} else if (props.mode == 'zoom-in') {
+		eng.scale(enter ? '0.92' : '1', enter ? '1' : '0.92')
+			.opacity(enter ? '0' : '1', enter ? '1' : '0');
+	} else if (props.mode == 'zoom-out') {
+		eng.scale(enter ? '1.2' : '1', enter ? '1' : '1.2')
+			.opacity(enter ? '0' : '1', enter ? '1' : '0');
+	}
+}
+
+/**
+ * 入场
+ * @returns null
+ */
+function enter() : void {
+	const currentAnimationId = ++animationId;
+	hidden.value = true; // 与挂载同帧生效,首帧即处于隐藏态
+	render.value = true;
+	nextTick(() => {
+		if (currentAnimationId != animationId) return;
+		const el = uTransition.value;
+		if (el == null) return;
+		const prev = engine;
+		engine = null;
+		if (prev != null) prev.stop();
+		applyHidden(el);
+		const eng = createAnimation(el, {
+			duration: props.duration,
+			timingFunction: mapEasing(props.easing)
+		});
+		engine = eng;
+		buildAnim(eng, true);
+		eng.playAsync().then(() => {
+			if (currentAnimationId != animationId) return;
+			engine = null;
+			// 移除绑定的隐藏态:此时引擎已写入终态,默认值与终态一致,无视觉变化;
+			// 不移除的话后续 uStyle 变化触发的 patch 会把隐藏态重新盖回去
+			hidden.value = false;
+			emit('change', true);
+		});
+	});
+}
+
+/**
+ * 出场
+ * @returns null
+ */
+function leave() : void {
+	const currentAnimationId = ++animationId;
+	const el = uTransition.value;
+	if (el == null) {
+		render.value = false;
+		return;
+	}
+	const prev = engine;
+	engine = null;
+	if (prev != null) prev.stop();
+	const eng = createAnimation(el, {
+		duration: props.duration,
+		timingFunction: mapEasing(props.easing)
+	});
+	engine = eng;
+	buildAnim(eng, false);
+	eng.playAsync().then(() => {
+		if (currentAnimationId != animationId) return;
+		engine = null;
+		render.value = false;
+		emit('change', false);
+	});
+}
+
+/**
+ * 监听 show
+ * 不用 immediate:小程序端 ref 在 render 后的 nextTick 才赋值,
+ * setup 阶段触发 enter 时其 nextTick 回调先于 ref 赋值执行,el 为 null 会永久卡在隐藏态;
+ * 初始 show=true 改由 onMounted 触发(此时各端 ref 均已就绪)
+ * @param val 是否显示
+ * @returns null
+ */
+watch(() : boolean => props.show, (val : boolean) => {
+	if (val) {
+		enter();
+	} else {
+		if (render.value) leave();
+	}
+});
+
+/**
+ * 挂载后处理初始显示状态
+ * @returns null
+ */
+onMounted(() => {
+	if (props.show) enter();
+});
+
+/**
+ * 点击
+ * @returns null
+ */
+function onClick() : void {
+	emit('click', props.show);
+}
+
+/* ===== 命令式自定义动画(init / step / run) ===== */
+
+/** step 默认时长(毫秒) */
+let stepDuration = 300;
+/** step 默认缓动名 */
+let stepEasing = 'ease';
+/** run 开始前的延迟(毫秒) */
+let stepDelay = 0;
+/** 待执行的 step 队列 */
+const stepQueue : AnimationStepConfig[] = [];
+/** 各属性当前值,跨 step 延续,使每个 step 从上一步终态继续动画 */
+const currentValues = new Map<string, string>();
+/** 命令式动画引擎实例 */
+let uEngine : AnimationEngine | null = null;
+/** run 是否执行中 */
+let stepRunning = false;
+
+/**
+ * 是否为 transform 子属性
+ * @param prop 动画属性名
+ * @returns boolean
+ */
+function isTransformProp(prop : string) : boolean {
+	return prop.startsWith('translate') || prop.startsWith('rotate')
+		|| prop.startsWith('scale') || prop.startsWith('skew');
+}
+
+/**
+ * 属性默认起始值(首次动画且未指定起点时使用)
+ * @param prop 动画属性名
+ * @returns 默认起始值
+ */
+function defaultStepValue(prop : string) : string {
+	if (prop.startsWith('translate')) return '0px';
+	if (prop.startsWith('rotate') || prop.startsWith('skew')) return '0deg';
+	if (prop.startsWith('scale') || prop == 'opacity') return '1';
+	return '0';
+}
+
+/**
+ * 纯数字值补默认单位:rotate/skew 补 deg,translate 补 px(对齐 uni 动画 API 的宽松写法)
+ * @param prop 动画属性名
+ * @param value 动画属性值
+ * @returns 标准化后的属性值
+ */
+function normalizeStepValue(prop : string, value : string) : string {
+	if (/^[-+]?[0-9]+(\.[0-9]+)?$/.test(value)) {
+		if (prop.startsWith('rotate') || prop.startsWith('skew')) return value + 'deg';
+		if (prop.startsWith('translate')) return value + 'px';
+	}
+	return value;
+}
+
+/**
+ * 延迟工具
+ * @param ms 延迟毫秒数
+ * @returns Promise<void>
+ */
+function sleep(ms : number) : Promise<void> {
+	return new Promise<void>((resolve) => {
+		setTimeout(() => {
+			resolve();
+		}, ms);
+	});
+}
+
+/**
+ * 初始化命令式动画基础配置,并清空已有队列与属性状态
+ * @param options { duration, timingFunction, delay }
+ * @returns null
+ */
+function init(options : UTSJSONObject) : void {
+	const d = options.getNumber('duration');
+	if (d != null) stepDuration = d;
+	const tf = options.getString('timingFunction');
+	if (tf != null) stepEasing = tf;
+	const dl = options.getNumber('delay');
+	if (dl != null) stepDelay = dl;
+	stepQueue.splice(0, stepQueue.length);
+	currentValues.clear();
+}
+
+/**
+ * 添加一个动画步骤
+ * 注意:暴露方法不能带默认参数——带默认参数的暴露方法会被编译为
+ * callKotlinFunction 反射桥接,Android 端运行时返回 null 强转 Unit 直接 NPE
+ * @param stepProps 目标属性,如 { translateX: '200px', rotate: '360deg' }
+ * @param config 本步配置,可覆盖 { duration, timingFunction },无需覆盖时传 {}
+ * @returns null
+ */
+function step(stepProps : UTSJSONObject, config : UTSJSONObject) : void {
+	let d = stepDuration;
+	let e = stepEasing;
+	if (config != null) {
+		const cd = config.getNumber('duration');
+		if (cd != null) d = cd;
+		const ce = config.getString('timingFunction');
+		if (ce != null) e = ce;
+	}
+	stepQueue.push({ props: stepProps, duration: d, easing: e });
+}
+
+/**
+ * 执行单个 step:本步未涉及但之前动过的 transform 属性按当前值保持,
+ * 避免引擎合成 transform 时丢失(如第二步只动 translateX 时 rotate 跳回 0)
+ * @param el 动画元素
+ * @param s 动画步骤
+ * @returns Promise<void>
+ */
+function playStep(el : UniElement, s : AnimationStepConfig) : Promise<void> {
+	const eng = createAnimation(el, {
+		duration: s.duration,
+		timingFunction: mapEasing(s.easing)
+	});
+	const targets = s.props.toMap();
+	currentValues.forEach((value : string, key : string) => {
+		if (isTransformProp(key) && !targets.has(key)) {
+			eng.addAttribute(key, value, value);
+		}
+	});
+	targets.forEach((value, key : string) => {
+		if (value == null) return;
+		const to = normalizeStepValue(key, `${value}`);
+		const from = currentValues.has(key) ? currentValues.get(key)! : defaultStepValue(key);
+		eng.addAttribute(key, from, to);
+		currentValues.set(key, to);
+	});
+	uEngine = eng;
+	return eng.playAsync();
+}
+
+/**
+ * 依次执行队列中的所有 step
+ * @returns Promise<void>
+ */
+async function doRun() : Promise<void> {
+	const el = uTransition.value;
+	if (el == null || stepRunning || stepQueue.length == 0) return;
+	stepRunning = true;
+	if (stepDelay > 0) {
+		await sleep(stepDelay);
+	}
+	while (stepQueue.length > 0) {
+		const s = stepQueue.shift();
+		if (s == null) break;
+		await playStep(el, s);
+	}
+	stepRunning = false;
+}
+
+/**
+ * 执行队列中的所有 step,完成时机通过返回的 Promise 获取(await 或 .then)
+ * 不提供 callback 参数:暴露方法带默认参数会触发 Android 端桥接 NPE(见 step 注释)
+ * @returns Promise<void>
+ */
+function run() : Promise<void> {
+	return doRun();
+}
+
+/**
+ * 手动触发入场动画(与 show 属性解耦)
+ * @returns null
+ */
+function open() : void {
+	enter();
+}
+
+/**
+ * 手动触发出场动画
+ * @returns null
+ */
+function close() : void {
+	if (render.value) leave();
+}
+
+defineExpose({ init, step, run, open, close });
+
+/**
+ * 卸载时停止全部动画
+ * @returns null
+ */
+onUnmounted(() => {
+	animationId++;
+	const prev = engine;
+	engine = null;
+	if (prev != null) prev.stop();
+	const ce = uEngine;
+	uEngine = null;
+	if (ce != null) ce.stop();
+});
+</script>
+
+<style lang="scss">
+</style>

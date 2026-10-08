@@ -1,0 +1,253 @@
+<template>
+   <uvx-popup
+      ref="uPopup"
+      mode="bottom"
+      :overlay="overlay"
+      :close-on-click-overlay="closeOnClickOverlay"
+      :safe-area-inset-bottom="safeAreaInsetBottom"
+      :z-index="zIndex"
+      bg-color="page"
+      @change="handlePopupChange"
+   >
+      <view class="uvx-keyboard" :class="uClass" :style="keyboardStyle">
+         <!-- 工具栏上方自定义内容 -->
+         <slot></slot>
+
+         <!-- 键盘工具栏 -->
+         <uvx-toolbar
+            v-if="tooltip"
+            :show-cancel="showCancel"
+            :show-confirm="showConfirm"
+            :cancel-text="cancelText"
+            :confirm-text="confirmText"
+            :title="toolbarTitle"
+            @cancel="handleCancel"
+            @confirm="handleConfirm"
+         ></uvx-toolbar>
+
+         <!-- 数字与身份证键盘 -->
+         <uvx-keyboard-number
+            v-if="mode == 'number' || mode == 'card'"
+            :mode="numberMode"
+            :dot-disabled="dotDisabled"
+            :random="random"
+            @change="handleChange"
+            @backspace="handleBackspace"
+         ></uvx-keyboard-number>
+
+         <!-- 车牌键盘 -->
+         <uvx-keyboard-car
+            v-else
+            ref="uCar"
+            :random="random"
+            :auto-change="autoChange"
+            :dis-keys="disKeys"
+            :uSwitchKey="uSwitchKey"
+            @change="handleChange"
+            @backspace="handleBackspace"
+            @change-car-input-mode="handleCarModeChange"
+         >
+            <slot name="abc"></slot>
+         </uvx-keyboard-car>
+      </view>
+   </uvx-popup>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-keyboard 键盘
+ * @description 提供数字、身份证和车牌三种自定义键盘。
+ * @tutorial https://www.uvxui.cn/components/keyboard.html
+ * @property {String} mode 键盘类型：number、card、car，默认 number
+ * @property {Boolean} dotDisabled 是否隐藏数字键盘的小数点，默认 false
+ * @property {Boolean} tooltip 是否显示顶部工具栏，默认 true
+ * @property {Boolean} showTips 是否显示工具栏提示，默认 true
+ * @property {String} tips 工具栏自定义提示
+ * @property {Boolean} showCancel 是否显示取消按钮，默认 true
+ * @property {Boolean} showConfirm 是否显示确认按钮，默认 true
+ * @property {Boolean} random 是否随机排列常规按键，默认 false
+ * @property {Boolean} safeAreaInsetBottom 是否适配底部安全区，默认 true
+ * @property {Boolean} closeOnClickOverlay 点击遮罩是否关闭，默认 true
+ * @property {Boolean} closeOnClickConfirm 点击确认是否关闭，默认 true
+ * @property {Boolean} overlay 是否显示遮罩，默认 true
+ * @property {String | Number} zIndex 弹层层级，默认 10075
+ * @property {String} cancelText 取消按钮文字，默认 取消
+ * @property {String} confirmText 确认按钮文字，默认 确定
+ * @property {Boolean} autoChange 输入省份后是否自动切换字母数字，默认 false
+ * @property {Array} disKeys 车牌键盘禁用按键
+ * @property {Boolean} uSwitchKey 是否使用自定义车牌切换键内容，默认 false
+ * @property {String} uStyle 键盘自定义样式
+ * @property {String} uClass 键盘自定义类名
+ * @method open 打开键盘
+ * @method close 关闭键盘
+ * @method changeCarMode 切换车牌键盘输入模式
+ * @event {Function} close 键盘关闭时触发
+ * @event {Function} change 点击普通按键时触发
+ * @event {Function} confirm 点击确认按钮时触发
+ * @event {Function} cancel 点击取消按钮时触发
+ * @event {Function} backspace 点击或长按退格键时触发
+ * @event {Function} changeCarInputMode 车牌输入模式切换时触发
+ * @example <uvx-keyboard ref="keyboard" mode="number"></uvx-keyboard>
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type { ChangeEvent } from "../uvx-popup/types/index.uts";
+// 本组件已定义 Mode 表示三种键盘,数字类键盘的模式以 NumberMode 别名导入
+import type { Mode as NumberMode } from "../uvx-keyboard-number/types/index.uts";
+import type {
+   Emits,
+   Key,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-keyboard", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   mode: "number",
+   dotDisabled: false,
+   tooltip: true,
+   showTips: true,
+   tips: "",
+   showCancel: true,
+   showConfirm: true,
+   random: false,
+   safeAreaInsetBottom: true,
+   closeOnClickOverlay: true,
+   closeOnClickConfirm: true,
+   overlay: true,
+   zIndex: 10075,
+   cancelText: t("取消"),
+   confirmText: t("确定"),
+   autoChange: false,
+   disKeys: (): Key[] => [],
+   uSwitchKey: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 键盘事件 */
+const emit = defineEmits<Emits>();
+
+// 弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+// 车牌键盘实例
+const uCar = ref<UvxKeyboardCarComponentPublicInstance | null>(null);
+
+/**
+ * 数字类键盘模式
+ * @returns NumberMode
+ */
+const numberMode = computed((): NumberMode => {
+   return props.mode == "card" ? "card" : "number";
+});
+
+/**
+ * 工具栏标题
+ * @returns string
+ */
+const toolbarTitle = computed((): string => {
+   if (!props.showTips) return "";
+   if (!$uvx.string.empty(props.tips)) return props.tips;
+   if (props.mode == "number") return "数字键盘";
+   if (props.mode == "card") return "身份证键盘";
+   return "车牌号键盘";
+});
+
+/**
+ * 键盘自定义样式
+ * @returns UTSJSONObject
+ */
+const keyboardStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 打开键盘
+ * @returns null
+ */
+const open = (): void => {
+   uPopup.value?.open();
+};
+
+/**
+ * 关闭键盘
+ * @returns null
+ */
+const close = (): void => {
+   uPopup.value?.close();
+};
+
+/**
+ * 处理弹层状态变化
+ * @param event 弹层状态
+ * @returns null
+ */
+const handlePopupChange = (event: ChangeEvent): void => {
+   if (!event.show) emit("close");
+};
+
+/**
+ * 转发普通按键
+ * @param value 按键值
+ * @returns null
+ */
+const handleChange = (value: Key): void => {
+   emit("change", value);
+};
+
+/**
+ * 处理确认操作
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   emit("confirm");
+   if (props.closeOnClickConfirm) close();
+};
+
+/**
+ * 处理取消操作
+ * @returns null
+ */
+const handleCancel = (): void => {
+   emit("cancel");
+   close();
+};
+
+/**
+ * 转发退格操作
+ * @returns null
+ */
+const handleBackspace = (): void => {
+   emit("backspace");
+};
+
+/**
+ * 转发车牌输入模式
+ * @param isAlphabet 是否为字母数字模式
+ * @returns null
+ */
+const handleCarModeChange = (isAlphabet: boolean): void => {
+   emit("changeCarInputMode", isAlphabet);
+};
+
+/**
+ * 切换车牌输入模式
+ * @returns null
+ */
+const changeCarMode = (): void => {
+   uCar.value?.changeCarInputMode();
+};
+
+defineExpose({ open, close, changeCarMode });
+</script>
+
+<style lang="scss">
+// 键盘根容器
+.uvx-keyboard {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   background-color: var(--uvx-page);
+}
+</style>

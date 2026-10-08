@@ -1,0 +1,29 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+export type Direction = "row" | "column";
+export type Padding = string | number;
+
+export type Props = {
+   border: boolean;
+   borderColor: string;
+   direction: Direction;
+   padding: Padding;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Config = {
+   direction: Direction;
+   padding: string;
+};
+
+export type Emits = {
+   scroll: [event: UniScrollEvent];
+   scrolltolower: [event: UniScrollToLowerEvent];
+};
+
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+};

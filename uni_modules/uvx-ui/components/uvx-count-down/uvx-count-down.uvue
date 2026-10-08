@@ -1,0 +1,217 @@
+<template>
+   <view class="uvx-count-down">
+      <slot>
+         <text class="uvx-count-down__text">{{ formattedTime }}</text>
+      </slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-count-down 倒计时
+ * @description 根据给定时长展示倒计时，支持自定义格式、毫秒刷新和手动控制。
+ * @property {String | Number} time 倒计时时长，单位毫秒，默认 0
+ * @property {String} format 时间格式，支持 DD、HH、mm、ss、SSS，默认 HH:mm:ss
+ * @property {Boolean} autoStart 是否挂载后自动开始，默认 true
+ * @property {Boolean} millisecond 是否按毫秒刷新，默认 false
+ * @event {Function} finish 倒计时结束
+ * @event {Function} change 倒计时数据变化
+ * @event {Function} start 开始倒计时
+ * @event {Function} pause 暂停倒计时
+ * @event {Function} reset 重置倒计时
+ */
+import type { Emits, Props, TimeData, Value } from "./types/index.uts";
+
+defineOptions({ name: "uvx-count-down" });
+
+const props = withDefaults(defineProps<Props>(), {
+   time: 0,
+   format: "HH:mm:ss",
+   autoStart: true,
+   millisecond: false,
+});
+const emit = defineEmits<Emits>();
+
+const SECOND_MS = 1000;
+const MINUTE_MS = 60 * SECOND_MS;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+// 原生定时器编号
+let timer: number | null = null;
+// 是否正在倒计时
+let isRunning = false;
+// 倒计时结束时间
+let endTime = 0;
+// 当前剩余毫秒数
+let remainingTime = 0;
+/**
+ * 创建时间数据
+ * @param value 剩余毫秒数
+ * @returns TimeData
+ */
+function createTimeData(value: number): TimeData {
+   const time = Math.max(value, 0);
+   return {
+      days: Math.floor(time / DAY_MS),
+      hours: Math.floor((time % DAY_MS) / HOUR_MS),
+      minutes: Math.floor((time % HOUR_MS) / MINUTE_MS),
+      seconds: Math.floor((time % MINUTE_MS) / SECOND_MS),
+      milliseconds: Math.floor(time % SECOND_MS),
+   };
+}
+
+/**
+ * 将属性值转换为毫秒数
+ * @param value 倒计时属性值
+ * @returns number
+ */
+function toMilliseconds(value: Value): number {
+   const parsed = typeof value == "number" ? value : parseFloat(value);
+   return Number.isNaN(parsed) ? 0 : Math.max(parsed, 0);
+}
+
+/**
+ * 补齐数字前导零
+ * @param value 待补齐数字
+ * @param length 目标长度
+ * @returns string
+ */
+function padZero(value: number, length: number): string {
+   let result = value.toString();
+   while (result.length < length) result = "0" + result;
+   return result;
+}
+
+/**
+ * 格式化倒计时文本
+ * @param format 时间格式
+ * @param data 倒计时数据
+ * @returns string
+ */
+function formatTime(format: string, data: TimeData): string {
+   let hours = data.hours;
+   let minutes = data.minutes;
+   let seconds = data.seconds;
+   let milliseconds = data.milliseconds;
+   let result = format;
+   if (result.indexOf("DD") == -1) hours += data.days * 24;
+   else result = result.replace("DD", padZero(data.days, 2));
+   if (result.indexOf("HH") == -1) minutes += hours * 60;
+   else result = result.replace("HH", padZero(hours, 2));
+   if (result.indexOf("mm") == -1) seconds += minutes * 60;
+   else result = result.replace("mm", padZero(minutes, 2));
+   if (result.indexOf("ss") == -1) milliseconds += seconds * 1000;
+   else result = result.replace("ss", padZero(seconds, 2));
+   return result.replace("SSS", padZero(milliseconds, 3));
+}
+
+// 当前倒计时数据
+const timeData = ref<TimeData>(createTimeData(0));
+// 当前格式化文本
+const formattedTime = ref<string>("0");
+
+/**
+ * 清除定时器
+ * @returns null
+ */
+const clearTimer = (): void => {
+   if (timer == null) return;
+   clearTimeout(timer);
+   timer = null;
+};
+
+/**
+ * 更新剩余时间并派发变化事件
+ * @param value 剩余毫秒数
+ * @returns null
+ */
+const setRemainingTime = (value: number): void => {
+   remainingTime = Math.max(value, 0);
+   const nextData = createTimeData(remainingTime);
+   timeData.value = nextData;
+   formattedTime.value = formatTime(props.format, nextData);
+   emit("change", nextData);
+};
+
+/**
+ * 推进一次倒计时
+ * @returns null
+ */
+const tick = (): void => {
+   if (!isRunning) return;
+   const nextTime = Math.max(endTime - Date.now(), 0);
+   setRemainingTime(nextTime);
+   if (nextTime <= 0) {
+      isRunning = false;
+      clearTimer();
+      emit("pause");
+      emit("finish");
+      return;
+   }
+   timer = setTimeout(tick, props.millisecond ? 50 : 30);
+};
+
+/**
+ * 开始倒计时
+ * @returns null
+ */
+const start = (): void => {
+   if (isRunning || remainingTime <= 0) return;
+   isRunning = true;
+   endTime = Date.now() + remainingTime;
+   emit("start");
+   tick();
+};
+
+/**
+ * 暂停倒计时
+ * @returns null
+ */
+const pause = (): void => {
+   if (isRunning) remainingTime = Math.max(endTime - Date.now(), 0);
+   isRunning = false;
+   clearTimer();
+   setRemainingTime(remainingTime);
+   emit("pause");
+};
+
+/**
+ * 重置倒计时
+ * @returns null
+ */
+const reset = (): void => {
+   pause();
+   setRemainingTime(toMilliseconds(props.time));
+   if (props.autoStart) start();
+   emit("reset");
+};
+
+watch((): Value => props.time, (): void => reset());
+watch((): string => props.format, (): void => {
+   formattedTime.value = formatTime(props.format, timeData.value);
+});
+
+onMounted((): void => reset());
+onUnmounted((): void => {
+   isRunning = false;
+   clearTimer();
+});
+
+defineExpose({ start, pause, reset });
+</script>
+
+<style lang="scss">
+// 倒计时文本
+.uvx-count-down {
+   display: flex;
+   align-items: center;
+
+   // 默认倒计时文本
+   &__text {
+      color: var(--uvx-text-content);
+      font-size: 15px;
+      line-height: 1.2em;
+   }
+}
+</style>

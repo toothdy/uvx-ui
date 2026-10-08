@@ -1,0 +1,153 @@
+<template>
+   <uvx-transition
+      mode="fade"
+      :show="loading"
+      :duration="duration"
+      u-class="uvx-loading-page"
+      :u-style="$uvx.style.stringify(pageStyle)"
+   >
+      <!-- 加载页内容 -->
+      <view class="uvx-loading-page__content">
+         <image
+            v-if="!$uvx.string.empty(image)"
+            class="uvx-loading-page__image"
+            :src="image"
+            mode="aspectFit"
+            :style="imageStyle"
+         ></image>
+         <uvx-loading-icon
+            v-else
+            :mode="loadingMode"
+            :size="iconSize"
+            :color="loadingColorValue"
+         ></uvx-loading-icon>
+
+         <!-- 默认提示文字，可由插槽替换 -->
+         <slot>
+            <text class="uvx-loading-page__text" :style="textStyle">
+               {{ loadingText }}
+            </text>
+         </slot>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-loading-page 加载页
+ * @description 全屏展示加载动画、图片和提示内容，关闭时淡出。
+ * @tutorial https://www.uvxui.cn/components/loading-page.html
+ * @property {Boolean} loading 是否显示加载页，默认 false
+ * @property {String | Number} loadingText 提示内容，默认空字符串
+ * @property {String} image 替换加载动画的图片地址，默认空字符串
+ * @property {String} loadingMode 加载动画模式，默认 circle
+ * @property {String} bgColor 背景色，默认跟随主题
+ * @property {String} color 文字颜色，默认跟随主题
+ * @property {String | Number} fontSize 文字大小，默认 18
+ * @property {String | Number} iconSize 图标或图片大小，默认 28
+ * @property {String} loadingColor 加载图标颜色，默认跟随主题
+ * @property {Number} duration 关闭过渡时长，单位毫秒，默认 300
+ * @property {String} uStyle 根节点自定义样式
+ * @example <uvx-loading-page :loading="true" loading-text="正在加载"></uvx-loading-page>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-loading-page", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   loading: false,
+   loadingText: "",
+   image: "",
+   loadingMode: "circle",
+   bgColor: "",
+   color: "",
+   fontSize: 18,
+   iconSize: 28,
+   loadingColor: "",
+   duration: 300,
+   uStyle: "",
+});
+
+/**
+ * 加载图标语义颜色
+ * @returns string
+ */
+const loadingColorValue = computed((): string => {
+   return $uvx.string.empty(props.loadingColor) ? "placeholder" : props.loadingColor;
+});
+
+/**
+ * 加载页根样式
+ * @returns UTSJSONObject
+ */
+const pageStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "position": "fixed",
+      "top": "0",
+      "right": "0",
+      "bottom": "0",
+      "left": "0",
+      "z-index": 999,
+   };
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 自定义图片样式
+ * @returns UTSJSONObject
+ */
+const imageStyle = computed((): UTSJSONObject => {
+   const size = $uvx.format.unit(props.iconSize);
+   return {
+      "width": size,
+      "height": size,
+   };
+});
+
+/**
+ * 提示文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.fontSize),
+   };
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   return style;
+});
+</script>
+
+<style lang="scss">
+// 加载页根节点
+.uvx-loading-page {
+   background-color: var(--uvx-page);
+}
+
+// 加载页内容
+.uvx-loading-page__content {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   width: 100%;
+   height: 100%;
+   padding-bottom: 150px;
+   box-sizing: border-box;
+}
+
+// 自定义加载图片
+.uvx-loading-page__image {
+   display: flex;
+}
+
+// 加载提示文字
+.uvx-loading-page__text {
+   margin-top: 10px;
+   color: var(--uvx-text-placeholder);
+}
+</style>

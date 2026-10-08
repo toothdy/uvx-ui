@@ -1,0 +1,408 @@
+<template>
+   <!-- 单月日期网格 -->
+   <view class="uvx-calendar-month">
+      <!-- 月份背景 -->
+      <view v-if="showMonth" class="uvx-calendar-month__background">
+         <text class="uvx-calendar-month__background-text">{{ viewDate.month }}</text>
+      </view>
+
+      <!-- 日期列表 -->
+      <view class="uvx-calendar-month__days">
+         <view
+            v-for="(item, index) in days"
+            :key="index"
+            :class="getDayClasses(item)"
+            :style="getDayStyle(item)"
+            @click="handleDayClick(item)"
+         >
+            <view class="uvx-calendar-month__day-content">
+               <view
+                  v-if="hasBadge(item)"
+                  class="uvx-calendar-month__badge"
+               ></view>
+               <text
+                  :class="getTopTextClasses(item)"
+                  :style="getInfoTextStyle(item, true)"
+               >{{ getTopText(item) }}</text>
+               <text
+                  :class="getDateTextClasses(item)"
+                  :style="getDateTextStyle(item)"
+               >{{ item.date }}</text>
+               <text
+                  :class="getBottomTextClasses(item)"
+                  :style="getInfoTextStyle(item, false)"
+               >{{ getBottomText(item) }}</text>
+            </view>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "../../index.uts";
+import type {
+   Day,
+   MonthEmits,
+   MonthProps,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-calendar-month" });
+
+const props = defineProps<MonthProps>();
+const emit = defineEmits<MonthEmits>();
+
+/**
+ * 日期是否为选中端点
+ * @param day 日期格
+ * @returns boolean
+ */
+const isActiveDay = (day: Day): boolean => {
+   return day.isSelected || day.isMultiple || day.isRangeStart || day.isRangeEnd;
+};
+
+/**
+ * 日期容器类名
+ * @param day 日期格
+ * @returns string[]
+ */
+const getDayClasses = (day: Day): string[] => {
+   const classes: string[] = ["uvx-calendar-month__day"];
+   if (day.isDisabled) {
+      classes.push("uvx-calendar-month__day-disabled");
+      return classes;
+   }
+   if (isActiveDay(day)) classes.push("uvx-calendar-month__day-active");
+   else if (day.isInRange) classes.push("uvx-calendar-month__day-range");
+
+   const isStandaloneRangeStart = day.isRangeStart && !day.isInRange;
+   if (day.isSelected || day.isMultiple || day.isSameRange || isStandaloneRangeStart) {
+      classes.push("uvx-calendar-month__day-rounded");
+   } else if (day.isInRange) {
+      if (day.isRangeStart || day.day == 0) {
+         classes.push("uvx-calendar-month__day-range-left");
+      }
+      if (day.isRangeEnd || day.day == 6) {
+         classes.push("uvx-calendar-month__day-range-right");
+      }
+   }
+   return classes;
+};
+
+/**
+ * 日期容器自定义样式
+ * @param day 日期格
+ * @returns UTSJSONObject
+ */
+const getDayStyle = (day: Day): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if ($uvx.string.empty(props.color) || day.isDisabled) return style;
+   if (isActiveDay(day)) {
+      style.set("background-color", props.color);
+   } else if (day.isInRange) {
+      style.set("background-color", $uvx.color.mix(props.color, "#ffffff", 0.85));
+   }
+   return style;
+};
+
+/**
+ * 顶部文案类名
+ * @param day 日期格
+ * @returns string[]
+ */
+const getTopTextClasses = (day: Day): string[] => {
+   const classes: string[] = ["uvx-calendar-month__top-text"];
+   if (isActiveDay(day)) classes.push("uvx-calendar-month__info-text-active");
+   else if (day.isInRange) classes.push("uvx-calendar-month__info-text-range");
+   return classes;
+};
+
+/**
+ * 日期文字类名
+ * @param day 日期格
+ * @returns string[]
+ */
+const getDateTextClasses = (day: Day): string[] => {
+   const classes: string[] = ["uvx-calendar-month__date-text"];
+   if (day.isDisabled) classes.push("uvx-calendar-month__date-text-disabled");
+   else if (isActiveDay(day)) classes.push("uvx-calendar-month__date-text-active");
+   else if (day.isInRange) classes.push("uvx-calendar-month__date-text-range");
+   else if (day.isToday) classes.push("uvx-calendar-month__date-text-today");
+   return classes;
+};
+
+/**
+ * 日期文字自定义样式
+ * @param day 日期格
+ * @returns UTSJSONObject
+ */
+const getDateTextStyle = (day: Day): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if ($uvx.string.empty(props.color) || day.isDisabled || isActiveDay(day)) return style;
+   if (day.isInRange || day.isToday) style.set("color", props.color);
+   return style;
+};
+
+/**
+ * 底部文案类名
+ * @param day 日期格
+ * @returns string[]
+ */
+const getBottomTextClasses = (day: Day): string[] => {
+   const classes: string[] = ["uvx-calendar-month__bottom-text"];
+   if (day.isSameRange) classes.push("uvx-calendar-month__bottom-text-compact");
+   if (day.isDisabled) classes.push("uvx-calendar-month__bottom-text-disabled");
+   else if (isActiveDay(day)) classes.push("uvx-calendar-month__info-text-active");
+   else if (day.isInRange) classes.push("uvx-calendar-month__info-text-range");
+   else if (day.extraInfo != null) classes.push("uvx-calendar-month__bottom-text-info");
+   return classes;
+};
+
+/**
+ * 顶部文案
+ * @param day 日期格
+ * @returns string
+ */
+const getTopText = (day: Day): string => {
+   if (day.extraInfo == null || day.extraInfo.topinfo == null) return "";
+   return day.extraInfo.topinfo;
+};
+
+/**
+ * 底部文案
+ * @param day 日期格
+ * @returns string
+ */
+const getBottomText = (day: Day): string => {
+   if (day.isSameRange) return `${props.startText}/${props.endText}`;
+   if (day.isRangeStart) return props.startText;
+   if (day.isRangeEnd) return props.endText;
+   if (day.extraInfo != null && day.extraInfo.info != null) return day.extraInfo.info;
+   if (props.lunar) return day.isToday ? props.todayText : day.lunar.IDayCn == "初一"
+      ? day.lunar.IMonthCn
+      : day.lunar.IDayCn;
+   return day.isToday ? props.todayText : "";
+};
+
+/**
+ * 打点文案自定义样式
+ * @param day 日期格
+ * @param isTop 是否顶部文案
+ * @returns UTSJSONObject
+ */
+const getInfoTextStyle = (day: Day, isTop: boolean): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (day.isDisabled || isActiveDay(day)) return style;
+   if (day.isInRange && !$uvx.string.empty(props.color)) {
+      style.set("color", props.color);
+      return style;
+   }
+   if (day.extraInfo == null) return style;
+   const color = isTop ? day.extraInfo.topinfoColor : day.extraInfo.infoColor;
+   if (color != null && !$uvx.string.empty(color)) style.set("color", color);
+   return style;
+};
+
+/**
+ * 是否显示徽标
+ * @param day 日期格
+ * @returns boolean
+ */
+const hasBadge = (day: Day): boolean => {
+   return day.extraInfo != null && day.extraInfo.badge == true;
+};
+
+/**
+ * 选择日期
+ * @param day 日期格
+ * @returns null
+ */
+const handleDayClick = (day: Day): void => {
+   if (day.isDisabled) return;
+   emit("dayClick", day);
+};
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 单月日期网格
+.uvx-calendar-month {
+   position: relative;
+   width: 100%;
+   height: 336px;
+   overflow: hidden;
+   background-color: var(--uvx-container);
+
+   // 月份背景
+   &__background {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 月份背景文字
+   &__background-text {
+      color: var(--uvx-text-tips);
+      font-size: 136px;
+      font-weight: 700;
+      line-height: 1.2em;
+      opacity: 0.05;
+      text-align: center;
+   }
+
+   // 日期列表
+   &__days {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      width: 100%;
+      height: 336px;
+   }
+
+   // 日期格
+   &__day {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 14.28%;
+      height: 56px;
+   }
+
+   // 禁用日期格
+   &__day-disabled {
+      background-color: var(--uvx-disabled);
+      opacity: 0.55;
+   }
+
+   // 选中日期格
+   &__day-active {
+      background-color: var(--uvx-primary);
+   }
+
+   // 范围中间日期格
+   &__day-range {
+      background-color: var(--uvx-hover);
+   }
+
+   // 独立选中日期格
+   &__day-rounded {
+      border-radius: 4px;
+   }
+
+   // 范围左端日期格
+   &__day-range-left {
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+   }
+
+   // 范围右端日期格
+   &__day-range-right {
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
+   }
+
+   // 日期内容
+   &__day-content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 56px;
+      overflow: hidden;
+   }
+
+   // 顶部文案
+   &__top-text {
+      width: 100%;
+      height: 16px;
+      color: var(--uvx-text-content);
+      font-size: 10px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 日期数字
+   &__date-text {
+      width: 100%;
+      height: 20px;
+      color: var(--uvx-text-main);
+      font-size: 14px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 禁用日期数字
+   &__date-text-disabled {
+      color: var(--uvx-text-placeholder);
+   }
+
+   // 选中日期数字
+   &__date-text-active {
+      color: #ffffff;
+   }
+
+   // 范围日期数字
+   &__date-text-range {
+      color: var(--uvx-primary);
+   }
+
+   // 今天日期数字
+   &__date-text-today {
+      color: var(--uvx-primary);
+   }
+
+   // 底部文案
+   &__bottom-text {
+      width: 100%;
+      height: 16px;
+      color: var(--uvx-text-content);
+      font-size: 10px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 紧凑底部文案
+   &__bottom-text-compact {
+      font-size: 9px;
+   }
+
+   // 禁用底部文案
+   &__bottom-text-disabled {
+      color: var(--uvx-text-placeholder);
+   }
+
+   // 打点底部文案
+   &__bottom-text-info {
+      color: var(--uvx-error);
+   }
+
+   // 选中附加文案
+   &__info-text-active {
+      color: #ffffff;
+   }
+
+   // 范围附加文案
+   &__info-text-range {
+      color: var(--uvx-primary);
+   }
+
+   // 日期徽标
+   &__badge {
+      position: absolute;
+      top: 4px;
+      right: 7px;
+      width: 7px;
+      height: 7px;
+      border-radius: 7px;
+      background-color: var(--uvx-error);
+   }
+}
+</style>

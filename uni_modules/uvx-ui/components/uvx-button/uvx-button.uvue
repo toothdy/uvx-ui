@@ -1,0 +1,613 @@
+<template>
+   <view class="uvx-button" :class="buttonClasses" :style="buttonStyle">
+      <!-- 加载状态 -->
+      <template v-if="loading">
+         <uvx-loading-icon
+            :vertical="false"
+            :mode="loadingMode"
+            :size="loadingSize * 1.15"
+            :color="loadingColor"
+         />
+         <text
+            class="uvx-button__loading-text"
+            :class="[textColorClass]"
+            :style="textStyle"
+         >
+            {{ !$uvx.string.empty(loadingText) ? loadingText : text }}
+         </text>
+      </template>
+
+      <!-- 默认状态 -->
+      <template v-else>
+         <view v-if="!$uvx.string.empty(icon)" class="uvx-button__icon">
+            <uvx-icon :name="icon" :color="iconColor" :size="iconSize" />
+         </view>
+         <slot>
+            <text
+               class="uvx-button__text"
+               :class="[textColorClass]"
+               :style="textStyle"
+            >{{ text }}</text>
+         </slot>
+         <slot name="suffix" />
+      </template>
+
+      <!-- 微信小程序原生开放能力层 -->
+      <!-- #ifdef MP-WEIXIN -->
+      <button
+         class="uvx-button__native uvx-reset-button"
+         :style="nativeStyle"
+         :disabled="disabled || loading"
+         :hover-class="disabled || loading ? 'none' : 'uvx-button--active'"
+         :hover-start-time="Number(hoverStartTime)"
+         :hover-stay-time="Number(hoverStayTime)"
+         :form-type="formType"
+         :open-type="openType"
+         :app-parameter="appParameter"
+         :hover-stop-propagation="hoverStopPropagation"
+         :send-message-title="sendMessageTitle"
+         :send-message-path="sendMessagePath"
+         :lang="lang"
+         :session-from="sessionFrom"
+         :send-message-img="sendMessageImg"
+         :show-message-card="showMessageCard"
+         :phone-number-no-quota-toast="phoneNumberNoQuotaToast"
+         @click="handleClick"
+         @getphonenumber="handlePhoneNumber"
+         @getrealtimephonenumber="handleRealtimePhone"
+         @getuserinfo="handleUserInfo"
+         @error="handleError"
+         @opensetting="handleOpenSetting"
+         @launchapp="handleLaunchApp"
+         @contact="handleContact"
+         @chooseavatar="handleChooseAvatar"
+         @agreeprivacyauthorization="handlePrivacyAgree"
+         @createliveactivity="handleLiveActivity"
+      >{{ loading && !$uvx.string.empty(loadingText) ? loadingText : text }}</button>
+      <!-- #endif -->
+
+      <!-- APP 原生交互层 -->
+      <!-- #ifdef APP -->
+      <button
+         class="uvx-button__native uvx-reset-button"
+         :style="nativeStyle"
+         :disabled="disabled || loading"
+         :hover-class="disabled || loading ? 'none' : 'uvx-button--active'"
+         :hover-start-time="Number(hoverStartTime)"
+         :hover-stay-time="Number(hoverStayTime)"
+         :form-type="formType"
+         :open-type="openType"
+         @click="handleClick"
+      >{{ loading && !$uvx.string.empty(loadingText) ? loadingText : text }}</button>
+      <!-- #endif -->
+
+      <!-- Web 原生交互层 -->
+      <!-- #ifdef WEB -->
+      <button
+         class="uvx-button__native uvx-reset-button"
+         :style="nativeStyle"
+         :disabled="disabled || loading"
+         :hover-class="disabled || loading ? 'none' : 'uvx-button--active'"
+         :hover-start-time="Number(hoverStartTime)"
+         :hover-stay-time="Number(hoverStayTime)"
+         :form-type="formType"
+         @click="handleClick"
+      >{{ loading && !$uvx.string.empty(loadingText) ? loadingText : text }}</button>
+      <!-- #endif -->
+   </view>
+</template>
+
+<script setup lang="uts">
+/**
+ * uvx-button 按钮
+ * @description 按钮组件，支持多种类型、尺寸、形状、加载状态和平台开放能力
+ * @tutorial https://www.uvxui.cn/components/button.html
+ * @property {Boolean} hairline 是否使用细边框（默认 true）
+ * @property {String} type 按钮类型：info | primary | error | warning | success（默认 info）
+ * @property {String} size 按钮尺寸：large | normal | small | mini（默认 normal）
+ * @property {String} shape 按钮形状：circle | square（默认 square）
+ * @property {Boolean} plain 是否使用镂空样式（默认 false）
+ * @property {Boolean} disabled 是否禁用按钮（默认 false）
+ * @property {Boolean} loading 是否显示加载状态（默认 false）
+ * @property {String} loadingText 加载状态文字（默认 加载中）
+ * @property {String} loadingMode 加载图标模式：spinner | circle | semicircle（默认 spinner）
+ * @property {Number} loadingSize 加载图标尺寸，单位 px（默认 15）
+ * @property {String} openType 开放能力，APP 仅支持 agreePrivacyAuthorization，Web 不支持
+ * @property {String} formType 表单类型：submit | reset
+ * @property {String} appParameter 打开 APP 时传递的参数
+ * @property {Boolean} hoverStopPropagation 是否阻止祖先节点出现点击态（默认 true）
+ * @property {String} lang 指定返回用户信息的语言（默认 zh_CN）
+ * @property {String} sessionFrom 会话来源
+ * @property {String} sendMessageTitle 会话内消息卡片标题
+ * @property {String} sendMessagePath 会话内消息卡片跳转路径
+ * @property {String} sendMessageImg 会话内消息卡片图片
+ * @property {Boolean} showMessageCard 是否显示会话内消息卡片（默认 false）
+ * @property {Boolean} phoneNumberNoQuotaToast 手机号验证额度用尽时是否显示提示（默认 true）
+ * @property {Number} throttleTime 点击事件节流时间，单位毫秒（默认 0）
+ * @property {String | Number} hoverStartTime 按住后出现点击态的时间，单位毫秒（默认 0）
+ * @property {String | Number} hoverStayTime 松开后点击态保留时间，单位毫秒（默认 200）
+ * @property {String | Number} text 按钮文字
+ * @property {String} icon 按钮图标
+ * @property {String | Number} iconSize 图标尺寸
+ * @property {String} iconColor 图标颜色
+ * @property {String} color 按钮自定义颜色
+ * @property {String} uTextStyle 自定义文字样式
+ * @property {String} uStyle 自定义按钮样式
+ * @property {String} uClass 自定义类名
+ *
+ * @event {Function} click 点击事件
+ * @event {Function} getphonenumber 获取手机号事件
+ * @event {Function} getrealtimephonenumber 实时获取手机号事件
+ * @event {Function} getuserinfo 获取用户信息事件
+ * @event {Function} error 开放能力调用失败事件
+ * @event {Function} opensetting 打开授权设置页事件
+ * @event {Function} launchapp 打开 APP 事件
+ * @event {Function} contact 客服会话事件
+ * @event {Function} chooseavatar 选择头像事件
+ * @event {Function} agreeprivacyauthorization 同意隐私协议事件
+ * @event {Function} createliveactivity 一次性订阅消息下发机制回调，获取下发 code
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-button", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+   hairline: true,
+   type: "info",
+   size: "normal",
+   shape: "square",
+   plain: false,
+   disabled: false,
+   loading: false,
+   loadingText: t("加载中"),
+   loadingMode: "spinner",
+   loadingSize: 15,
+   openType: "",
+   formType: "",
+   appParameter: "",
+   hoverStopPropagation: true,
+   lang: "zh_CN",
+   sessionFrom: "",
+   sendMessageTitle: "",
+   sendMessagePath: "",
+   sendMessageImg: "",
+   showMessageCard: false,
+   phoneNumberNoQuotaToast: true,
+   throttleTime: 0,
+   hoverStartTime: 0,
+   hoverStayTime: 200,
+   text: "",
+   icon: "",
+   iconSize: "",
+   iconColor: "",
+   color: "",
+   uTextStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+// 组件事件
+const emit = defineEmits<Emits>();
+
+/**
+ * 按钮文字大小
+ * @returns number
+ */
+const textSize = computed((): number => {
+   if (props.size == "large") {
+      return 16;
+   }
+   if (props.size == "small") {
+      return 12;
+   }
+   if (props.size == "mini") {
+      return 10;
+   }
+   return 14;
+});
+
+/**
+ * 按钮视觉样式
+ * @returns UTSJSONObject
+ */
+const buttonStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.color)) {
+      if (props.color.indexOf("gradient") != -1) {
+         style.set("border-top-width", 0);
+         style.set("border-right-width", 0);
+         style.set("border-bottom-width", 0);
+         style.set("border-left-width", 0);
+         if (!props.plain) {
+            style.set("background-image", $uvx.color.gradient(props.color));
+         }
+      } else {
+         style.set("border-color", props.color);
+         if (!props.plain) {
+            style.set("background-color", props.color);
+         }
+      }
+   }
+
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 按钮类名
+ * @returns string[]
+ */
+const buttonClasses = computed((): Array<string> => {
+   const bemProps: UTSJSONObject = {
+      "type": props.type,
+      "shape": props.shape,
+      "size": props.size,
+      "disabled": props.disabled,
+      "plain": props.plain,
+      "hairline": props.hairline && props.color.indexOf("gradient") == -1
+   };
+   const fixedFields: Array<string> = $uvx.string.empty(props.color) ? ["type", "shape", "size"] : ["shape", "size"];
+   const classes = $uvx.style.bem(
+      "button",
+      bemProps,
+      fixedFields,
+      ["disabled", "plain", "hairline"]
+   );
+	
+   if (!$uvx.string.empty(props.uClass)) {
+      classes.push(props.uClass);
+   }
+   return classes;
+});
+
+/**
+ * 文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   const color = $uvx.style.parse(props.uStyle).getString("color");
+	if (color != null) {
+		style.set("color", color);
+	} else if(!$uvx.string.empty(props.color)) {
+		style.set("color", props.plain ? props.color : "#ffffff");
+	}
+	style.set("font-size", $uvx.format.unit(textSize.value));
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uTextStyle));
+});
+
+/**
+ * 按钮文字主题色类名
+ * @returns string
+ */
+const textColorClass = computed((): string => {
+   if (textStyle.value["color"] != null) return "";
+   if (props.plain) return `uvx-button__text-color--${props.type}`;
+   return props.type == "info" ? "uvx-button__text-color--main" : "uvx-button__text-color--inverse";
+});
+
+/**
+ * 加载图标颜色
+ * @returns CSS 颜色
+ */
+const loadingColor = computed((): string => {
+   if (props.plain) {
+      return !$uvx.string.empty(props.color) ? props.color : props.type;
+   }
+   return props.type == "info" ? "content" : "#c8c8c8";
+});
+
+/**
+ * 图标颜色
+ * @returns CSS 颜色
+ */
+const iconColor = computed((): string => {
+   if (!$uvx.string.empty(props.iconColor)) {
+      return props.iconColor;
+   }
+   if (props.plain) {
+      return !$uvx.string.empty(props.color) ? props.color : props.type;
+   }
+   return props.type == "info" ? "main" : "#ffffff";
+});
+
+/**
+ * 图标大小
+ * @returns 带单位的图标大小
+ */
+const iconSize = computed((): string => {
+   const size = !$uvx.string.empty(props.iconSize) ? props.iconSize : textSize.value * 1.35;
+   return $uvx.format.unit(size);
+});
+
+/**
+ * 原生按钮覆盖层样式
+ * @returns UTSJSONObject
+ */
+const nativeStyle = computed((): UTSJSONObject => {
+	const style: UTSJSONObject = {};
+   const uStyle: UTSJSONObject = $uvx.style.parse(props.uStyle);
+   const radius = props.shape == "circle" ? "100px" : "3px";
+   const br = uStyle.getString("border-radius");
+   const corners: Array<string> = ["top-left", "top-right", "bottom-left", "bottom-right"];
+   for (let i = 0; i < corners.length; i++) {
+      const corner = corners[i];
+      const value = uStyle.getString(`border-${corner}-radius`);
+		style.set(`border-${corner}-radius`, $uvx.format.unit(value != null ? value : br != null ? br : radius));
+   }
+   return style;
+});
+
+/**
+ * 处理按钮点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   if (props.disabled || props.loading) {
+      return;
+   }
+   $uvx.throttle(() => {
+      emit("click");
+   }, props.throttleTime);
+};
+
+/**
+ * 转发获取手机号事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handlePhoneNumber = (event: UniEvent): void => { emit("getphonenumber", event); };
+
+/**
+ * 转发获取用户信息事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleUserInfo = (event: UniEvent): void => { emit("getuserinfo", event); };
+
+/**
+ * 转发开放能力错误事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleError = (event: UniEvent): void => { emit("error", event); };
+
+/**
+ * 转发打开设置事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleOpenSetting = (event: UniEvent): void => { emit("opensetting", event); };
+
+/**
+ * 转发打开应用事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleLaunchApp = (event: UniEvent): void => { emit("launchapp", event); };
+
+/**
+ * 转发客服会话事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleContact = (event: UniEvent): void => { emit("contact", event); };
+
+/**
+ * 转发选择头像事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleChooseAvatar = (event: UniEvent): void => { emit("chooseavatar", event); };
+
+/**
+ * 转发隐私授权事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handlePrivacyAgree = (event: UniEvent): void => { emit("agreeprivacyauthorization", event); };
+
+/**
+ * 转发实时手机号事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleRealtimePhone = (event: UniEvent): void => { emit("getrealtimephonenumber", event); };
+
+/**
+ * 转发一次性订阅消息下发事件
+ * @param event 原生事件
+ * @returns null
+ */
+const handleLiveActivity = (event: UniEvent): void => { emit("createliveactivity", event); };
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 按钮视觉主体
+.uvx-button {
+   position: relative;
+   box-sizing: border-box;
+   display: flex;
+   height: 40px;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   border-width: 1px;
+   border-style: solid;
+}
+
+/* #ifdef APP-ANDROID */
+// Android 为边框预留绘制空间
+.uvx-button {
+   margin: 1px;
+}
+/* #endif */
+
+// 信息按钮
+.uvx-button--info {
+   border-color: var(--uvx-border);
+   background-color: var(--uvx-container);
+}
+
+// 主要按钮
+.uvx-button--primary {
+   border-color: var(--uvx-primary);
+   background-color: var(--uvx-primary);
+}
+
+// 成功按钮
+.uvx-button--success {
+   border-color: var(--uvx-success);
+   background-color: var(--uvx-success);
+}
+
+// 警告按钮
+.uvx-button--warning {
+   border-color: var(--uvx-warning);
+   background-color: var(--uvx-warning);
+}
+
+// 错误按钮
+.uvx-button--error {
+   border-color: var(--uvx-error);
+   background-color: var(--uvx-error);
+}
+
+// 镂空按钮
+.uvx-button--plain {
+   background-color: var(--uvx-container);
+}
+
+// 大型按钮
+.uvx-button--large {
+   height: 50px;
+   padding: 0 15px;
+}
+
+// 普通按钮
+.uvx-button--normal {
+   padding: 0 12px;
+}
+
+// 小型按钮
+.uvx-button--small {
+   min-width: 60px;
+   height: 30px;
+   padding: 0 8px;
+}
+
+// 迷你按钮
+.uvx-button--mini {
+   min-width: 50px;
+   height: 22px;
+   padding: 0 8px;
+}
+
+// 圆形按钮
+.uvx-button--circle {
+   border-top-left-radius: 100px;
+   border-top-right-radius: 100px;
+   border-bottom-left-radius: 100px;
+   border-bottom-right-radius: 100px;
+}
+
+// 方形按钮
+.uvx-button--square {
+   border-top-left-radius: 3px;
+   border-top-right-radius: 3px;
+   border-bottom-left-radius: 3px;
+   border-bottom-right-radius: 3px;
+}
+
+// 禁用按钮
+.uvx-button--disabled {
+   opacity: 0.5;
+}
+
+// 细边框按钮
+.uvx-button--hairline {
+   border-top-width: 0.5px !important;
+   border-right-width: 0.5px !important;
+   border-bottom-width: 0.5px !important;
+   border-left-width: 0.5px !important;
+}
+
+// 按钮文字
+.uvx-button__text {
+   line-height: 1.2em;
+   white-space: nowrap;
+}
+
+// 按钮文字主题色
+.uvx-button__text-color--main {
+   color: var(--uvx-text-main);
+}
+
+.uvx-button__text-color--inverse {
+   color: #ffffff;
+}
+
+.uvx-button__text-color--info {
+   color: var(--uvx-info);
+}
+
+.uvx-button__text-color--primary {
+   color: var(--uvx-primary);
+}
+
+.uvx-button__text-color--success {
+   color: var(--uvx-success);
+}
+
+.uvx-button__text-color--warning {
+   color: var(--uvx-warning);
+}
+
+.uvx-button__text-color--error {
+   color: var(--uvx-error);
+}
+
+// 加载文字
+.uvx-button__loading-text {
+   margin-left: 4px;
+   line-height: 1.2em;
+   white-space: nowrap;
+}
+
+// 前置图标
+.uvx-button__icon {
+   margin-right: 2px;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+}
+
+// 原生按钮透明交互层
+.uvx-button__native {
+   position: absolute;
+   top: 0;
+   left: 0;
+   z-index: 1;
+   box-sizing: border-box;
+   width: 100%;
+   height: 100%;
+   margin: 0;
+   padding: 0;
+   border-width: 0;
+   color: transparent;
+   background-color: #000000;
+   font-size: 0;
+   line-height: 1em;
+   opacity: 0;
+}
+
+// 按钮按压遮罩
+.uvx-button--active {
+   opacity: 0.15;
+}
+</style>

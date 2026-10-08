@@ -1,0 +1,688 @@
+<template>
+   <view
+      class="uvx-calendar"
+      :class="uClass"
+      :style="rootStyle"
+   >
+      <!-- 插入模式 -->
+      <view v-if="insert" class="uvx-calendar__content">
+         <CalendarBody
+            :days="calendarPages"
+            :week-names="weekNames"
+            :view-date="viewDate"
+            :mode="mode"
+            :lunar="lunar"
+            :show-month="showMonth"
+            :color="color"
+            :start-text="startText"
+            :end-text="endText"
+            :today-text="todayText"
+            @pre="handlePre"
+            @next="handleNext"
+            @today="handleToday"
+            @month-click="handleMonthClick"
+            @day-click="handleDayClick"
+         ></CalendarBody>
+      </view>
+
+      <!-- 弹窗模式 -->
+      <uvx-popup
+         v-else
+         ref="uPopup"
+         mode="bottom"
+         :round="round"
+         :close-on-click-overlay="closeOnClickOverlay"
+         @change="handlePopupChange"
+      >
+         <view class="uvx-calendar__popup-content">
+            <!-- 顶部操作栏 -->
+            <view class="uvx-calendar__toolbar">
+               <view
+                  class="uvx-calendar__toolbar-action"
+                  hover-class="uvx-hover-class"
+                  @click="handleCancel"
+               >
+                  <text
+                     class="uvx-calendar__toolbar-cancel"
+                     :style="cancelTextStyle"
+                  >{{ cancelText }}</text>
+               </view>
+               <text class="uvx-calendar__toolbar-title uvx-line-1">{{ title }}</text>
+               <view
+                  class="uvx-calendar__toolbar-action"
+                  :hover-class="isConfirmAllowed ? 'uvx-hover-class' : 'none'"
+                  @click="handleConfirm"
+               >
+                  <text
+                     :class="confirmTextClasses"
+                     :style="confirmTextStyle"
+                  >{{ confirmText }}</text>
+               </view>
+            </view>
+
+            <!-- 日历主体 -->
+            <CalendarBody
+               :days="calendarPages"
+               :week-names="weekNames"
+               :view-date="viewDate"
+               :mode="mode"
+               :lunar="lunar"
+               :show-month="showMonth"
+               :color="color"
+               :start-text="startText"
+               :end-text="endText"
+               :today-text="todayText"
+               @pre="handlePre"
+               @next="handleNext"
+               @today="handleToday"
+               @month-click="handleMonthClick"
+               @day-click="handleDayClick"
+            ></CalendarBody>
+         </view>
+      </uvx-popup>
+
+      <!-- 月份选择器 -->
+      <uvx-datetime-picker
+         ref="uMonth"
+         :value="monthValue"
+         mode="year-month"
+         :min-date="MIN_DATE"
+         :max-date="MAX_DATE"
+         :title="monthTitle"
+         :round="round"
+         @confirm="handleMonthConfirm"
+      ></uvx-datetime-picker>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-calendar 日历
+ * @description 支持单选、多选、范围、打点、农历、插入和弹窗模式的日期选择组件。
+ * @tutorial https://www.uvxui.cn/components/calendar.html
+ * @property {String} cancelColor 取消按钮颜色，空值时跟随主题
+ * @property {String} confirmColor 确认按钮颜色，空值时跟随主题
+ * @property {String} title 弹窗标题
+ * @property {String} color 主题颜色，空值时跟随主题
+ * @property {String | Array} date 默认选中日期
+ * @property {Array} selected 日期打点配置
+ * @property {Boolean} lunar 是否显示农历
+ * @property {String} startDate 可选开始日期
+ * @property {String} endDate 可选结束日期
+ * @property {String} mode 单选、multiple 或 range
+ * @property {Boolean} insert 是否使用插入模式
+ * @property {Boolean} showMonth 是否显示月份背景
+ * @property {Boolean} clearDate 打开弹窗时是否重置选择
+ * @property {String | Number} round 弹窗圆角
+ * @property {Boolean} closeOnClickOverlay 点击遮罩是否关闭
+ * @property {String} startText 范围开始文案
+ * @property {String} endText 范围结束文案
+ * @property {Boolean} allowSameDay 是否允许范围起止为同一天
+ * @property {Boolean} readonly 是否只读
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @method open 打开弹窗日历
+ * @method close 关闭弹窗日历
+ * @event {Function} change 插入模式选择变化时触发
+ * @event {Function} confirm 弹窗模式确认时触发
+ * @event {Function} close 弹窗关闭时触发
+ * @event {Function} monthSwitch 月份切换时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import CalendarBody from "./uvx-calendar-body.uvue";
+import {
+   buildDays,
+   getDateRange,
+   getDateValue,
+   getMonthFirstDate,
+   getMonthFromTimestamp,
+   getTodayDate,
+   getValidDate,
+   normalizeMultipleDates,
+   parseDate,
+   shiftMonth,
+} from "./calendar.uts";
+import { getInfo } from "./lunar.uts";
+import type { ChangeEvent as PopupChangeEvent } from "../uvx-popup/types/index.uts";
+import type { ConfirmEvent } from "../uvx-datetime-picker/types/index.uts";
+import type {
+   BodyPage,
+   BuildOptions,
+   ChangeEvent,
+   DateInfo,
+   Day,
+   Emits,
+   Props,
+   SelectedItem,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-calendar",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const MIN_DATE = new Date(1900, 0, 1, 12, 0, 0, 0).getTime();
+const MAX_DATE = new Date(2100, 11, 31, 12, 0, 0, 0).getTime();
+
+const props = withDefaults(defineProps<Props>(), {
+   cancelColor: "",
+   confirmColor: "",
+   title: "",
+   color: "",
+   date: "",
+   selected: (): SelectedItem[] => [],
+   lunar: false,
+   startDate: "",
+   endDate: "",
+   mode: "",
+   insert: false,
+   showMonth: true,
+   clearDate: true,
+   round: 8,
+   closeOnClickOverlay: true,
+   startText: t("开始"),
+   endText: t("结束"),
+   allowSameDay: false,
+   readonly: false,
+   uStyle: "",
+   uClass: "",
+});
+const emit = defineEmits<Emits>();
+
+// 日历弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+// 月份选择器实例
+const uMonth = ref<UvxDatetimePickerComponentPublicInstance | null>(null);
+// 今天日期
+const today = ref<DateInfo>(getTodayDate());
+// 当前显示月份
+const viewDate = ref<DateInfo>(getMonthFirstDate(today.value));
+// 最近操作日期
+const selectedDate = ref(today.value.fullDate);
+// 多选日期
+const multipleDates = ref<string[]>([]);
+// 范围开始日期
+const rangeBefore = ref("");
+// 范围结束日期
+const rangeAfter = ref("");
+// 范围内全部日期
+const rangeDates = ref<string[]>([]);
+
+/**
+ * 星期标题
+ * @returns string[]
+ */
+const weekNames = computed((): string[] => {
+   return [
+      t("星期日"),
+      t("星期一"),
+      t("星期二"),
+      t("星期三"),
+      t("星期四"),
+      t("星期五"),
+      t("星期六"),
+   ];
+});
+
+/**
+ * 今天文案
+ * @returns string
+ */
+const todayText = computed((): string => {
+   return t("今天");
+});
+
+/**
+ * 取消文案
+ * @returns string
+ */
+const cancelText = computed((): string => {
+   return t("取消");
+});
+
+/**
+ * 确认文案
+ * @returns string
+ */
+const confirmText = computed((): string => {
+   return t("确定");
+});
+
+/**
+ * 月份选择标题
+ * @returns string
+ */
+const monthTitle = computed((): string => {
+   return t("选择月份");
+});
+
+/**
+ * 月份选择器值
+ * @returns number
+ */
+const monthValue = computed((): number => {
+   return viewDate.value.timestamp;
+});
+
+/**
+ * 是否允许确认
+ * @returns boolean
+ */
+const isConfirmAllowed = computed((): boolean => {
+   if (props.readonly) return false;
+   if (props.mode == "range") return !$uvx.string.empty(rangeAfter.value);
+   if (props.mode == "multiple") return multipleDates.value.length > 0;
+   return true;
+});
+
+/**
+ * 生成指定月份的日期网格
+ * @param monthDate 月份日期
+ * @returns Day[]
+ */
+const getDays = (monthDate: DateInfo): Day[] => {
+   const options: BuildOptions = {
+      viewDate: monthDate,
+      today: today.value,
+      selectedDate: $uvx.string.empty(props.mode) ? selectedDate.value : "",
+      multipleDates: multipleDates.value,
+      rangeBefore: rangeBefore.value,
+      rangeAfter: rangeAfter.value,
+      selected: props.selected,
+      startDate: props.startDate,
+      endDate: props.endDate,
+   };
+   return buildDays(options);
+};
+
+/**
+ * 上月、当月和下月页面
+ * @returns BodyPage[]
+ */
+const calendarPages = computed((): BodyPage[] => {
+   const previousDate = shiftMonth(viewDate.value, -1);
+   const nextDate = shiftMonth(viewDate.value, 1);
+   return [
+      {
+         days: getDays(previousDate),
+         viewDate: previousDate,
+      },
+      {
+         days: getDays(viewDate.value),
+         viewDate: viewDate.value,
+      },
+      {
+         days: getDays(nextDate),
+         viewDate: nextDate,
+      },
+   ];
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 取消文字样式
+ * @returns UTSJSONObject
+ */
+const cancelTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.cancelColor)) style.set("color", props.cancelColor);
+   return style;
+});
+
+/**
+ * 确认文字类名
+ * @returns string[]
+ */
+const confirmTextClasses = computed((): string[] => {
+   const classes: string[] = ["uvx-calendar__toolbar-confirm"];
+   if (!isConfirmAllowed.value) classes.push("uvx-calendar__toolbar-confirm-disabled");
+   return classes;
+});
+
+/**
+ * 确认文字样式
+ * @returns UTSJSONObject
+ */
+const confirmTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (isConfirmAllowed.value && !$uvx.string.empty(props.confirmColor)) {
+      style.set("color", props.confirmColor);
+   }
+   return style;
+});
+
+/**
+ * 初始化选择状态
+ * @param value 默认日期
+ * @returns null
+ */
+const initSelection = (value: string | string[]): void => {
+   today.value = getTodayDate();
+   const firstValue = getDateValue(value, 0);
+   const firstDate = getValidDate(firstValue);
+   selectedDate.value = firstDate.fullDate;
+   viewDate.value = getMonthFirstDate(firstDate);
+   multipleDates.value = [];
+   rangeBefore.value = "";
+   rangeAfter.value = "";
+   rangeDates.value = [];
+
+   if (props.mode == "multiple") {
+      multipleDates.value = normalizeMultipleDates(value);
+      selectedDate.value = multipleDates.value[0];
+      viewDate.value = getMonthFirstDate(getValidDate(selectedDate.value));
+      return;
+   }
+   if (props.mode != "range") return;
+   rangeBefore.value = firstDate.fullDate;
+   const secondDate = parseDate(getDateValue(value, 1));
+   if (secondDate != null && secondDate.timestamp >= firstDate.timestamp) {
+      rangeAfter.value = secondDate.fullDate;
+      rangeDates.value = getDateRange(firstDate.fullDate, secondDate.fullDate);
+   }
+};
+
+/**
+ * 查找选择日期的打点信息
+ * @param fullDate 标准日期
+ * @returns SelectedItem | null
+ */
+const getSelectedInfo = (fullDate: string): SelectedItem | null => {
+   for (let index = 0; index < props.selected.length; index++) {
+      const parsed = parseDate(props.selected[index].date);
+      if (parsed != null && parsed.fullDate == fullDate) return props.selected[index];
+   }
+   return null;
+};
+
+/**
+ * 创建完整选择结果
+ * @returns ChangeEvent
+ */
+const getChangeEvent = (): ChangeEvent => {
+   const date = getValidDate(selectedDate.value);
+   return {
+      range: {
+         before: rangeBefore.value,
+         after: rangeAfter.value,
+         data: rangeDates.value.slice(),
+      },
+      multiple: {
+         data: multipleDates.value.slice(),
+      },
+      year: date.year,
+      month: date.month,
+      date: date.date,
+      fulldate: date.fullDate,
+      lunar: getInfo(date.year, date.month, date.date),
+      extraInfo: getSelectedInfo(date.fullDate),
+   };
+};
+
+/**
+ * 发送月份切换事件
+ * @returns null
+ */
+const emitMonthSwitch = (): void => {
+   emit("monthSwitch", {
+      year: viewDate.value.year,
+      month: viewDate.value.month,
+   });
+};
+
+/**
+ * 更新范围选择
+ * @param fullDate 选择日期
+ * @returns null
+ */
+const setRangeDate = (fullDate: string): void => {
+   const current = getValidDate(fullDate);
+   const before = parseDate(rangeBefore.value);
+   if (before == null || !$uvx.string.empty(rangeAfter.value)) {
+      rangeBefore.value = current.fullDate;
+      rangeAfter.value = "";
+      rangeDates.value = [];
+      return;
+   }
+   if (current.timestamp == before.timestamp && props.allowSameDay) {
+      rangeAfter.value = current.fullDate;
+      rangeDates.value = [current.fullDate];
+      return;
+   }
+   if (current.timestamp <= before.timestamp) {
+      rangeBefore.value = current.fullDate;
+      rangeAfter.value = "";
+      rangeDates.value = [];
+      return;
+   }
+   rangeAfter.value = current.fullDate;
+   rangeDates.value = getDateRange(before.fullDate, current.fullDate);
+};
+
+/**
+ * 更新多选日期
+ * @param fullDate 选择日期
+ * @returns null
+ */
+const setMultipleDate = (fullDate: string): void => {
+   const index = multipleDates.value.indexOf(fullDate);
+   if (index == -1) multipleDates.value = multipleDates.value.concat([fullDate]);
+   else multipleDates.value.splice(index, 1);
+};
+
+/**
+ * 选择日期
+ * @param day 日期格
+ * @returns null
+ */
+const handleDayClick = (day: Day): void => {
+   if (props.readonly || day.isDisabled) return;
+   selectedDate.value = day.fullDate;
+   if (props.mode == "range") setRangeDate(day.fullDate);
+   else if (props.mode == "multiple") setMultipleDate(day.fullDate);
+   if (props.insert) emit("change", getChangeEvent());
+};
+
+/**
+ * 打开弹窗日历
+ * @returns null
+ */
+const open = (): void => {
+   if (props.insert) return;
+   if (props.clearDate) initSelection(props.date);
+   uPopup.value?.open();
+};
+
+/**
+ * 关闭弹窗日历
+ * @returns null
+ */
+const close = (): void => {
+   if (props.insert) return;
+   uPopup.value?.close();
+};
+
+/**
+ * 取消选择
+ * @returns null
+ */
+const handleCancel = (): void => {
+   close();
+};
+
+/**
+ * 确认选择
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   if (!isConfirmAllowed.value) return;
+   emit("confirm", getChangeEvent());
+   close();
+};
+
+/**
+ * 处理弹层状态
+ * @param event 弹层状态
+ * @returns null
+ */
+const handlePopupChange = (event: PopupChangeEvent): void => {
+   if (!event.show) emit("close");
+};
+
+/**
+ * 切换到上个月
+ * @returns null
+ */
+const handlePre = (): void => {
+   viewDate.value = shiftMonth(viewDate.value, -1);
+   emitMonthSwitch();
+};
+
+/**
+ * 切换到下个月
+ * @returns null
+ */
+const handleNext = (): void => {
+   viewDate.value = shiftMonth(viewDate.value, 1);
+   emitMonthSwitch();
+};
+
+/**
+ * 回到今天并选择今天
+ * @returns null
+ */
+const handleToday = (): void => {
+   const previousMonth = `${viewDate.value.year}-${viewDate.value.month}`;
+   initSelection(today.value.fullDate);
+   const currentMonth = `${viewDate.value.year}-${viewDate.value.month}`;
+   if (previousMonth != currentMonth) emitMonthSwitch();
+   if (props.insert) emit("change", getChangeEvent());
+};
+
+/**
+ * 打开月份选择器
+ * @returns null
+ */
+const handleMonthClick = (): void => {
+   uMonth.value?.open();
+};
+
+/**
+ * 选择月份
+ * @param event 月份选择结果
+ * @returns null
+ */
+const handleMonthConfirm = (event: ConfirmEvent): void => {
+   const timestamp = typeof event.value == "number"
+      ? event.value
+      : Number(event.value);
+   if (isNaN(timestamp)) return;
+   viewDate.value = getMonthFromTimestamp(timestamp);
+   emitMonthSwitch();
+};
+
+watch(() => props.date, (value: string | string[]): void => {
+   initSelection(value);
+}, { deep: true });
+
+watch(() => props.mode, (): void => {
+   initSelection(props.date);
+});
+
+watch(() => props.allowSameDay, (): void => {
+   initSelection(props.date);
+});
+
+onMounted((): void => {
+   initSelection(props.date);
+});
+
+defineExpose({ open, close });
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 日历根节点
+.uvx-calendar {
+   width: 100%;
+
+   // 日历内容
+   &__content {
+      width: 100%;
+      background-color: var(--uvx-container);
+   }
+
+   // 弹窗内容
+   &__popup-content {
+      width: 100%;
+      min-height: 100px;
+      background-color: var(--uvx-container);
+      overflow: hidden;
+   }
+
+   // 顶部操作栏
+   &__toolbar {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: 44px;
+      border-bottom-width: 0.5px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+      background-color: var(--uvx-container);
+   }
+
+   // 工具栏操作区
+   &__toolbar-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      height: 44px;
+   }
+
+   // 取消文字
+   &__toolbar-cancel {
+      padding: 0 15px;
+      color: var(--uvx-text-tips);
+      font-size: 15px;
+      line-height: 1.2em;
+   }
+
+   // 工具栏标题
+   &__toolbar-title {
+      padding: 0 10px;
+      color: var(--uvx-text-main);
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.2em;
+      text-align: center;
+   }
+
+   // 确认文字
+   &__toolbar-confirm {
+      padding: 0 15px;
+      color: var(--uvx-primary);
+      font-size: 15px;
+      line-height: 1.2em;
+   }
+
+   // 禁用确认文字
+   &__toolbar-confirm-disabled {
+      color: var(--uvx-text-placeholder);
+   }
+}
+</style>

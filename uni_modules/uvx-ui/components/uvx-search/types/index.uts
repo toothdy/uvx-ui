@@ -1,0 +1,41 @@
+export type Shape = "round" | "square";
+
+export type Props = {
+   modelValue: string;
+   shape: Shape;
+   bgColor: string;
+   placeholder: string;
+   clearabled: boolean;
+   focus: boolean;
+   showAction: boolean;
+   actionStyle: string;
+   actionText: string;
+   inputStyle: string;
+   disabled: boolean;
+   borderColor: string;
+   searchIconColor: string;
+   color: string;
+   placeholderColor: string;
+   searchIcon: string;
+   searchIconSize: string | number;
+   margin: string;
+   animation: boolean;
+   maxlength: string | number;
+   height: string | number;
+   boxStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [value: string];
+   input: [value: string];
+   change: [value: string];
+   clear: [value: string];
+   search: [value: string];
+   custom: [value: string];
+   focus: [value: string];
+   blur: [value: string];
+   clickIcon: [];
+   click: [];
+};

@@ -1,0 +1,52 @@
+export type Type = "text" | "number" | "idcard" | "digit" | "tel" | "email" | "url" | "none" | "safe-password" | "nickname" | "password";
+export type Align = "left" | "center" | "right";
+export type Border = "surround" | "bottom" | "none";
+export type Shape = "square" | "circle";
+export type Formatter = (value: string) => string;
+
+export type Props = {
+   value: string | number;
+   modelValue: string | number;
+   type: Type;
+   disabled: boolean;
+   disabledColor: string;
+   clearable: boolean;
+   password: boolean;
+   maxlength: number;
+   placeholder: string;
+   placeholderClass: string;
+   placeholderStyle: string;
+   confirmType: "send" | "search" | "next" | "go" | "done";
+   confirmHold: boolean;
+   holdKeyboard: boolean;
+   focus: boolean;
+   cursor: number;
+   cursorSpacing: number;
+   selectionStart: number;
+   selectionEnd: number;
+   adjustPosition: boolean;
+   inputAlign: Align;
+   fontSize: string | number;
+   color: string;
+   prefixIcon: string;
+   prefixIconStyle: string;
+   suffixIcon: string;
+   suffixIconStyle: string;
+   border: Border;
+   readonly: boolean;
+   shape: Shape;
+   formatter: Formatter;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [value: string];
+   input: [value: string];
+   change: [value: string];
+   focus: [];
+   blur: [value: string];
+   confirm: [value: string];
+   clear: [];
+   keyboardheightchange: [event: UniInputKeyboardHeightChangeEvent];
+};

@@ -1,0 +1,27 @@
+export type LabelPosition = "right" | "bottom" | "top" | "left";
+export type Mode = "scaleToFill" | "aspectFit" | "aspectFill" | "widthFix" | "heightFix";
+
+export type Props = {
+   name: string;
+   color: string;
+   size: string | number;
+   bold: boolean;
+   hoverClass: string;
+   uPrefix: string;
+   label: string;
+   labelPos: LabelPosition;
+   labelSize: string | number;
+   labelColor: string;
+   space: string | number;
+   imgMode: Mode;
+   width: string | number;
+   height: string | number;
+   top: number;
+   stop: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [item: UTSJSONObject];
+};

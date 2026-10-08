@@ -1,0 +1,11 @@
+export type Direction = "row" | "col";
+
+export type Props = {
+   color: string;
+   length: string | number;
+   direction: Direction;
+   hairline: boolean;
+   margin: string | number;
+   dashed: boolean;
+   uStyle: string;
+};

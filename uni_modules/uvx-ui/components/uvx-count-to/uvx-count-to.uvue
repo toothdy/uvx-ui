@@ -1,0 +1,311 @@
+<template>
+   <text
+      class="uvx-count-to"
+      :class="[props.uClass]"
+      :style="countStyle"
+   >{{ displayValue }}</text>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-count-to 数字滚动
+ * @description 将数字从起始值滚动到目标值，支持倒计数、缓动、小数和千分位格式化。
+ * @tutorial https://www.uvxui.cn/components/count-to.html
+ * @property {String | Number} startVal 开始的数值，默认 0
+ * @property {String | Number} endVal 要滚动到的目标数值，默认 0
+ * @property {String | Number} duration 动画持续时间，单位毫秒，默认 2000
+ * @property {Boolean} autoplay 是否自动开始滚动，默认 true
+ * @property {String | Number} decimals 显示的小数位数，默认 0
+ * @property {Boolean} useEasing 是否使用缓动效果，默认 true
+ * @property {String | Number} decimal 小数分隔符，默认 "."
+ * @property {String} color 字体颜色，空值时跟随主题
+ * @property {String | Number} fontSize 字体大小，单位 px，默认 22
+ * @property {Boolean} bold 是否加粗字体，默认 false
+ * @property {String} separator 千位分隔符，默认空字符串
+ * @property {String} uStyle 组件自定义样式
+ * @property {String} uClass 组件自定义类名
+ * @event {Function} end 数值滚动到目标值时触发
+ * @method start 从头开始滚动
+ * @method stop 停止滚动
+ * @method restart 在暂停和继续之间切换
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Emits, Props, Value } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-count-to",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   startVal: 0,
+   endVal: 0,
+   duration: 2000,
+   autoplay: true,
+   decimals: 0,
+   useEasing: true,
+   decimal: ".",
+   color: "",
+   fontSize: 22,
+   bold: false,
+   separator: "",
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+const FRAME_DURATION_MS = 16;
+
+// 当前显示值
+const displayValue = ref<string>("");
+// 当前动画数值
+let currentValue = 0;
+// 当前动画起始值
+let animationStartValue = 0;
+// 当前动画持续时间
+let animationDuration = 0;
+// 当前动画开始时间
+let animationStartTime: number | null = null;
+// 暂停后剩余的动画时间
+let remainingDuration = 0;
+// 原生定时器编号
+let timer: number | null = null;
+// 是否正在滚动
+let isRunning = false;
+// 是否处于暂停状态
+let isPaused = false;
+
+/**
+ * 将属性值转换为数字
+ * @param value 待转换值
+ * @param fallback 转换失败时的默认值
+ * @returns number
+ */
+const toNumber = (value: Value, fallback: number): number => {
+   const parsed = typeof value == "number" ? value : parseFloat(value);
+   return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+/**
+ * 获取小数位数
+ * @returns number
+ */
+const decimalsValue = computed((): number => {
+   return Math.max(0, Math.floor(toNumber(props.decimals, 0)));
+});
+
+/**
+ * 获取动画持续时间
+ * @returns number
+ */
+const durationValue = computed((): number => {
+   return Math.max(0, toNumber(props.duration, 2000));
+});
+
+/**
+ * 是否为倒计数
+ * @returns boolean
+ */
+const countDown = computed((): boolean => {
+   return toNumber(props.startVal, 0) > toNumber(props.endVal, 0);
+});
+
+/**
+ * 缓动计算
+ * @param time 当前进度
+ * @param begin 起始值
+ * @param change 数值变化量
+ * @param duration 动画时长
+ * @returns number
+ */
+const easingValue = (time: number, begin: number, change: number, duration: number): number => {
+   if (duration <= 0) return begin + change;
+   return (change * (-Math.pow(2, -10 * time / duration) + 1) * 1024) / 1023 + begin;
+};
+
+/**
+ * 格式化显示数字
+ * @param value 待格式化数值
+ * @returns string
+ */
+const formatNumber = (value: number): string => {
+   if (Number.isNaN(value)) return "0";
+   const fixedValue = Number(value.toFixed(decimalsValue.value));
+   const parts: string[] = fixedValue.toString().split(".");
+   let integerPart = parts[0];
+   const fractionPart = parts.length > 1 ? props.decimal.toString() + parts[1] : "";
+   const separator = props.separator;
+   if (!$uvx.string.empty(separator) && !$uvx.validate.number(separator)) {
+      const regex = /(\d+)(\d{3})/;
+      while (regex.test(integerPart)) {
+         integerPart = integerPart.replace(regex, "$1" + separator + "$2");
+      }
+   }
+   return integerPart + fractionPart;
+};
+
+/**
+ * 数字显示样式
+ * @returns UTSJSONObject
+ */
+const countStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.fontSize),
+      "font-weight": props.bold ? "bold" : "normal",
+   };
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 清除当前定时器
+ * @returns null
+ */
+const clearTimer = (): void => {
+   if (timer == null) return;
+   clearTimeout(timer);
+   timer = null;
+};
+
+/**
+ * 完成当前动画
+ * @returns null
+ */
+const finishAnimation = (): void => {
+   clearTimer();
+   currentValue = toNumber(props.endVal, 0);
+   displayValue.value = formatNumber(currentValue);
+   animationStartTime = null;
+   remainingDuration = 0;
+   isRunning = false;
+   isPaused = false;
+   emit("end");
+};
+
+/**
+ * 推进一帧动画
+ * @returns null
+ */
+const tick = (): void => {
+   if (!isRunning || animationStartTime == null) return;
+   const elapsed = Math.max(0, Date.now() - animationStartTime);
+   const progress = Math.min(elapsed, animationDuration);
+   const targetValue = toNumber(props.endVal, 0);
+   const change = targetValue - animationStartValue;
+   let nextValue = animationStartValue + change * (animationDuration == 0 ? 1 : progress / animationDuration);
+   if (props.useEasing) nextValue = easingValue(progress, animationStartValue, change, animationDuration);
+   if (countDown.value) nextValue = Math.max(targetValue, nextValue);
+   else nextValue = Math.min(targetValue, nextValue);
+   currentValue = nextValue;
+   displayValue.value = formatNumber(currentValue);
+
+   if (progress >= animationDuration) {
+      finishAnimation();
+      return;
+   }
+   timer = setTimeout(tick, FRAME_DURATION_MS);
+};
+
+/**
+ * 从头开始滚动数字
+ * @returns null
+ */
+const start = (): void => {
+   clearTimer();
+   animationStartValue = toNumber(props.startVal, 0);
+   currentValue = animationStartValue;
+   displayValue.value = formatNumber(currentValue);
+   animationDuration = durationValue.value;
+   remainingDuration = animationDuration;
+   animationStartTime = Date.now();
+   isPaused = false;
+   isRunning = true;
+   if (animationDuration <= 0 || animationStartValue == toNumber(props.endVal, 0)) {
+      finishAnimation();
+      return;
+   }
+   timer = setTimeout(tick, FRAME_DURATION_MS);
+};
+
+/**
+ * 暂停滚动数字
+ * @returns null
+ */
+const stop = (): void => {
+   if (!isRunning || animationStartTime == null) {
+      isPaused = true;
+      return;
+   }
+   const elapsed = Math.max(0, Date.now() - animationStartTime);
+   remainingDuration = Math.max(0, animationDuration - elapsed);
+   clearTimer();
+   isRunning = false;
+   isPaused = true;
+};
+
+/**
+ * 在暂停和继续之间切换
+ * @returns null
+ */
+const restart = (): void => {
+   if (!isPaused) {
+      stop();
+      return;
+   }
+   if (remainingDuration <= 0) return;
+   clearTimer();
+   animationStartValue = currentValue;
+   animationDuration = remainingDuration;
+   animationStartTime = Date.now();
+   isPaused = false;
+   isRunning = true;
+   timer = setTimeout(tick, FRAME_DURATION_MS);
+};
+
+/**
+ * 重置为起始值
+ * @returns null
+ */
+const reset = (): void => {
+   clearTimer();
+   currentValue = toNumber(props.startVal, 0);
+   displayValue.value = formatNumber(currentValue);
+   animationStartTime = null;
+   remainingDuration = 0;
+   isRunning = false;
+   isPaused = false;
+};
+
+watch((): Value => props.startVal, (): void => {
+   if (props.autoplay) start();
+   else reset();
+});
+
+watch((): Value => props.endVal, (): void => {
+   if (props.autoplay) start();
+});
+
+onMounted((): void => {
+   displayValue.value = formatNumber(toNumber(props.startVal, 0));
+   if (props.autoplay) start();
+});
+
+onUnmounted((): void => {
+   clearTimer();
+   isRunning = false;
+});
+
+defineExpose({ start, stop, restart });
+</script>
+
+<style lang="scss">
+// 数字滚动文本
+.uvx-count-to {
+   display: flex;
+   color: var(--uvx-text-content);
+   text-align: center;
+}
+</style>

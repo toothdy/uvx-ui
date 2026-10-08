@@ -1,0 +1,72 @@
+import { AnimationCallback, StartAnimation, StopAnimation } from "../interface.uts";
+
+type AnimationTask = {
+   callback: AnimationCallback;
+   timerId: number;
+   isActive: boolean;
+};
+
+// 动画帧间隔
+const ANIMATION_FRAME_INTERVAL_MS = 16;
+// 定时器动画任务
+const ANIMATION_TASKS = new Map<number, AnimationTask>();
+
+/**
+ * 启动定时器动画
+ * @param animationId 动画标识
+ * @param callback 动画回调
+ * @returns null
+ */
+export const startTimerAnimation: StartAnimation = function (
+   animationId: number,
+   callback: AnimationCallback,
+): void {
+   const PREVIOUS_TASK = ANIMATION_TASKS.get(animationId);
+   if (PREVIOUS_TASK != null) {
+      PREVIOUS_TASK.isActive = false;
+      clearTimeout(PREVIOUS_TASK.timerId);
+   }
+
+   const TASK: AnimationTask = {
+      callback,
+      timerId: 0,
+      isActive: true,
+   };
+   let runFrame: AnimationCallback | null = null;
+
+   runFrame = (): void => {
+      if (!TASK.isActive) {
+         return;
+      }
+      TASK.callback();
+      if (!TASK.isActive) {
+         return;
+      }
+
+      const NEXT_FRAME = runFrame;
+      if (NEXT_FRAME != null) {
+         TASK.timerId = setTimeout(NEXT_FRAME, ANIMATION_FRAME_INTERVAL_MS);
+      }
+   };
+
+   ANIMATION_TASKS.set(animationId, TASK);
+   TASK.timerId = setTimeout(runFrame!, ANIMATION_FRAME_INTERVAL_MS);
+};
+
+/**
+ * 停止定时器动画
+ * @param animationId 动画标识
+ * @returns null
+ */
+export const stopTimerAnimation: StopAnimation = function (
+   animationId: number,
+): void {
+   const TASK = ANIMATION_TASKS.get(animationId);
+   if (TASK == null) {
+      return;
+   }
+
+   TASK.isActive = false;
+   clearTimeout(TASK.timerId);
+   ANIMATION_TASKS.delete(animationId);
+};

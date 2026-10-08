@@ -1,0 +1,52 @@
+// 背景色
+$uvx-page: #ffffff !default;
+$uvx-page-dark: #0a0a0a !default;
+$uvx-container: #f7f8fa !default;
+$uvx-container-dark: #141414 !default;
+
+// 悬停色
+$uvx-hover: #f2f3f5 !default;
+$uvx-hover-dark: #262727 !default;
+
+// 文本色
+$uvx-text-main: #303133 !default;
+$uvx-text-main-dark: #e5eaf3 !default;
+$uvx-text-content: #606266 !default;
+$uvx-text-content-dark: #cfd3dc !default;
+$uvx-text-tips: #909399 !default;
+$uvx-text-tips-dark: #a3a6ad !default;
+$uvx-text-placeholder: #c0c4cc !default;
+$uvx-text-placeholder-dark: #8d9095 !default;
+
+// 边框
+$uvx-border: #ebedf0 !default;
+$uvx-border-dark: #4c4d4f !default;
+
+// 禁用
+$uvx-disabled: #dedede !default;
+$uvx-disabled-dark: #303030 !default;
+
+$uvx-primary: #3c9cff !default;
+$uvx-primary-dark: #398ade !default;
+$uvx-primary-disabled: #9acafc !default;
+$uvx-primary-light: #ecf5ff !default;
+
+$uvx-warning: #f9ae3d !default;
+$uvx-warning-dark: #f1a532 !default;
+$uvx-warning-disabled: #f9d39b !default;
+$uvx-warning-light: #fdf6ec !default;
+
+$uvx-success: #5ac725 !default;
+$uvx-success-dark: #53c21d !default;
+$uvx-success-disabled: #a9e08f !default;
+$uvx-success-light: #f5fff0 !default;
+
+$uvx-error: #f56c6c !default;
+$uvx-error-dark: #e45656 !default;
+$uvx-error-disabled: #f7b2b2 !default;
+$uvx-error-light: #fef0f0 !default;
+
+$uvx-info: #909399 !default;
+$uvx-info-dark: #767a82 !default;
+$uvx-info-disabled: #c4c6c9 !default;
+$uvx-info-light: #f4f4f5 !default;

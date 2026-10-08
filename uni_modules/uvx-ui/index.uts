@@ -1,0 +1,39 @@
+import { initTheme } from "./core/theme";
+import { getFontSize } from "./core/size";
+import { initLocale, appendLocale } from './core/i18n';
+import { registerLocales } from './locales/index';
+import { Utils } from './core/utils/index.uts';
+
+// 业务侧语言包,约定放在项目根 /locales 目录
+import zhCn from '../../locales/zh-cn.json';
+import zhTw from '../../locales/zh-tw.json';
+import en from '../../locales/en.json';
+
+export const $uvx = new Utils();
+
+const install = (app : VueApp) : void => {
+	initTheme();
+	getFontSize();
+	registerLocales();
+	
+	initLocale("zh-cn");
+	appendLocale("zh-cn", zhCn as string[][]);
+	appendLocale("zh-tw", zhTw as string[][]);
+	appendLocale("en", en as string[][]);
+
+	app.config.globalProperties.$uvx = $uvx;
+
+	if (process.env.NODE_ENV == 'development') {
+		console.log(
+			`\n %c uvx-ui https://www.uvxui.cn \n\n`,
+			'color: #ffffff; background: #3c9cff; padding:5px 0; border-radius: 5px;'
+		);
+	}
+};
+
+export default install;
+
+export * from "./core/theme";
+export * from "./core/size";
+export * from './core/i18n';
+export { config } from './core/config';

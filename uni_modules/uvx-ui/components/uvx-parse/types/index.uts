@@ -1,0 +1,23 @@
+/** 富文本组件属性 */
+export type Props = {
+   content: string;
+   containerStyle: string;
+   domain: string;
+   copyLink: boolean;
+   previewImg: boolean;
+   selectable: boolean;
+   setTitle: boolean;
+   tagStyle: UTSJSONObject;
+   useAnchor: boolean | number;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 富文本组件事件 */
+export type Emits = {
+   load: [];
+   ready: [rect: DOMRect | null];
+   imgtap: [detail: UniRichTextItemClickEventDetail];
+   linktap: [detail: UniRichTextItemClickEventDetail];
+   click: [];
+};

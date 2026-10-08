@@ -1,0 +1,369 @@
+<template>
+   <uvx-transition
+      mode="slide-top"
+      :show="isShow"
+      :duration="300"
+      :u-style="$uvx.style.stringify(wrapperStyle)"
+   >
+      <!-- 顶部通知内容 -->
+      <view
+         class="uvx-notify"
+         :class="[
+            `uvx-notify--${activeConfig.type}`,
+            isDark ? 'uvx-dark' : 'uvx-light',
+            activeConfig.uClass,
+         ]"
+         :style="contentStyle"
+      >
+         <uvx-status-bar
+            v-if="activeConfig.safeAreaInsetTop"
+            bg-color="transparent"
+         ></uvx-status-bar>
+
+         <!-- 通知图标与文字 -->
+         <view class="uvx-notify__wrapper">
+            <slot name="icon">
+               <uvx-icon
+                  v-if="activeConfig.type != 'primary'"
+                  :name="iconName"
+                  :color="activeConfig.color"
+                  :size="iconSize"
+                  u-style="margin-right: 4px;"
+               ></uvx-icon>
+            </slot>
+            <text class="uvx-notify__text" :style="textStyle">
+               {{ activeConfig.message }}
+            </text>
+         </view>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-notify 顶部通知
+ * @description 从页面顶部滑入并自动收起的消息通知。
+ * @tutorial https://www.uvxui.cn/components/notify.html
+ * @property {String | Number} top 到顶部的距离，默认 0
+ * @property {String} type 主题类型，默认 primary
+ * @property {String} color 字体与图标颜色，默认 #ffffff
+ * @property {String} bgColor 自定义背景颜色
+ * @property {String} message 展示内容
+ * @property {String | Number} duration 展示时长，0 时不自动关闭，默认 3000
+ * @property {String | Number} fontSize 字体大小，默认 15
+ * @property {Boolean} safeAreaInsetTop 是否留出顶部安全区，默认 false
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} open 显示时触发
+ * @event {Function} close 关闭时触发
+ * @method show(options) 显示通知
+ * @method close() 关闭通知
+ * @method primary(message) 显示主要通知
+ * @method success(message) 显示成功通知
+ * @method error(message) 显示失败通知
+ * @method warning(message) 显示警告通知
+ * @example <uvx-notify ref="notify"></uvx-notify>
+ */
+
+import { $uvx } from "../../index.uts";
+import { config } from "../../core/config.uts";
+import { isDark } from "../../core/theme";
+import type {
+   Config,
+   Emits,
+   Options,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-notify", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+   top: 0,
+   type: "primary",
+   color: "#ffffff",
+   bgColor: "",
+   message: "",
+   duration: 3000,
+   fontSize: 15,
+   safeAreaInsetTop: false,
+   uStyle: "",
+   uClass: "",
+});
+
+// 组件事件
+const emit = defineEmits<Emits>();
+// 通知是否显示
+const isShow = ref(false);
+// 自动关闭计时器
+let timer: number | null = null;
+// 当前完整配置
+const activeConfig = ref<Config>({
+   top: 0,
+   type: "primary",
+   color: "#ffffff",
+   bgColor: "",
+   message: "",
+   duration: 3000,
+   fontSize: 15,
+   safeAreaInsetTop: false,
+   complete: null,
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 规范化展示时长
+ * @param value 展示时长
+ * @returns 毫秒数
+ */
+const getDuration = (value: string | number): number => {
+   const duration = parseInt(value.toString());
+   return Number.isNaN(duration) ? 3000 : duration;
+};
+
+/**
+ * 读取当前属性配置
+ * @returns Config
+ */
+const getPropsConfig = (): Config => {
+   return {
+      top: props.top,
+      type: props.type,
+      color: props.color,
+      bgColor: props.bgColor,
+      message: props.message,
+      duration: getDuration(props.duration),
+      fontSize: props.fontSize,
+      safeAreaInsetTop: props.safeAreaInsetTop,
+      complete: null,
+      uStyle: props.uStyle,
+      uClass: props.uClass,
+   };
+};
+
+/**
+ * 合并本次显示配置
+ * @param options 命令式配置
+ * @returns Config
+ */
+const getActiveConfig = (options: Options | null): Config => {
+   const base = getPropsConfig();
+   if (options == null) return base;
+   return {
+      top: options.top != null ? options.top : base.top,
+      type: options.type != null ? options.type : base.type,
+      color: options.color != null ? options.color : base.color,
+      bgColor: options.bgColor != null ? options.bgColor : base.bgColor,
+      message: options.message != null ? options.message : base.message,
+      duration: options.duration != null ? getDuration(options.duration) : base.duration,
+      fontSize: options.fontSize != null ? options.fontSize : base.fontSize,
+      safeAreaInsetTop: options.safeAreaInsetTop != null
+         ? options.safeAreaInsetTop
+         : base.safeAreaInsetTop,
+      complete: options.complete != null ? options.complete : base.complete,
+      uStyle: options.uStyle != null ? options.uStyle : base.uStyle,
+      uClass: options.uClass != null ? options.uClass : base.uClass,
+   };
+};
+
+/**
+ * 隐藏通知并清理计时器
+ * @returns null
+ */
+const clearTimer = (): void => {
+   isShow.value = false;
+   if (timer != null) {
+      clearTimeout(timer);
+      timer = null;
+   }
+};
+
+/**
+ * 自动关闭当前通知
+ * @returns null
+ */
+const handleTimeout = (): void => {
+   const complete = activeConfig.value.complete;
+   clearTimer();
+   emit("close");
+   if (complete != null) complete();
+};
+
+/**
+ * 显示通知
+ * @param options 本次显示配置
+ * @returns null
+ */
+const show = (options: Options | null = null): void => {
+   clearTimer();
+   activeConfig.value = getActiveConfig(options);
+   isShow.value = true;
+   emit("open");
+   if (activeConfig.value.duration > 0) {
+      timer = setTimeout((): void => {
+         handleTimeout();
+      }, activeConfig.value.duration);
+   }
+};
+
+/**
+ * 手动关闭通知
+ * @returns null
+ */
+const close = (): void => {
+   clearTimer();
+   emit("close");
+};
+
+/**
+ * 显示主要通知
+ * @param message 通知内容
+ * @returns null
+ */
+const primary = (message: string): void => {
+   show({ type: "primary", message: message });
+};
+
+/**
+ * 显示成功通知
+ * @param message 通知内容
+ * @returns null
+ */
+const success = (message: string): void => {
+   show({ type: "success", message: message });
+};
+
+/**
+ * 显示失败通知
+ * @param message 通知内容
+ * @returns null
+ */
+const error = (message: string): void => {
+   show({ type: "error", message: message });
+};
+
+/**
+ * 显示警告通知
+ * @param message 通知内容
+ * @returns null
+ */
+const warning = (message: string): void => {
+   show({ type: "warning", message: message });
+};
+
+/**
+ * 获取默认语义图标
+ * @returns 图标名称
+ */
+const iconName = computed((): string => {
+   if (activeConfig.value.type == "success") return "checkmark-circle";
+   if (activeConfig.value.type == "error") return "close-circle";
+   if (activeConfig.value.type == "warning") return "error-circle";
+   return "info-circle";
+});
+
+/**
+ * 获取默认图标大小
+ * @returns 图标大小
+ */
+const iconSize = computed((): number => {
+   const fontSize = parseFloat(activeConfig.value.fontSize.toString());
+   return Number.isNaN(fontSize) ? 19.5 : fontSize * 1.3;
+});
+
+/**
+ * 获取固定定位样式
+ * @returns UTSJSONObject
+ */
+const wrapperStyle = computed((): UTSJSONObject => {
+   let top: string | number = activeConfig.value.top;
+   // #ifdef WEB
+   if (parseFloat(top.toString()) == 0) top = 44;
+   // #endif
+   return {
+      "position": "fixed",
+      "top": $uvx.format.unit(top),
+      "left": 0,
+      "right": 0,
+      "z-index": config.zIndex,
+   };
+});
+
+/**
+ * 获取通知内容样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(activeConfig.value.bgColor)) {
+      style.set("background-color", activeConfig.value.bgColor);
+   }
+   if ($uvx.string.empty(activeConfig.value.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(activeConfig.value.uStyle));
+});
+
+/**
+ * 获取通知文字样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   return {
+      "color": activeConfig.value.color,
+      "font-size": $uvx.format.unit(activeConfig.value.fontSize),
+   };
+});
+
+defineExpose({ show, close, primary, success, error, warning });
+
+onUnmounted((): void => {
+   clearTimer();
+});
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 顶部通知容器
+.uvx-notify {
+   display: flex;
+   flex-direction: column;
+   box-sizing: border-box;
+   width: 100%;
+   padding: 8px 10px;
+
+   // 主要主题
+   &--primary {
+      background-color: var(--uvx-primary);
+   }
+
+   // 成功主题
+   &--success {
+      background-color: var(--uvx-success);
+   }
+
+   // 失败主题
+   &--error {
+      background-color: var(--uvx-error);
+   }
+
+   // 警告主题
+   &--warning {
+      background-color: var(--uvx-warning);
+   }
+
+   // 通知内容行
+   &__wrapper {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+   }
+
+   // 通知文字
+   &__text {
+      text-align: center;
+   }
+}
+</style>

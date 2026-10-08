@@ -1,0 +1,35 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+export type Value = string | number;
+
+export type Props = {
+   value: Value;
+   safeAreaInsetBottom: boolean;
+   border: boolean;
+   zIndex: string | number;
+   activeColor: string;
+   inactiveColor: string;
+   fixed: boolean;
+   placeholder: boolean;
+   iconSize: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Config = {
+   value: Value;
+   activeColor: string;
+   inactiveColor: string;
+   iconSize: string | number;
+};
+
+export type Emits = {
+   change: [value: Value];
+};
+
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   select: (value: Value) => void;
+};

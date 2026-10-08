@@ -1,0 +1,47 @@
+export type Name = string | number;
+export type Status = "open" | "close";
+export type Direction = "" | "horizontal" | "vertical";
+
+export type OptionStyle = {
+   backgroundColor?: string;
+   color?: string;
+   fontSize?: string | number;
+   width?: string | number;
+   height?: string | number;
+   borderRadius?: string | number;
+   margin?: string;
+   padding?: string;
+};
+
+export type Option = {
+   text?: string;
+   icon?: string;
+   iconSize?: string | number;
+   style?: OptionStyle;
+};
+
+export type Props = {
+   show: boolean;
+   name: Name;
+   disabled: boolean;
+   autoClose: boolean;
+   threshold: number;
+   options: Option[];
+   duration: string | number;
+};
+
+export type StateEvent = {
+   name: Name;
+};
+
+export type ClickEvent = {
+   item: Option;
+   index: number;
+   name: Name;
+};
+
+export type Emits = {
+   click: [event: ClickEvent];
+   open: [event: StateEvent];
+   close: [event: StateEvent];
+};

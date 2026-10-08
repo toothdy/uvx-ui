@@ -1,0 +1,456 @@
+<template>
+   <view class="uvx-input" :class="[inputClasses, uClass]" :style="wrapperStyle">
+      <!-- 前置图标与插槽 -->
+      <view v-if="!$uvx.string.empty(prefixIcon)" class="uvx-input__prefix">
+         <uvx-icon :name="prefixIcon" size="22" :u-style="prefixIconStyle" />
+      </view>
+      <view class="uvx-input__slot uvx-input__slot--prefix">
+         <slot name="prefix"></slot>
+      </view>
+      <input
+         ref="inputRef"
+         class="uvx-input__native"
+         :value="innerValue"
+         :style="nativeStyle"
+         :type="nativeType"
+         :password="password || type == 'password'"
+         :disabled="disabled || readonly"
+         :focus="focus"
+         :placeholder="placeholder"
+         :placeholder-class="placeholderClass"
+         :placeholder-style="placeholderStyleText"
+         :maxlength="maxlength"
+         <!-- #ifdef MP-WEIXIN || APP-ANDROID || APP-IOS -->
+         :cursor-spacing="cursorSpacing"
+         <!-- #endif -->
+         :confirm-type="confirmType"
+         :confirm-hold="confirmHold"
+         :cursor="cursor"
+         :selection-start="selectionStart"
+         :selection-end="selectionEnd"
+         <!-- #ifdef MP-WEIXIN || APP -->
+         :adjust-position="adjustPosition"
+         <!-- #endif -->
+         <!-- #ifdef MP-WEIXIN || APP-ANDROID || APP-IOS || (APP-HARMONY && !VUE3-VAPOR) -->
+         :hold-keyboard="holdKeyboard"
+         <!-- #endif -->
+         @input="handleInput"
+         @focus="handleFocus"
+         @blur="handleBlur"
+         @confirm="handleConfirm"
+         <!-- #ifdef MP-WEIXIN || APP -->
+         @keyboardheightchange="handleKeyboardHeightChange"
+         <!-- #endif -->
+      />
+      <!-- 延迟失焦时保留清除按钮，兼容先 blur 后 click 的事件顺序 -->
+      <view v-if="showClear" class="uvx-input__clear" @click.stop="handleClear">
+         <uvx-icon name="close-circle-fill" size="20" />
+      </view>
+      <view class="uvx-input__slot uvx-input__slot--suffix">
+         <slot name="suffix"></slot>
+      </view>
+      <view v-if="!$uvx.string.empty(suffixIcon)" class="uvx-input__suffix">
+         <uvx-icon :name="suffixIcon" :u-style="suffixIconStyle" />
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-input 输入框
+ * @description 单行输入组件，支持双向绑定、清空、密码、格式化和前后缀插槽。
+ * @tutorial https://www.uvxui.cn/components/input.html
+ * @property {String | Number} value 输入框值
+ * @property {String | Number} modelValue v-model 值
+ * @property {String} type 输入类型：text、number、idcard、digit、tel、email、url、none、password；safe-password、nickname 仅微信小程序
+ * @property {Boolean} disabled 是否禁用
+ * @property {String} disabledColor 禁用背景色
+ * @property {Boolean} clearable 聚焦且有内容时显示清除按钮
+ * @property {Boolean} password 是否使用密码模式
+ * @property {Number} maxlength 最大长度，-1 表示不限制
+ * @property {String} placeholder 占位文字
+ * @property {String} placeholderClass 占位文字样式类
+ * @property {String} placeholderStyle 占位文字样式
+ * @property {String} confirmType 键盘确认按钮类型
+ * @property {Boolean} confirmHold 确认后保持键盘
+ * @property {Boolean} holdKeyboard 点击页面时是否保持键盘
+ * @property {Boolean} focus 是否自动聚焦
+ * @property {Number} cursor 光标位置
+ * @property {Number} cursorSpacing 光标与键盘距离
+ * @property {Number} selectionStart 选区起点
+ * @property {Number} selectionEnd 选区终点
+ * @property {Boolean} adjustPosition 键盘弹出时调整页面
+ * @property {String} inputAlign 对齐方式：left、center、right
+ * @property {String | Number} fontSize 字体大小
+ * @property {String} color 字体颜色
+ * @property {String} prefixIcon 前缀图标
+ * @property {String} prefixIconStyle 前缀图标样式
+ * @property {String} suffixIcon 后缀图标
+ * @property {String} suffixIconStyle 后缀图标样式
+ * @property {String} border 边框：surround、bottom、none
+ * @property {Boolean} readonly 是否只读，禁止编辑但不改变背景色
+ * @property {String} shape 形状：square、circle
+ * @property {Function} formatter 输入格式化函数，小程序使用 setFormatter
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @method setFormatter 设置格式化函数，小程序通过组件实例调用
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 输入事件
+ * @event {Function} change 内容变化事件
+ * @event {Function} focus 聚焦事件
+ * @event {Function} blur 失焦事件
+ * @event {Function} confirm 键盘确认事件
+ * @event {Function} clear 清空事件
+ * @event {Function} keyboardheightchange 键盘高度变化事件
+ */
+ 
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import { toScale } from "../../core/size";
+import type { Props, Formatter, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-input", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: "",
+   modelValue: "",
+   type: "text",
+   disabled: false,
+   disabledColor: "",
+   clearable: false,
+   password: false,
+   maxlength: -1,
+   placeholder: "",
+   placeholderClass: "uvx-input-placeholder",
+   placeholderStyle: "",
+   confirmType: "done",
+   confirmHold: false,
+   holdKeyboard: false,
+   focus: false,
+   cursor: -1,
+   cursorSpacing: 30,
+   selectionStart: -1,
+   selectionEnd: -1,
+   adjustPosition: true,
+   inputAlign: "left",
+   fontSize: 14,
+   color: "",
+   prefixIcon: "",
+   prefixIconStyle: "",
+   suffixIcon: "",
+   suffixIconStyle: "",
+   border: "surround",
+   readonly: false,
+   shape: "square",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 输入事件，输入值统一为字符串 */
+const emit = defineEmits<Emits>();
+
+// 实际显示的输入值
+const innerValue = ref("");
+// 聚焦状态，失焦后稍后隐藏清除按钮
+const isFocused = ref(false);
+// 通过实例设置的格式化函数
+let localFormatter: Formatter | null = null;
+// 输入修订号，避免延迟任务覆盖新输入或外部赋值
+let revision = 0;
+// 聚焦修订号，避免旧失焦任务影响再次聚焦
+let focusSerial = 0;
+
+/**
+ * 生成边框、形状和禁用类名
+ * @returns string[]
+ */
+const inputClasses = computed((): string[] => {
+   const values: UTSJSONObject = { border: props.border, shape: props.shape, disabled: props.disabled };
+   return $uvx.style.bem("input", values, ["border", "shape"], ["disabled"]);
+});
+
+/**
+ * 是否显示清除按钮
+ * @returns boolean
+ */
+const showClear = computed((): boolean => {
+   return props.clearable && isFocused.value && !$uvx.string.empty(innerValue.value) && !props.disabled && !props.readonly;
+});
+
+// 原生输入元素
+const inputRef = ref<UniInputElement | null>(null);
+
+/**
+ * 输入文本颜色
+ * @returns string
+ */
+const inputColor = computed((): string => {
+   return !$uvx.string.empty(props.color) ? props.color : (isDark.value ? "#f5f5f5" : "#303133");
+});
+
+/**
+ * 将密码简写及平台专属类型转换为原生类型
+ * @returns string
+ */
+const nativeType = computed((): string => {
+   if (props.type == "password") return "text";
+   // #ifndef MP-WEIXIN
+   if (props.type == "safe-password" || props.type == "nickname") return "text";
+   // #endif
+   return props.type;
+});
+
+/**
+ * 转换原生占位样式为字符串
+ * @returns string
+ */
+const placeholderStyleText = computed((): string => {
+   return props.placeholderStyle;
+});
+
+/**
+ * 外层背景及自定义样式
+ * @returns UTSJSONObject
+ */
+const wrapperStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (props.disabled && !$uvx.string.empty(props.disabledColor)) style.set("background-color", props.disabledColor);
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 文本样式直接设置到 input，避免依赖 App 不支持的样式继承
+ * @returns UTSJSONObject
+ */
+const nativeStyle = computed((): UTSJSONObject => {
+   const size = typeof props.fontSize == "number" ? toScale(props.fontSize) : props.fontSize;
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(size),
+      "text-align": props.inputAlign,
+      "color": inputColor.value,
+   };
+   return style;
+});
+
+// #ifdef APP
+/**
+ * App 蒸汽模式下直接同步原生输入框颜色
+ * @param value 当前输入文字颜色
+ * @returns null
+ */
+watch(inputColor, (value: string): void => {
+   inputRef.value?.style.setProperty("color", value);
+});
+// #endif
+
+/**
+ * 外部输入值，v-model 优先于 value，数字 0 不作为空值
+ * @returns string
+ */
+const externalValue = computed((): string => {
+   if (!$uvx.string.empty(props.modelValue) || $uvx.string.empty(props.value)) return props.modelValue.toString();
+   return props.value.toString();
+});
+
+/**
+ * 外部更新只同步显示，不回发 change
+ * @param value 外部输入值
+ * @returns null
+ */
+watch(externalValue, (value: string): void => {
+   revision++;
+   innerValue.value = value;
+}, { immediate: true });
+
+/**
+ * 发布用户输入
+ * @param value 最终输入值
+ * @returns null
+ */
+const emitValue = (value: string): void => {
+   emit("update:modelValue", value);
+   emit("input", value);
+   emit("change", value);
+};
+
+/**
+ * 输入格式化，同步原生显示与双向绑定
+ * @param event 原生输入事件
+ * @returns null
+ */
+const handleInput = (event: UniInputEvent): void => {
+   if (props.disabled || props.readonly) return;
+   revision++;
+   const currentRevision = revision;
+   const raw = event.detail.value;
+   let value = raw;
+   if (localFormatter != null) {
+      value = localFormatter(raw);
+   } else if (props.formatter != null) {
+      value = props.formatter(raw);
+   }
+   innerValue.value = raw;
+   if (raw == value) {
+      emitValue(value);
+      return;
+   }
+   // 先提交原始值，过滤后即使与旧值相同，也能触发原生视图更新。
+   nextTick((): void => {
+      if (revision != currentRevision) return;
+      innerValue.value = value;
+      emitValue(value);
+   });
+};
+
+/**
+ * 标记聚焦
+ * @returns null
+ */
+const handleFocus = (): void => {
+   focusSerial++;
+   isFocused.value = true;
+   emit("focus");
+};
+
+/**
+ * 延迟隐藏清除按钮，允许失焦后的点击完成
+ * @returns null
+ */
+const handleBlur = async (): Promise<void> => {
+   const serial = ++focusSerial;
+   emit("blur", innerValue.value);
+   await $uvx.sleep(100);
+   if (serial == focusSerial) isFocused.value = false;
+};
+
+/**
+ * 确认当前值
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   emit("confirm", innerValue.value);
+};
+
+/**
+ * 转发键盘高度变化
+ * @param event 原生键盘事件
+ * @returns null
+ */
+const handleKeyboardHeightChange = (event: UniInputKeyboardHeightChangeEvent): void => {
+   emit("keyboardheightchange", event);
+};
+
+/**
+ * 清空输入并同步绑定值
+ * @returns null
+ */
+const handleClear = (): void => {
+   if (!showClear.value) return;
+   revision++;
+   innerValue.value = "";
+   emitValue("");
+   emit("clear");
+};
+
+/**
+ * 设置实例格式化函数，设置输入格式化函数
+ * @param formatter 格式化函数
+ * @returns null
+ */
+const setFormatter = (formatter: Formatter): void => {
+   localFormatter = formatter;
+};
+
+defineExpose({ setFormatter });
+
+/**
+ * 卸载后使等待中的输入与失焦任务失效
+ * @returns null
+ */
+onUnmounted((): void => {
+   revision++;
+   focusSerial++;
+});
+</script>
+
+<style lang="scss">
+// 输入框布局及边框
+.uvx-input {
+   display: flex;
+   flex: 1;
+   flex-direction: row;
+   align-items: center;
+   min-width: 0;
+   padding: 6px 9px;
+   border-radius: 4px;
+
+   &--surround {
+      border-width: 1px;
+      border-style: solid;
+      border-color: var(--uvx-border);
+   }
+
+   &--bottom {
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+      border-radius: 0;
+   }
+
+   &--none {
+      padding: 0;
+      background-color: transparent;
+   }
+
+   &--circle {
+      border-radius: 100px;
+   }
+
+   &--disabled {
+      background-color: var(--uvx-disabled);
+   }
+
+   // 原生输入框必须有明确高度，文字样式不可依赖父级继承
+   &__native {
+      flex: 1;
+      min-width: 0;
+      height: 24px;
+      padding: 0;
+   }
+
+   &__prefix {
+      margin-right: 5px;
+   }
+
+   // 前后插槽统一为不拉伸的水平容器
+   &__slot {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+
+      &--prefix {
+         margin-right: 5px;
+      }
+
+      &--suffix {
+         margin-left: 5px;
+      }
+   }
+
+   &__suffix {
+      margin-left: 5px;
+   }
+
+   &__clear {
+      margin-left: 5px;
+      flex-shrink: 0;
+   }
+}
+
+// 默认占位文字颜色
+.uvx-input-placeholder {
+   color: var(--uvx-text-placeholder);
+}
+</style>

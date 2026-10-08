@@ -1,0 +1,169 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content code-demo-content">
+               <uvx-code
+                  ref="uCode"
+                  :seconds="20"
+                  change-text="XS获取"
+                  @change="onChange"
+                  @start="onStart"
+                  @end="onEnd"
+               ></uvx-code>
+               <uvx-button
+                  :text="tips"
+                  type="success"
+                  size="small"
+                  :disabled="isLoading"
+                  @click="getCode"
+               ></uvx-button>
+            </view>
+         </view>
+         <!-- 保持倒计时 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="保持倒计时（离开页面后重新进入仍会继续）"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content code-demo-content">
+               <uvx-code
+                  ref="uKeepCode"
+                  :seconds="20"
+                  keep-running
+                  unique-key="demo-keep-code"
+                  change-text="倒计时XS"
+                  @change="onKeepChange"
+                  @start="onKeepStart"
+                  @end="onKeepEnd"
+               ></uvx-code>
+               <uvx-button
+                  :text="keepTips"
+                  type="primary"
+                  size="small"
+                  :disabled="isKeepLoading"
+                  @click="getKeepCode"
+               ></uvx-button>
+            </view>
+         </view>
+         <!-- 文本样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="文本样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content code-demo-content">
+               <uvx-code
+                  ref="uTextCode"
+                  :seconds="20"
+                  start-text="点我获取验证码"
+                  @change="onTextChange"
+               ></uvx-code>
+               <uvx-text
+                  type="primary"
+                  :text="textTips"
+                  u-style="margin-left: 8px; font-size: 15px;"
+                  @click="getTextCode"
+               ></uvx-text>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { $uvx } from "@/uni_modules/uvx-ui/index.uts";
+
+// 基础倒计时提示
+const tips = ref("获取验证码");
+// 保持倒计时提示
+const keepTips = ref("获取验证码");
+// 文本倒计时提示
+const textTips = ref("点我获取验证码");
+// 基础按钮状态
+const isLoading = ref(false);
+// 保持倒计时按钮状态
+const isKeepLoading = ref(false);
+// 组件实例
+const uCode = ref<UvxCodeComponentPublicInstance | null>(null);
+const uKeepCode = ref<UvxCodeComponentPublicInstance | null>(null);
+const uTextCode = ref<UvxCodeComponentPublicInstance | null>(null);
+
+/**
+ * 更新基础提示
+ * @param value 倒计时文字
+ * @returns null
+ */
+const onChange = (value: string): void => { tips.value = value; };
+/**
+ * 更新保持倒计时提示
+ * @param value 倒计时文字
+ * @returns null
+ */
+const onKeepChange = (value: string): void => { keepTips.value = value; };
+/**
+ * 更新文本倒计时提示
+ * @param value 倒计时文字
+ * @returns null
+ */
+const onTextChange = (value: string): void => { textTips.value = value; };
+/**
+ * 开始基础倒计时
+ * @returns null
+ */
+const onStart = (): void => { isLoading.value = true; };
+/**
+ * 结束基础倒计时
+ * @returns null
+ */
+const onEnd = (): void => { isLoading.value = false; };
+/**
+ * 开始保持倒计时
+ * @returns null
+ */
+const onKeepStart = (): void => { isKeepLoading.value = true; };
+/**
+ * 结束保持倒计时
+ * @returns null
+ */
+const onKeepEnd = (): void => { isKeepLoading.value = false; };
+
+/**
+ * 模拟发送验证码并开始倒计时
+ * @returns null
+ */
+const getCode = async (): Promise<void> => {
+   if (uCode.value == null || !uCode.value.canGetCode) return;
+   await $uvx.sleep(500);
+   uCode.value.start();
+};
+/**
+ * 模拟发送并开始保持倒计时
+ * @returns null
+ */
+const getKeepCode = async (): Promise<void> => {
+   if (uKeepCode.value == null || !uKeepCode.value.canGetCode) return;
+   await $uvx.sleep(500);
+   uKeepCode.value.start();
+};
+/**
+ * 开始文本倒计时
+ * @returns null
+ */
+const getTextCode = (): void => {
+   if (uTextCode.value != null && uTextCode.value.canGetCode) uTextCode.value.start();
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 同一行展示倒计时按钮和提示文字
+.code-demo-content {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+}
+</style>

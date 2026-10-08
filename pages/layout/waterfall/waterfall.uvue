@@ -1,0 +1,258 @@
+<template>
+   <uvx-page direction="none">
+      <view class="waterfall-demo">
+         <!-- 瀑布流内容 -->
+         <uvx-waterfall
+            ref="uWaterfall"
+            v-model="items"
+            height-key="height"
+            :column-count="2"
+            :column-gap="10"
+            :row-gap="10"
+            :left-gap="12"
+            :right-gap="12"
+            :lower-threshold="80"
+            :load-status="loadStatus"
+            u-style="flex: 1;"
+            @loadmore="handleLoadMore"
+         >
+            <template #default="{ item, index }">
+               <view
+                  class="waterfall-demo__card"
+                  @longpress="handleLongPress(item)"
+               >
+                  <image
+                     class="waterfall-demo__image"
+                     :src="item.image"
+                     :style="item.imageStyle"
+                     mode="aspectFill"
+                  />
+                  <view class="waterfall-demo__body">
+                     <text class="waterfall-demo__title" :max-lines="1">{{ item.title }}</text>
+                     <text class="waterfall-demo__description" :max-lines="2">{{ item.description }}</text>
+                     <text class="waterfall-demo__index">#{{ index + 1 }}</text>
+                  </view>
+               </view>
+            </template>
+         </uvx-waterfall>
+      </view>
+
+      <!-- 删除确认框 -->
+      <uvx-modal
+         ref="uDeleteModal"
+         title="提示"
+         content="确定删除该项吗？"
+         :show-cancel-button="true"
+         @confirm="handleDeleteConfirm"
+      ></uvx-modal>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Status } from "@/uni_modules/uvx-ui/components/uvx-load-more/types/index.uts";
+import type { Item } from "@/uni_modules/uvx-ui/components/uvx-waterfall/types/index.uts";
+
+// 卡片图片
+const IMAGE_URLS: string[] = [
+   "https://cdn.uviewui.com/uview/album/1.jpg",
+   "https://cdn.uviewui.com/uview/album/2.jpg",
+   "https://cdn.uviewui.com/uview/album/3.jpg",
+   "https://cdn.uviewui.com/uview/album/4.jpg",
+   "https://cdn.uviewui.com/uview/album/5.jpg",
+   "https://cdn.uviewui.com/uview/album/6.jpg",
+   "https://cdn.uviewui.com/uview/album/7.jpg",
+   "https://cdn.uviewui.com/uview/album/8.jpg",
+];
+
+// 卡片图片高度
+const IMAGE_HEIGHTS: number[] = [132, 188, 154, 210, 170, 144, 198, 162];
+
+// 卡片标题
+const ITEM_TITLES: string[] = [
+   "探索城市的新鲜角落",
+   "记录旅途中的灵感",
+   "让内容自然流动",
+   "高低错落的卡片布局",
+   "适合图片与文章混排",
+   "多端一致的瀑布流体验",
+];
+
+// 卡片描述
+const ITEM_DESCRIPTIONS: string[] = [
+   "App 端由原生 waterflow 自动排版并回收屏外节点。",
+   "Web 和微信端根据高度元数据分配到当前最短列。",
+   "作用域插槽提供 item 和 index，内容完全由使用方定义。",
+];
+
+// 瀑布流组件实例
+const uWaterfall = ref<UvxWaterfallComponentPublicInstance | null>(null);
+// 删除确认框实例
+const uDeleteModal = ref<UvxModalComponentPublicInstance | null>(null);
+// 待删除数据标识
+const pendingDeleteId = ref<number | null>(null);
+// 瀑布流数据
+const items = ref<Item[]>([]);
+// 加载状态
+const loadStatus = ref<Status>("loadmore");
+// 下一个数据标识
+let nextId = 1;
+// 触底加载计时器
+let loadTimer = 0;
+
+/**
+ * 创建瀑布流数据
+ * @param count 创建数量
+ * @returns Item[]
+ */
+const createItems = (count: number): Item[] => {
+   const result: Item[] = [];
+   for (let index = 0; index < count; index++) {
+      const id = nextId;
+      const assetIndex = (id - 1) % IMAGE_URLS.length;
+      const imageHeight = IMAGE_HEIGHTS[assetIndex];
+      result.push({
+         "id": id,
+         "image": IMAGE_URLS[assetIndex],
+         "imageHeight": imageHeight,
+         "imageStyle": `height: ${imageHeight}px;`,
+         "height": imageHeight + 90,
+         "title": ITEM_TITLES[(id - 1) % ITEM_TITLES.length],
+         "description": ITEM_DESCRIPTIONS[(id - 1) % ITEM_DESCRIPTIONS.length],
+      });
+      nextId = nextId + 1;
+   }
+   return result;
+};
+
+/**
+ * 追加瀑布流数据
+ * @param count 追加数量
+ * @returns null
+ */
+const appendItems = (count: number): void => {
+   const nextItems = createItems(count);
+   for (let index = 0; index < nextItems.length; index++) {
+      items.value.push(nextItems[index]);
+   }
+};
+
+/**
+ * 长按确认删除数据项
+ * @param item 瀑布流数据项
+ * @returns null
+ */
+const handleLongPress = (item: Item): void => {
+   pendingDeleteId.value = item.id as number;
+   uDeleteModal.value?.open();
+};
+
+/**
+ * 确认删除数据项
+ * @returns null
+ */
+const handleDeleteConfirm = (): void => {
+   if (pendingDeleteId.value == null) return;
+   uWaterfall.value?.remove(pendingDeleteId.value);
+   pendingDeleteId.value = null;
+};
+
+/**
+ * 加载更多瀑布流数据
+ * @returns null
+ */
+const handleLoadMore = (): void => {
+   loadStatus.value = "loading";
+   loadTimer = setTimeout((): void => {
+      appendItems(6);
+      loadStatus.value = "loadmore";
+      loadTimer = 0;
+   }, 500);
+};
+
+// #ifdef MP-WEIXIN
+/** 微信页面触底后加载更多瀑布流数据 */
+onReachBottom((): void => {
+   handleLoadMore();
+});
+// #endif
+
+/** 页面挂载后创建首批数据 */
+onMounted((): void => {
+   items.value = createItems(16);
+});
+
+/** 页面卸载时清理加载计时器 */
+onUnmounted((): void => {
+   if (loadTimer != 0) clearTimeout(loadTimer);
+});
+</script>
+
+<style lang="scss">
+// 瀑布流演示页
+// WEB 端 uvx-page 高度不定(仅 min-height),flex: 1 的百分比 basis 会退化为内容高度
+// 覆盖 height,导致 scroll-view 被撑开、内部不滚动、scrolltolower 不触发,
+// 因此 WEB 端不使用 flex: 1,仅靠确定高度约束内部滚动
+.waterfall-demo {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   background-color: var(--uvx-page);
+   /* #ifndef WEB */
+   flex: 1;
+   /* #endif */
+   /* #ifdef WEB */
+   height: calc(100vh - 44px);
+   /* #endif */
+   /* #ifdef MP */
+   height: 100vh;
+   /* #endif */
+}
+
+// 瀑布流卡片
+.waterfall-demo__card {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   overflow: hidden;
+   border-radius: 6px;
+   background-color: var(--uvx-container);
+}
+
+// 卡片图片
+.waterfall-demo__image {
+   width: 100%;
+}
+
+// 卡片文字区
+.waterfall-demo__body {
+   display: flex;
+   flex-direction: column;
+   height: 90px;
+   padding: 9px 10px;
+   box-sizing: border-box;
+}
+
+// 卡片标题
+.waterfall-demo__title {
+   color: var(--uvx-text-main);
+   font-size: 14px;
+   font-weight: 600;
+   line-height: 1.2em;
+}
+
+// 卡片描述
+.waterfall-demo__description {
+   margin-top: 5px;
+   color: var(--uvx-text-content);
+   font-size: 12px;
+   line-height: 1.2em;
+}
+
+// 卡片序号
+.waterfall-demo__index {
+   margin-top: auto;
+   color: var(--uvx-text-tips);
+   font-size: 11px;
+   line-height: 1.2em;
+}
+</style>

@@ -1,0 +1,42 @@
+export type Mode = "text" | "price" | "phone" | "name" | "date" | "link";
+export type Decoration = "none" | "underline" | "line-through";
+export type Align = "left" | "center" | "right";
+export type WordWrap = "break-word" | "normal" | "anywhere";
+export type Lines = 0 | 1 | 2 | 3 | 4 | 5;
+
+export type Props = {
+   type: "primary" | "success" | "warning" | "error" | "info" | "main" | "content" | "tips" | string;
+   show: boolean;
+   text: string;
+   prefixIcon: string;
+   suffixIcon: string;
+   mode: Mode;
+   href: string;
+   format: string;
+   call: boolean;
+   openType: "getPhoneNumber" | "getUserInfo" | "contact" | "launchApp" | "openSetting" | "chooseAvatar" | "share" | string;
+   bold: boolean;
+   block: boolean;
+   lines: Lines;
+   color: string;
+   size: string | number;
+   iconStyle: string;
+   decoration: Decoration;
+   margin: string | number;
+   lineHeight: string;
+   align: Align;
+   wordWrap: WordWrap;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [];
+   getphonenumber: [event: UniEvent];
+   getuserinfo: [event: UniEvent];
+   error: [event: UniEvent];
+   opensetting: [event: UniEvent];
+   launchapp: [event: UniEvent];
+   contact: [event: UniEvent];
+   chooseavatar: [event: UniEvent];
+};

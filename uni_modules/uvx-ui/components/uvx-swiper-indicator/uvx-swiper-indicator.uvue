@@ -1,0 +1,173 @@
+<template>
+   <view
+      class="uvx-swiper-indicator"
+      :class="[uClass]"
+      :style="$uvx.style.parse(uStyle)"
+   >
+      <!-- 线型指示器 -->
+      <view
+         v-if="indicatorMode == 'line'"
+         class="uvx-swiper-indicator__line"
+         :style="lineTrackStyle"
+      >
+         <view
+            class="uvx-swiper-indicator__line-bar"
+            :style="lineBarStyle"
+         ></view>
+      </view>
+
+      <!-- 点型指示器 -->
+      <view v-else class="uvx-swiper-indicator__dots">
+         <view
+            v-for="(_, index) in lengthValue"
+            :key="index"
+            class="uvx-swiper-indicator__dot"
+            :class="{ 'uvx-swiper-indicator__dot--active': index == currentValue }"
+            :style="getDotStyle(index)"
+         ></view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-swiper-indicator 轮播指示器
+ * @description 为 uvx-swiper 提供线型和点型指示器。
+ * @tutorial https://www.uvxui.cn/components/swiper.html
+ * @property {String | Number} length 轮播项数量
+ * @property {String | Number} current 当前激活索引
+ * @property {String} indicatorActiveColor 激活颜色，空值时跟随主题主色
+ * @property {String} indicatorInactiveColor 未激活颜色，空值时跟随主题弱化色
+ * @property {String} indicatorMode 指示器模式：line、dot
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-swiper-indicator", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   length: 0,
+   current: 0,
+   indicatorActiveColor: "",
+   indicatorInactiveColor: "",
+   indicatorMode: "line",
+   uStyle: "",
+   uClass: "",
+});
+
+// 单段线型指示器宽度
+const LINE_WIDTH = 22;
+
+/**
+ * 轮播项数量
+ * @returns number
+ */
+const lengthValue = computed((): number => {
+   return Math.max(0, Number(props.length));
+});
+
+/**
+ * 当前激活索引
+ * @returns number
+ */
+const currentValue = computed((): number => {
+   return Math.max(0, Number(props.current));
+});
+
+/**
+ * 线型指示器轨道样式
+ * @returns UTSJSONObject
+ */
+const lineTrackStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": `${LINE_WIDTH * lengthValue.value}px`,
+   };
+   if (!$uvx.string.empty(props.indicatorInactiveColor)) {
+      style.set("background-color", props.indicatorInactiveColor);
+   }
+   return style;
+});
+
+/**
+ * 线型指示器活动条样式
+ * @returns UTSJSONObject
+ */
+const lineBarStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": `${LINE_WIDTH}px`,
+      "transform": `translateX(${currentValue.value * LINE_WIDTH}px)`,
+   };
+   if (!$uvx.string.empty(props.indicatorActiveColor)) {
+      style.set("background-color", props.indicatorActiveColor);
+   }
+   return style;
+});
+
+/**
+ * 获取点型指示器样式
+ * @param index 指示器索引
+ * @returns UTSJSONObject
+ */
+const getDotStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": index == currentValue.value ? "12px" : "5px",
+   };
+   const color = index == currentValue.value
+      ? props.indicatorActiveColor
+      : props.indicatorInactiveColor;
+   if (!$uvx.string.empty(color)) style.set("background-color", color);
+   return style;
+};
+</script>
+
+<style lang="scss">
+// 轮播指示器
+.uvx-swiper-indicator {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+
+   // 线型轨道
+   &__line {
+      height: 4px;
+      overflow: hidden;
+      background-color: var(--uvx-text-placeholder);
+      border-radius: 100px;
+   }
+
+   // 线型活动条
+   &__line-bar {
+      height: 4px;
+      background-color: var(--uvx-primary);
+      border-radius: 100px;
+      transition-property: transform;
+      transition-duration: 300ms;
+   }
+
+   // 点型列表
+   &__dots {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 单个圆点
+   &__dot {
+      height: 5px;
+      margin: 0 4px;
+      background-color: var(--uvx-text-placeholder);
+      border-radius: 100px;
+      transition-property: width, background-color;
+      transition-duration: 300ms;
+
+      &--active {
+         background-color: var(--uvx-primary);
+      }
+   }
+}
+</style>

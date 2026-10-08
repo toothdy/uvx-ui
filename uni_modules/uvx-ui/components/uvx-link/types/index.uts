@@ -1,0 +1,15 @@
+export type Props = {
+   color: string;
+   fontSize: string | number;
+   underLine: boolean;
+   href: string;
+   mpTips: string;
+   lineColor: string;
+   text: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [];
+};

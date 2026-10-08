@@ -1,0 +1,674 @@
+<template>
+   <uvx-picker
+      ref="uPicker"
+      :columns="columns"
+      :default-index="defaultIndex"
+      :show-toolbar="showToolbar"
+      :title="title"
+      :loading="loading"
+      :item-height="itemHeight"
+      :visible-item-count="visibleItemCount"
+      :cancel-text="cancelText"
+      :confirm-text="confirmText"
+      :cancel-color="cancelColor"
+      :confirm-color="confirmColor"
+      :close-on-click-overlay="closeOnClickOverlay"
+      :close-on-click-confirm="closeOnClickConfirm"
+      :round="round"
+      :u-style="uStyle"
+      :u-class="uClass"
+      @close="handleClose"
+      @cancel="handleCancel"
+      @confirm="handleConfirm"
+      @change="handleChange"
+   ></uvx-picker>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-datetime-picker 时间日期选择器
+ * @description 基于 uvx-picker 的日期、时间滚轮选择器，支持边界、过滤和格式化。
+ * @tutorial https://www.uvxui.cn/components/datetime-picker.html
+ * @property {String | Number} value 绑定值，日期模式为时间戳，时间模式为 HH:mm
+ * @property {String | Number} modelValue v-model 绑定值
+ * @property {Boolean} showToolbar 是否显示顶部操作栏，默认 true
+ * @property {String} title 顶部标题
+ * @property {String} mode date、time、year-month、datetime 或 year，默认 datetime
+ * @property {Number} maxDate 可选的最大时间戳，默认当前时间后十年
+ * @property {Number} minDate 可选的最小时间戳，默认当前时间前十年
+ * @property {Number} minHour 时间模式的最小小时，默认 0
+ * @property {Number} maxHour 时间模式的最大小时，默认 23
+ * @property {Number} minMinute 时间模式的最小分钟，默认 0
+ * @property {Number} maxMinute 时间模式的最大分钟，默认 59
+ * @property {Function} filter 选项过滤函数
+ * @property {Function} formatter 选项格式化函数
+ * @property {Boolean} loading 是否显示加载状态，默认 false
+ * @property {Number} itemHeight 单个选项高度，默认 44
+ * @property {String} cancelText 取消按钮文字，默认 取消
+ * @property {String} confirmText 确认按钮文字，默认 确定
+ * @property {String} cancelColor 取消按钮颜色
+ * @property {String} confirmColor 确认按钮颜色
+ * @property {Number} visibleItemCount 每列可见选项数量，默认 5
+ * @property {Boolean} closeOnClickOverlay 是否允许点击遮罩关闭，默认 true
+ * @property {Boolean} closeOnClickConfirm 是否允许点击确认关闭，默认 true
+ * @property {Boolean} clearDate 是否不回写确认值，默认 false
+ * @property {String | Number} round 弹窗圆角
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @method open 打开选择器
+ * @method close 关闭选择器
+ * @method cancel 触发取消事件
+ * @method confirm 触发确认事件
+ * @method setFormatter 设置选项格式化函数
+ * @event {Function} close 关闭选择器时触发
+ * @event {Function} cancel 点击取消时触发
+ * @event {Function} confirm 点击确认时触发，参数为当前值和模式
+ * @event {Function} change 选择值变化时触发，参数为当前值和模式
+ * @event {Function} update:modelValue 确认后更新双向绑定值
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import type {
+   ChangeEvent as PickerChangeEvent,
+   Column,
+   Columns,
+} from "../uvx-picker/types/index.uts";
+import type {
+   ChangeEvent,
+   ColumnType,
+   ConfirmEvent,
+   Emits,
+   Filter,
+   Formatter,
+   Mode,
+   PickerValue,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-datetime-picker", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: "",
+   modelValue: "",
+   showToolbar: true,
+   title: "",
+   mode: "datetime",
+   maxDate: new Date(new Date().getFullYear() + 10, 0, 1).getTime(),
+   minDate: new Date(new Date().getFullYear() - 10, 0, 1).getTime(),
+   minHour: 0,
+   maxHour: 23,
+   minMinute: 0,
+   maxMinute: 59,
+   filter: null,
+   formatter: null,
+   loading: false,
+   itemHeight: 44,
+   cancelText: t("取消"),
+   confirmText: t("确定"),
+   cancelColor: "",
+   confirmColor: "",
+   visibleItemCount: 5,
+   closeOnClickOverlay: true,
+   closeOnClickConfirm: true,
+   clearDate: false,
+   round: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+const uPicker = ref<UvxPickerComponentPublicInstance | null>(null);
+const innerValue = ref<PickerValue>(props.minDate);
+const columns = ref<Columns>([]);
+const defaultIndex = ref<number[]>([]);
+let localFormatter: Formatter | null = null;
+
+type DateParts = {
+   year: number;
+   month: number;
+   day: number;
+   hour: number;
+   minute: number;
+};
+
+type DatetimeRange = {
+   type: ColumnType;
+   start: number;
+   end: number;
+};
+
+type DatetimeRawColumn = {
+   type: ColumnType;
+   values: string[];
+};
+
+/**
+ * 获取父组件传入的值，modelValue 优先于 value
+ * @returns PickerValue
+ */
+const getExternalValue = (): PickerValue => {
+   if (!$uvx.string.unset(props.modelValue) || $uvx.string.unset(props.value)) return props.modelValue;
+   return props.value;
+};
+
+/**
+ * 获取日期各部分
+ * @param timestamp 时间戳
+ * @returns DateParts
+ */
+const getDateParts = (timestamp: number): DateParts => {
+   const date = new Date(timestamp);
+   return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+   };
+};
+
+/**
+ * 获取指定年月的天数
+ * @param year 年
+ * @param month 月
+ * @returns number
+ */
+const getDaysInMonth = (year: number, month: number): number => {
+   return new Date(year, month, 0).getDate();
+};
+
+/**
+ * 将数字补齐为两位
+ * @param value 数字
+ * @returns string
+ */
+const pad = (value: number): string => {
+   return value < 10 ? `0${value}` : value.toString();
+};
+
+/**
+ * 解析日期模式的输入值
+ * @param value 外部值
+ * @returns number
+ */
+const parseDateValue = (value: PickerValue): number => {
+   let timestamp = 0;
+   if (typeof value == "number") {
+      timestamp = value;
+   } else if (value.trim() != "") {
+      const numericValue = Number(value);
+      timestamp = isNaN(numericValue) ? new Date(value).getTime() : numericValue;
+   }
+   if (isNaN(timestamp) || timestamp <= 0) timestamp = props.minDate;
+   return Math.min(props.maxDate, Math.max(props.minDate, timestamp));
+};
+
+/**
+ * 解析时间模式的输入值并限制边界
+ * @param value 外部值
+ * @returns string
+ */
+const parseTimeValue = (value: PickerValue): string => {
+   const source = value.toString();
+   const parts = source.split(":");
+   let hour = parts.length > 0 ? Number(parts[0]) : props.minHour;
+   let minute = parts.length > 1 ? Number(parts[1]) : props.minMinute;
+   if (isNaN(hour)) hour = props.minHour;
+   if (isNaN(minute)) minute = props.minMinute;
+   hour = Math.max(props.minHour, Math.min(props.maxHour, hour));
+   minute = Math.max(props.minMinute, Math.min(props.maxMinute, minute));
+   return `${pad(hour)}:${pad(minute)}`;
+};
+
+/**
+ * 规范化外部值
+ * @param value 外部值
+ * @returns PickerValue
+ */
+const normalizeValue = (value: PickerValue): PickerValue => {
+   return props.mode == "time" ? parseTimeValue(value) : parseDateValue(value);
+};
+
+/**
+ * 获取日期范围边界
+ * @param timestamp 当前时间戳
+ * @returns DateParts[]
+ */
+const getDateBoundaries = (timestamp: number): DateParts[] => {
+   const current = getDateParts(timestamp);
+   const min = getDateParts(props.minDate);
+   const max = getDateParts(props.maxDate);
+   return [current, min, max];
+};
+
+/**
+ * 获取日期模式的各列范围
+ * @param timestamp 当前时间戳
+ * @returns DatetimeRange[]
+ */
+const getDateRanges = (timestamp: number): DatetimeRange[] => {
+   const boundaries = getDateBoundaries(timestamp);
+   const current = boundaries[0];
+   const min = boundaries[1];
+   const max = boundaries[2];
+   let minMonth = 1;
+   let maxMonth = 12;
+   if (current.year == min.year) minMonth = min.month;
+   if (current.year == max.year) maxMonth = max.month;
+
+   let minDay = 1;
+   let maxDay = getDaysInMonth(current.year, current.month);
+   if (current.year == min.year && current.month == min.month) minDay = min.day;
+   if (current.year == max.year && current.month == max.month) maxDay = max.day;
+
+   const ranges: DatetimeRange[] = [
+      { type: "year", start: min.year, end: max.year },
+      { type: "month", start: minMonth, end: maxMonth },
+      { type: "day", start: minDay, end: maxDay },
+   ];
+   if (props.mode == "datetime") {
+      let minHour = 0;
+      let maxHour = 23;
+      if (current.year == min.year && current.month == min.month && current.day == min.day) {
+         minHour = min.hour;
+      }
+      if (current.year == max.year && current.month == max.month && current.day == max.day) {
+         maxHour = max.hour;
+      }
+      let minMinute = 0;
+      let maxMinute = 59;
+      if (minHour == current.hour && current.year == min.year && current.month == min.month && current.day == min.day) {
+         minMinute = min.minute;
+      }
+      if (maxHour == current.hour && current.year == max.year && current.month == max.month && current.day == max.day) {
+         maxMinute = max.minute;
+      }
+      ranges.push(
+         { type: "hour", start: minHour, end: maxHour },
+         { type: "minute", start: minMinute, end: maxMinute },
+      );
+   }
+   if (props.mode == "year") return ranges.slice(0, 1);
+   if (props.mode == "year-month") return ranges.slice(0, 2);
+   if (props.mode == "date") return ranges.slice(0, 3);
+   return ranges;
+};
+
+/**
+ * 获取时间模式的各列范围
+ * @returns DatetimeRange[]
+ */
+const getTimeRanges = (): DatetimeRange[] => {
+   return [
+      { type: "hour", start: props.minHour, end: props.maxHour },
+      { type: "minute", start: props.minMinute, end: props.maxMinute },
+   ];
+};
+
+/**
+ * 获取指定模式的原始列数据
+ * @param value 当前值
+ * @returns DatetimeRawColumn[]
+ */
+const getRawColumns = (value: PickerValue): DatetimeRawColumn[] => {
+   const ranges = props.mode == "time"
+      ? getTimeRanges()
+      : getDateRanges(value as number);
+   const result: DatetimeRawColumn[] = [];
+   for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i];
+      const values: string[] = [];
+      for (let item = range.start; item <= range.end; item++) {
+         values.push(range.type == "year" ? item.toString() : pad(item));
+      }
+      const filtered = props.filter == null ? values : props.filter(range.type, values);
+      result.push({ type: range.type, values: filtered });
+   }
+   return result;
+};
+
+/**
+ * 默认格式化选项
+ * @param type 列类型
+ * @param value 原始值
+ * @returns string
+ */
+const defaultFormatter = (type: ColumnType, value: string): string => {
+   return value;
+};
+
+/**
+ * 获取当前格式化函数
+ * @returns Formatter
+ */
+const getFormatter = (): Formatter => {
+   if (localFormatter != null) return localFormatter;
+   if (props.formatter != null) return props.formatter;
+   return defaultFormatter;
+};
+
+/**
+ * 获取格式化后的列数据
+ * @param value 当前值
+ * @returns Columns
+ */
+const getColumns = (value: PickerValue): Columns => {
+   const formatter = getFormatter();
+   const rawColumns = getRawColumns(value);
+   const result: Columns = [];
+   for (let i = 0; i < rawColumns.length; i++) {
+      const rawColumn = rawColumns[i];
+      const column: Column = [];
+      for (let j = 0; j < rawColumn.values.length; j++) {
+         column.push(formatter(rawColumn.type, rawColumn.values[j]));
+      }
+      result.push(column);
+   }
+   return result;
+};
+
+/**
+ * 截取选项中的数字
+ * @param value 选项文字
+ * @param isYear 是否为年份
+ * @returns string
+ */
+const intercept = (value: string, isYear: boolean): string => {
+   const matches = value.match(/\d+/g);
+   if (matches == null || matches.length == 0) return "0";
+   if (matches.length > 1 || (!isYear && matches[0].length > 2)) return "0";
+   return matches[0];
+};
+
+/**
+ * 获取时间选项
+ * @param event 选择变化事件
+ * @param columnIndex 列索引
+ * @param fallback 默认值
+ * @returns string
+ */
+const getEventValue = (event: PickerChangeEvent, columnIndex: number, fallback: string): string => {
+   if (columnIndex >= event.values.length || columnIndex >= event.indexs.length) return fallback;
+   const column = event.values[columnIndex];
+   const index = event.indexs[columnIndex];
+   if (index < 0 || index >= column.length) return fallback;
+   const item = column[index];
+   if (typeof item == "string") return item;
+   if (typeof item == "number") return item.toString();
+   return fallback;
+};
+
+/**
+ * 将滚轮选择转换为组件值
+ * @param event 选择变化事件
+ * @returns PickerValue
+ */
+const getValueFromEvent = (event: PickerChangeEvent): PickerValue => {
+   if (props.mode == "time") {
+      const hour = intercept(getEventValue(event, 0, "00"), false);
+      const minute = intercept(getEventValue(event, 1, "00"), false);
+      return parseTimeValue(`${hour}:${minute}`);
+   }
+   const year = parseInt(intercept(getEventValue(event, 0, getDateParts(props.minDate).year.toString()), true));
+   const month = parseInt(intercept(getEventValue(event, 1, "01"), false));
+   let day = 1;
+   if (props.mode == "date" || props.mode == "datetime") {
+      day = parseInt(intercept(getEventValue(event, 2, "01"), false));
+   }
+   let hour = 0;
+   let minute = 0;
+   if (props.mode == "datetime") {
+      hour = parseInt(intercept(getEventValue(event, 3, "00"), false));
+      minute = parseInt(intercept(getEventValue(event, 4, "00"), false));
+   }
+   const maxDay = getDaysInMonth(year, month);
+   return parseDateValue(new Date(year, month - 1, Math.min(day, maxDay), hour, minute).getTime());
+};
+
+/**
+ * 根据当前值计算各列选中索引
+ * @param value 当前值
+ * @returns number[]
+ */
+const getDefaultIndex = (value: PickerValue): number[] => {
+   const formatter = getFormatter();
+   let parts: DateParts = {
+      year: 0,
+      month: 1,
+      day: 1,
+      hour: 0,
+      minute: 0,
+   };
+   if (props.mode != "time") parts = getDateParts(value as number);
+   const values: string[] = props.mode == "time"
+      ? [
+         formatter("hour", (value as string).split(":")[0]),
+         formatter("minute", (value as string).split(":")[1]),
+      ]
+      : [
+         formatter("year", parts.year.toString()),
+         formatter("month", pad(parts.month)),
+      ];
+   if (props.mode == "date" || props.mode == "datetime") {
+      values.push(formatter("day", pad(parts.day)));
+   }
+   if (props.mode == "datetime") {
+      values.push(formatter("hour", pad(parts.hour)), formatter("minute", pad(parts.minute)));
+   }
+   const result: number[] = [];
+   for (let i = 0; i < columns.value.length; i++) {
+      const column = columns.value[i];
+      let index = 0;
+      for (let j = 0; j < column.length; j++) {
+         if (column[j] == values[i]) {
+            index = j;
+            break;
+         }
+      }
+      result.push(index);
+   }
+   return result;
+};
+
+/**
+ * 同步列数据和滚轮索引
+ * @returns null
+ */
+const syncPicker = (): void => {
+   const value = normalizeValue(getExternalValue());
+   innerValue.value = value;
+   columns.value = getColumns(value);
+   const indexs = getDefaultIndex(value);
+   defaultIndex.value = indexs;
+   nextTick((): void => {
+      uPicker.value?.setIndexs(indexs, true);
+   });
+};
+
+/**
+ * 打开选择器
+ * @returns null
+ */
+const open = (): void => {
+   syncPicker();
+   uPicker.value?.open();
+};
+
+/**
+ * 关闭选择器
+ * @returns null
+ */
+const close = (): void => {
+   uPicker.value?.close();
+};
+
+/**
+ * 转发关闭事件
+ * @returns null
+ */
+const handleClose = (): void => {
+   emit("close");
+};
+
+/**
+ * 处理取消操作
+ * @returns null
+ */
+const handleCancel = (): void => {
+   emit("cancel");
+};
+
+/**
+ * 处理确认操作并回写值
+ * @param event 选择确认事件
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   const value = innerValue.value;
+   const result: ConfirmEvent = { value: value, mode: props.mode };
+   emit("confirm", result);
+   if (!props.clearDate) {
+      emit("input", value);
+      emit("update:modelValue", value);
+   }
+};
+
+/**
+ * 处理滚轮变化
+ * @param event 选择变化事件
+ * @returns null
+ */
+const handleChange = (event: PickerChangeEvent): void => {
+   const value = getValueFromEvent(event);
+   innerValue.value = value;
+   columns.value = getColumns(value);
+   const indexs = getDefaultIndex(value);
+   defaultIndex.value = indexs;
+   nextTick((): void => {
+      uPicker.value?.setIndexs(indexs, true);
+   });
+   const result: ChangeEvent = { value: value, mode: props.mode };
+   emit("change", result);
+};
+
+/**
+ * 设置选项格式化函数
+ * @param formatter 格式化函数
+ * @returns null
+ */
+const setFormatter = (formatter: Formatter): void => {
+   localFormatter = formatter;
+   syncPicker();
+};
+
+/**
+ * 通过实例触发取消
+ * @returns null
+ */
+const cancel = (): void => {
+   handleCancel();
+};
+
+/**
+ * 通过实例触发确认
+ * @returns null
+ */
+const confirm = (): void => {
+   handleConfirm();
+};
+
+/**
+ * 外部值变化时同步选择器
+ * @returns null
+ */
+watch((): PickerValue => getExternalValue(), (): void => {
+   syncPicker();
+});
+
+/**
+ * 选择模式变化时同步选择器
+ * @returns null
+ */
+watch((): Mode => props.mode, (): void => {
+   syncPicker();
+});
+
+/**
+ * 最小日期变化时同步选择器
+ * @returns null
+ */
+watch((): number => props.minDate, (): void => {
+   syncPicker();
+});
+
+/**
+ * 最大日期变化时同步选择器
+ * @returns null
+ */
+watch((): number => props.maxDate, (): void => {
+   syncPicker();
+});
+
+/**
+ * 最小小时变化时同步选择器
+ * @returns null
+ */
+watch((): number => props.minHour, (): void => {
+   syncPicker();
+});
+
+/**
+ * 最大小时变化时同步选择器
+ * @returns null
+ */
+watch((): number => props.maxHour, (): void => {
+   syncPicker();
+});
+
+/**
+ * 最小分钟变化时同步选择器
+ * @returns null
+ */
+watch((): number => props.minMinute, (): void => {
+   syncPicker();
+});
+
+/**
+ * 最大分钟变化时同步选择器
+ * @returns null
+ */
+watch((): number => props.maxMinute, (): void => {
+   syncPicker();
+});
+
+/**
+ * 过滤函数变化时同步选择器
+ * @returns null
+ */
+watch((): Filter | null => props.filter, (): void => {
+   syncPicker();
+});
+
+/**
+ * 格式化函数变化时同步选择器
+ * @returns null
+ */
+watch((): Formatter | null => props.formatter, (): void => {
+   syncPicker();
+});
+
+/**
+ * 挂载时初始化选择器
+ * @returns null
+ */
+onMounted((): void => {
+   syncPicker();
+});
+
+defineExpose({ open, close, cancel, confirm, setFormatter });
+</script>
+
+<style lang="scss">
+// 日期选择器本身复用 uvx-picker 的主题样式。
+</style>

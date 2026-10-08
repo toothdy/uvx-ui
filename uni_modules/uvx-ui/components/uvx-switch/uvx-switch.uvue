@@ -1,0 +1,258 @@
+<template>
+   <view
+      class="uvx-switch"
+      :class="[
+         isActive ? 'uvx-switch--active' : '',
+         disabled ? 'uvx-switch--disabled' : '',
+         uClass,
+      ]"
+      :style="switchStyle"
+      @click="handleClick"
+   >
+      <!-- 关闭状态背景 -->
+      <view class="uvx-switch__background" :style="backgroundStyle"></view>
+      <!-- 开关圆点 -->
+      <view class="uvx-switch__node" :style="nodeStyle">
+         <uvx-loading-icon
+            :show="loading"
+            mode="circle"
+            easing="linear"
+            :color="loadingColor"
+            :size="loadingSize"
+         ></uvx-loading-icon>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-switch 开关选择器
+ * @description 用于在两个互斥状态间切换，支持加载、禁用、自定义值和异步变更。
+ * @tutorial https://www.uvxui.cn/components/switch.html
+ * @property {String | Number | Boolean} modelValue 通过 v-model 双向绑定的值
+ * @property {Boolean} loading 是否处于加载状态，默认 false
+ * @property {Boolean} disabled 是否禁用，默认 false
+ * @property {String | Number} size 开关尺寸，单位 px，默认 25
+ * @property {String} activeColor 打开时的背景色，默认跟随主题色
+ * @property {String} inactiveColor 关闭时的背景色，默认跟随主题容器色
+ * @property {String | Number | Boolean} activeValue 打开时的值，默认 true
+ * @property {String | Number | Boolean} inactiveValue 关闭时的值，默认 false
+ * @property {Boolean} asyncChange 是否由外部异步更新绑定值，默认 false
+ * @property {String | Number} space 圆点与边框的距离，单位 px，默认 0
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} input 非异步模式下值变化时触发
+ * @event {Function} change 点击可用开关时触发
+ * @event {Function} update:modelValue 非异步模式下更新双向绑定值
+ * @example <uvx-switch v-model="checked" active-color="#2979ff"></uvx-switch>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Emits, Props, Value } from "./types/index.uts";
+
+defineOptions({ name: "uvx-switch", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   modelValue: false,
+   loading: false,
+   disabled: false,
+   size: 25,
+   activeColor: "",
+   inactiveColor: "",
+   activeValue: true,
+   inactiveValue: false,
+   asyncChange: false,
+   space: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 开关值变化事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 判断两个值的类型和值是否相同
+ * @param left 左侧值
+ * @param right 右侧值
+ * @returns boolean
+ */
+const isSameValue = (left: Value, right: Value): boolean => {
+   return typeof left == typeof right && left == right;
+};
+
+/**
+ * 开关像素尺寸
+ * @returns number
+ */
+const sizeValue = computed((): number => {
+   const value = parseFloat(props.size.toString());
+   return value > 0 ? value : 25;
+});
+
+/**
+ * 圆点与边框的距离
+ * @returns number
+ */
+const spaceValue = computed((): number => {
+   const value = parseFloat(props.space.toString());
+   return value >= 0 && value < sizeValue.value ? value : 0;
+});
+
+/**
+ * 当前是否为打开状态
+ * @returns boolean
+ */
+const isActive = computed((): boolean => {
+   return isSameValue(props.modelValue, props.activeValue);
+});
+
+/**
+ * 开关容器样式
+ * @returns UTSJSONObject
+ */
+const switchStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(sizeValue.value * 2 + 2),
+      "height": $uvx.format.unit(sizeValue.value + 2),
+   };
+   if (isActive.value && !$uvx.string.empty(props.activeColor)) {
+      style.set("background-color", props.activeColor);
+   } else if (!$uvx.string.empty(props.inactiveColor)) {
+      style.set("background-color", props.inactiveColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 关闭状态背景样式
+ * @returns UTSJSONObject
+ */
+const backgroundStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(sizeValue.value * 1.5),
+      "height": $uvx.format.unit(sizeValue.value),
+      "transform": `scale(${isActive.value ? 0 : 1})`,
+   };
+   if (!$uvx.string.empty(props.inactiveColor)) style.set("background-color", props.inactiveColor);
+   return style;
+});
+
+/**
+ * 开关圆点样式
+ * @returns UTSJSONObject
+ */
+const nodeStyle = computed((): UTSJSONObject => {
+   const nodeSize = sizeValue.value - spaceValue.value;
+   const translateX = isActive.value ? -spaceValue.value : -sizeValue.value;
+   return {
+      "width": $uvx.format.unit(nodeSize),
+      "height": $uvx.format.unit(nodeSize),
+      "transform": `translateX(${$uvx.format.unit(translateX)})`,
+   };
+});
+
+/**
+ * 加载图标尺寸
+ * @returns number
+ */
+const loadingSize = computed((): number => {
+   return sizeValue.value * 0.6;
+});
+
+/**
+ * 加载图标颜色
+ * @returns string
+ */
+const loadingColor = computed((): string => {
+   if (!isActive.value) return "content";
+   return $uvx.string.empty(props.activeColor) ? "primary" : props.activeColor;
+});
+
+/**
+ * 点击切换开关
+ * @returns null
+ */
+const handleClick = (): void => {
+   if (props.disabled || props.loading) return;
+   const value = isActive.value ? props.inactiveValue : props.activeValue;
+   if (!props.asyncChange) {
+      emit("input", value);
+      emit("update:modelValue", value);
+   }
+   nextTick((): void => {
+      emit("change", value);
+   });
+};
+
+/**
+ * 外部值变化时检查是否属于开关值
+ * @param value 外部绑定值
+ * @returns null
+ */
+watch((): Value => props.modelValue, (value: Value): void => {
+   if (!isSameValue(value, props.activeValue) && !isSameValue(value, props.inactiveValue)) {
+      console.warn("uvx-switch 的 v-model 值必须为 activeValue 或 inactiveValue");
+   }
+}, { immediate: true });
+</script>
+
+<style lang="scss">
+// 开关容器
+.uvx-switch {
+   position: relative;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: flex-end;
+   box-sizing: border-box;
+   overflow: hidden;
+   border-width: 1px;
+   border-style: solid;
+   border-color: var(--uvx-switch-border);
+   border-radius: 100px;
+   background-color: var(--uvx-container);
+   transition-property: background-color;
+   transition-duration: 0.4s;
+
+   // 打开状态
+   &--active {
+      background-color: var(--uvx-primary);
+   }
+
+   // 关闭状态背景
+   &__background {
+      position: absolute;
+      top: 0;
+      right: 0;
+      border-top-left-radius: 0;
+      border-top-right-radius: 100px;
+      border-bottom-right-radius: 100px;
+      border-bottom-left-radius: 0;
+      background-color: var(--uvx-container);
+      transition-property: transform;
+      transition-duration: 0.4s;
+      transition-timing-function: ease;
+   }
+
+   // 开关圆点
+   &__node {
+      z-index: 1;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--uvx-container);
+      border-radius: 100px;
+      box-shadow: 1px 1px 1px 0 var(--uvx-shadow);
+      transition-property: transform;
+      transition-duration: 0.4s;
+      transition-timing-function: ease;
+   }
+
+   // 禁用状态
+   &--disabled {
+      opacity: 0.6;
+   }
+}
+</style>

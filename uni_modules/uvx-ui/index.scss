@@ -1,0 +1,7 @@
+// 引入公共基础类
+@import './core/scss/common.scss';
+
+// WEB特有的样式
+/* #ifdef WEB */
+@import './core/scss/h5.scss';
+/* #endif */

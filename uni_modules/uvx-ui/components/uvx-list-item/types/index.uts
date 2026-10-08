@@ -1,0 +1,60 @@
+import type {
+   NumberType,
+   Shape,
+   Type,
+   Value,
+} from "../../uvx-badge/types/index.uts";
+
+export type ItemDirection = "" | "row" | "column";
+export type LinkType = "navigateTo" | "redirectTo" | "reLaunch" | "switchTab";
+export type Link = boolean | LinkType;
+export type ThumbSize = "lg" | "base" | "sm";
+
+export type Badge = {
+   isDot: boolean;
+   value: Value;
+   max: Value;
+   type: Type;
+   showZero: boolean;
+   bgColor: string;
+   color: string;
+   shape: Shape;
+   numberType: NumberType;
+   inverted: boolean;
+};
+
+export type ExtraIcon = {
+   icon: string;
+   color: string;
+   size: string | number;
+   customPrefix: string;
+};
+
+export type Props = {
+   direction: ItemDirection;
+   title: string;
+   note: string;
+   ellipsis: number;
+   disabled: boolean;
+   clickable: boolean;
+   showArrow: boolean;
+   link: Link;
+   to: string;
+   showSwitch: boolean;
+   switchChecked: boolean;
+   showBadge: boolean;
+   badge: Badge;
+   rightText: string;
+   thumb: string;
+   thumbSize: ThumbSize;
+   showExtraIcon: boolean;
+   extraIcon: ExtraIcon;
+   border: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [];
+   switchChange: [value: boolean];
+};

@@ -1,0 +1,23 @@
+import type { Mode } from "../../uvx-image/types/index.uts";
+
+export type Item = string | UTSJSONObject;
+
+/** 头像组属性 */
+export type Props = {
+   urls: Item[];
+   maxCount: string | number;
+   shape: "circle" | "square";
+   mode: Mode;
+   showMore: boolean;
+   size: string | number;
+   keyName: string;
+   gap: string | number;
+   extraValue: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 头像组事件 */
+export type Emits = {
+   showMore: [];
+};

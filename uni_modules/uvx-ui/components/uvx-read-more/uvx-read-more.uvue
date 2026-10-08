@@ -1,0 +1,328 @@
+<template>
+   <!-- 阅读内容与切换区域 -->
+   <view
+      class="uvx-read-more"
+      :class="[uClass]"
+      :style="rootStyle"
+   >
+      <!-- 可收起的内容区域 -->
+      <view
+         class="uvx-read-more__content"
+         :style="contentStyle"
+      >
+         <view
+            ref="contentInner"
+            class="uvx-read-more__content-inner"
+         >
+            <slot></slot>
+         </view>
+      </view>
+
+      <!-- 展开与收起控制区域 -->
+      <view
+         v-if="isLongContent"
+         class="uvx-read-more__toggle"
+         :class="[statusClass, isDark ? 'uvx-read-more__toggle--dark' : '']"
+         :style="toggleStyle"
+      >
+         <slot name="toggle">
+            <view
+               class="uvx-read-more__toggle-text"
+               @tap="toggleReadMore"
+            >
+               <text
+                  class="uvx-read-more__toggle-label"
+                  :style="toggleTextStyle"
+               >{{ currentText }}</text>
+               <view class="uvx-read-more__toggle-icon">
+                  <uvx-icon
+                     :name="status == 'close' ? 'arrow-down' : 'arrow-up'"
+                     :color="iconColor"
+                     :size="iconSize"
+                  ></uvx-icon>
+               </view>
+            </view>
+         </slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-read-more 阅读更多
+ * @description 内容超出指定高度时收起内容，支持展开、收起和自定义切换区域。
+ * @tutorial https://www.uvxui.cn/components/read-more.html
+ * @property {String | Number} showHeight 收起时的内容高度，单位 px，默认 400
+ * @property {Boolean} toggle 展开后是否保留收起入口，默认 false
+ * @property {String} closeText 收起状态的提示文字
+ * @property {String} openText 展开状态的提示文字
+ * @property {String} color 提示文字和图标颜色
+ * @property {String | Number} fontSize 提示文字大小，单位 px，默认 14
+ * @property {String} shadowStyle 收起状态切换区域的自定义样式
+ * @property {String} textIndent 内容首行缩进，默认 2em
+ * @property {String | Number} name open 和 close 事件的回调参数
+ * @property {String} uStyle 自定义根节点样式
+ * @property {String} uClass 自定义根节点类名
+ * @event {Function} open 内容展开时触发
+ * @event {Function} close 内容收起时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import { isDark } from "../../core/theme";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-read-more", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+/** 属性 */
+const props = withDefaults(defineProps<Props>(), {
+   showHeight: 400,
+   toggle: false,
+   closeText: "",
+   openText: "",
+   color: "",
+   fontSize: 14,
+   shadowStyle: "",
+   textIndent: "2em",
+   name: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件实例，用于限定小程序选择器查询范围
+const instance = getCurrentInstance()!.proxy!;
+// 是否超过收起高度
+const isLongContent = ref(false);
+// 当前状态，close 表示收起，open 表示展开
+const status = ref<"close" | "open">("close");
+// 内容节点
+const contentInner = ref<UniElement | null>(null);
+
+/**
+ * 获取收起高度的数值
+ * @returns number
+ */
+const getShowHeight = (): number => {
+   const value = parseFloat(props.showHeight.toString());
+   return isNaN(value) ? 0 : Math.max(value, 0);
+};
+
+/**
+ * 获取内容区域样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   const height = isLongContent.value && status.value == "close"
+      ? $uvx.format.unit(props.showHeight)
+      : "auto";
+   style.set("height", height);
+   style.set("text-indent", props.textIndent);
+   return style;
+});
+
+/**
+ * 获取根节点自定义样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 获取切换区域自定义样式
+ * @returns UTSJSONObject
+ */
+const toggleStyle = computed((): UTSJSONObject => {
+   if (status.value == "open") return {};
+   return $uvx.style.parse(props.shadowStyle);
+});
+
+/**
+ * 获取切换区域状态类
+ * @returns string
+ */
+const statusClass = computed((): string => {
+   return status.value == "close" ? "uvx-read-more__toggle--close" : "";
+});
+
+/**
+ * 获取当前提示文字
+ * @returns string
+ */
+const currentText = computed((): string => {
+   if (status.value == "close") {
+      return $uvx.string.empty(props.closeText) ? t("展开阅读全文") : props.closeText;
+   }
+   return $uvx.string.empty(props.openText) ? t("收起") : props.openText;
+});
+
+/**
+ * 获取图标大小
+ * @returns string | number
+ */
+const iconSize = computed((): string | number => {
+   return typeof props.fontSize == "number" ? props.fontSize + 2 : props.fontSize;
+});
+
+/**
+ * 获取切换文字样式
+ * @returns UTSJSONObject
+ */
+const toggleTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("color", $uvx.string.empty(props.color) ? "var(--uvx-primary)" : props.color);
+   style.set("font-size", $uvx.format.unit(props.fontSize));
+   return style;
+});
+
+/**
+ * 获取图标主题色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   return $uvx.string.empty(props.color) ? "primary" : props.color;
+});
+
+/**
+ * 更新测量结果
+ * @param height 内容高度
+ * @returns null
+ */
+const applyContentHeight = (height: number): void => {
+   isLongContent.value = height > getShowHeight();
+   status.value = "close";
+};
+
+/**
+ * 读取内容节点高度
+ * @returns null
+ */
+const measureContent = (): void => {
+   // #ifdef MP
+   uni.createSelectorQuery()
+      .in(instance)
+      .select(".uvx-read-more__content-inner")
+      .boundingClientRect()
+      .exec((result): void => {
+         if (result.length == 0 || result[0] == null) return;
+         const rect = result[0] as NodeInfo;
+         if (rect.height != null) applyContentHeight(rect.height);
+      });
+   // #endif
+
+   // #ifndef MP
+   const element = contentInner.value;
+   if (element == null) return;
+   try {
+      applyContentHeight(element.getBoundingClientRect().height);
+   } catch (_error) {
+      // 原生节点尚未生成时保留现状，等待下次 init 重试
+      return;
+   }
+   // #endif
+};
+
+/**
+ * 重新测量内容高度
+ * @returns null
+ */
+const init = (): void => {
+   nextTick((): void => {
+      measureContent();
+   });
+};
+
+/**
+ * 切换内容展开状态
+ * @returns null
+ */
+const toggleReadMore = (): void => {
+   if (status.value == "close") {
+      status.value = "open";
+      emit("open", props.name);
+      if (!props.toggle) isLongContent.value = false;
+      return;
+   }
+   status.value = "close";
+   isLongContent.value = true;
+   emit("close", props.name);
+};
+
+/** 内容节点挂载后首次测量 */
+onMounted((): void => {
+   init();
+});
+
+/** 收起高度变化时重新测量 */
+watch((): string | number => props.showHeight, (): void => {
+   init();
+});
+
+defineExpose({ init });
+</script>
+
+<style lang="scss">
+// 阅读更多根节点
+.uvx-read-more {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+}
+
+// 内容裁剪区域
+.uvx-read-more__content {
+   overflow: hidden;
+   width: 100%;
+}
+
+// 内容节点
+.uvx-read-more__content-inner {
+   width: 100%;
+}
+
+// 切换区域
+.uvx-read-more__toggle {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+}
+
+// 收起状态的主题阴影
+.uvx-read-more__toggle--close {
+   background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, var(--uvx-page) 80%);
+   padding-top: 100px;
+   margin-top: -100px;
+}
+
+// 暗色收起状态使用透明黑色，避免 iOS 渐变混入白色
+.uvx-read-more__toggle--close.uvx-read-more__toggle--dark {
+   background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, var(--uvx-page) 80%);
+}
+
+// 默认切换内容
+.uvx-read-more__toggle-text {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   margin-top: 5px;
+}
+
+// 切换文字使用原生文本，避免 uvx-text 的 flex 宽度规则裁剪文字
+.uvx-read-more__toggle-label {
+   line-height: 1.2em;
+   white-space: nowrap;
+   margin-right: 5px;
+}
+
+// 切换图标容器
+.uvx-read-more__toggle-icon {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+}
+</style>

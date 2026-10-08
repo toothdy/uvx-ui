@@ -1,0 +1,327 @@
+<template>
+   <view class="uvx-form" :class="uClass" :style="formStyle">
+      <slot></slot>
+      <uvx-toast ref="uToast"></uvx-toast>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-form 表单
+ * @description 管理表单项布局、同步校验、错误展示和字段重置。
+ * @tutorial https://www.uvxui.cn/components/form.html
+ * @property {any} model 待验证的数据对象
+ * @property {Object} rules 字段校验规则
+ * @property {String} errorType 错误展示方式：message、border-bottom、toast、none
+ * @property {Boolean} borderBottom 表单项默认是否显示下边框
+ * @property {String} labelPosition 标签位置：left、top
+ * @property {String | Number} labelWidth 标签宽度
+ * @property {String} labelAlign 标签对齐方式：left、center、right
+ * @property {String} labelStyle 标签自定义样式
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @method validate 校验全部已注册字段
+ * @method validateField 校验一个或多个字段
+ * @method resetFields 恢复已注册字段的初始值
+ * @method clearValidate 清除全部或指定字段错误
+ * @method setRules 通过组件实例设置规则
+ * @example <uvx-form :model="model" :rules="rules"><uvx-form-item prop="name"></uvx-form-item></uvx-form>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { ComponentPublicInstance } from "vue";
+import type { Options as ToastOptions } from "../uvx-toast/types/index.uts";
+import type {
+   Config,
+   Context,
+   FieldError,
+   Fields,
+   Props,
+   Trigger,
+} from "./types/index.uts";
+import {
+   getRules,
+   getValue,
+   setValue,
+   validateValue,
+} from "./validator.uts";
+
+defineOptions({ name: "uvx-form", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   model: () => ({}),
+   rules: () => ({}),
+   errorType: "message",
+   borderBottom: true,
+   labelPosition: "left",
+   labelWidth: 45,
+   labelAlign: "left",
+   labelStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+// 已注册的表单项实例
+const children = ref<ComponentPublicInstance[]>([]);
+// 通过实例设置的规则
+const localRules = ref<UTSJSONObject>({});
+// 是否优先使用实例规则
+const hasLocalRules = ref(false);
+// 模型初始快照
+const initialModel = ref<UTSJSONObject>({});
+// 是否已保存初始快照
+const hasSnapshot = ref(false);
+// 错误提示实例
+const uToast = ref<UvxToastComponentPublicInstance | null>(null);
+
+/**
+ * 表单根节点样式
+ * @returns UTSJSONObject
+ */
+const formStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 将调用方的强类型模型转换为动态字段容器
+ * @returns UTSJSONObject
+ */
+const modelValue = computed((): UTSJSONObject => {
+   return props.model as UTSJSONObject;
+});
+
+/**
+ * 当前生效规则
+ * @returns UTSJSONObject
+ */
+const activeRules = computed((): UTSJSONObject => {
+   return hasLocalRules.value ? localRules.value : props.rules;
+});
+
+/**
+ * 子项共享配置
+ * @returns Config
+ */
+const config = computed((): Config => {
+   return {
+      errorType: props.errorType,
+      borderBottom: props.borderBottom,
+      labelPosition: props.labelPosition,
+      labelWidth: props.labelWidth,
+      labelAlign: props.labelAlign,
+      labelStyle: props.labelStyle,
+   };
+});
+
+/**
+ * 注册表单项
+ * @param child 表单项实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+};
+
+/**
+ * 注销表单项
+ * @param child 表单项实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index != -1) children.value.splice(index, 1);
+};
+
+/**
+ * 读取表单项字段路径
+ * @param child 表单项实例
+ * @returns string
+ */
+const getField = (child: ComponentPublicInstance): string => {
+   return child.$callMethod("getProp") as string;
+};
+
+/**
+ * 写入字段错误消息
+ * @param field 字段路径
+ * @param message 错误消息
+ * @returns null
+ */
+const setMessage = (field: string, message: string): void => {
+   for (let i = 0; i < children.value.length; i++) {
+      const child = children.value[i];
+      if (getField(child) == field) child.$callMethod("setMessage", message);
+   }
+};
+
+/**
+ * 收集已注册字段
+ * @returns string[]
+ */
+const getFields = (): string[] => {
+   const fields: string[] = [];
+   for (let i = 0; i < children.value.length; i++) {
+      const field = getField(children.value[i]);
+      if (!$uvx.string.empty(field) && fields.indexOf(field) == -1) fields.push(field);
+   }
+   return fields;
+};
+
+/**
+ * 规范化字段参数
+ * @param fields 字段参数
+ * @returns string[]
+ */
+const toFields = (fields: Fields): string[] => {
+   return typeof fields == "string" ? [fields] : fields;
+};
+
+/**
+ * 执行字段校验并同步错误状态
+ * @param fields 字段列表
+ * @param trigger 触发方式
+ * @returns FieldError[]
+ */
+const validateFields = (
+   fields: string[],
+   trigger: Trigger | null,
+): FieldError[] => {
+   const errors: FieldError[] = [];
+   for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      const fieldErrors = validateValue(
+         field,
+         getValue(modelValue.value, field),
+         getRules(activeRules.value, field),
+         trigger,
+      );
+      setMessage(field, fieldErrors.length > 0 ? fieldErrors[0].message : "");
+      errors.push(...fieldErrors);
+   }
+   return errors;
+};
+
+/**
+ * 校验一个或多个字段
+ * @param fields 字段参数
+ * @param trigger 触发方式
+ * @returns Promise<boolean>
+ */
+const validateField = (
+   fields: Fields,
+   trigger: Trigger | null = null,
+): Promise<boolean> => {
+   return new Promise<boolean>((resolve, reject): void => {
+      nextTick((): void => {
+         try {
+            const errors = validateFields(toFields(fields), trigger);
+            if (errors.length > 0) {
+               reject(errors);
+            } else {
+               resolve(true);
+            }
+         } catch (error) {
+            reject(error);
+         }
+      });
+   });
+};
+
+/**
+ * 校验全部已注册字段
+ * @returns Promise<boolean>
+ */
+const validate = (): Promise<boolean> => {
+   return new Promise<boolean>((resolve, reject): void => {
+      nextTick((): void => {
+         try {
+            const errors = validateFields(getFields(), null);
+            if (errors.length > 0) {
+               if (props.errorType == "toast") {
+                  const options: ToastOptions = { message: errors[0].message, type: "error" };
+                  uToast.value?.show(options);
+               }
+               reject(errors);
+            } else {
+               resolve(true);
+            }
+         } catch (error) {
+            reject(error);
+         }
+      });
+   });
+};
+
+/**
+ * 清除全部或指定字段错误
+ * @param fields 字段参数，null 表示全部
+ * @returns null
+ */
+const clearValidate = (fields: Fields | null = null): void => {
+   const targets = fields == null ? getFields() : toFields(fields);
+   for (let i = 0; i < targets.length; i++) setMessage(targets[i], "");
+};
+
+/**
+ * 恢复已注册字段的初始值
+ * @returns null
+ */
+const resetFields = (): void => {
+   const fields = getFields();
+   for (let i = 0; i < fields.length; i++) {
+      const value = getValue(initialModel.value, fields[i]);
+      setValue(modelValue.value, fields[i], $uvx.object.deepClone(value));
+   }
+   clearValidate();
+};
+
+/**
+ * 设置实例规则
+ * @param rules 字段规则
+ * @returns null
+ */
+const setRules = (rules: UTSJSONObject): void => {
+   localRules.value = rules;
+   hasLocalRules.value = true;
+};
+
+/**
+ * 向表单项提供公共配置和注册方法
+ * @returns null
+ */
+provide<Context>("uvx-form-context", {
+   config,
+   register,
+   unregister,
+});
+
+/**
+ * 首次接收模型时保存快照
+ * @param value 当前模型
+ * @returns null
+ */
+watch(modelValue, (value: UTSJSONObject): void => {
+   if (hasSnapshot.value) return;
+   initialModel.value = $uvx.object.deepClone(value);
+   hasSnapshot.value = true;
+}, { immediate: true });
+
+defineExpose({
+   validate,
+   validateField,
+   resetFields,
+   clearValidate,
+   setRules,
+});
+</script>
+
+<style lang="scss">
+// 表单根布局
+.uvx-form {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   min-width: 0;
+   overflow: visible;
+}
+</style>

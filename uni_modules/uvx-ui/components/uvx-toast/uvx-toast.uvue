@@ -1,0 +1,435 @@
+<template>
+   <view class="uvx-toast" :class="isDark ? 'uvx-dark' : 'uvx-light'">
+      <!-- 可选透明遮罩 -->
+      <uvx-overlay
+         :show="isShow && activeConfig.overlay"
+         :z-index="activeConfig.zIndex"
+         :opacity="0"
+      ></uvx-overlay>
+
+      <!-- Toast 定位与过渡 -->
+      <uvx-transition
+         mode="fade"
+         :show="isShow"
+         :duration="200"
+         :u-style="$uvx.style.stringify(wrapperStyle)"
+      >
+         <!-- Toast 内容 -->
+         <view
+            class="uvx-toast__content"
+            :class="[contentClasses, activeConfig.uClass]"
+            :style="contentStyle"
+         >
+            <uvx-loading-icon
+               v-if="isLoading"
+               mode="circle"
+               color="#ffffff"
+               incolor="#787878"
+               :size="25"
+            ></uvx-loading-icon>
+            <uvx-icon
+               v-else-if="!$uvx.string.empty(iconName)"
+               :name="iconName"
+               :size="17"
+               :color="iconColor"
+               u-style="margin-right: 4px;"
+            ></uvx-icon>
+            <text
+               class="uvx-toast__text"
+               :class="[
+                  `uvx-toast__text--${activeConfig.type}`,
+                  isLoading ? 'uvx-toast__text--loading' : '',
+               ]"
+            >{{ activeConfig.message }}</text>
+         </view>
+      </uvx-transition>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-toast 消息提示
+ * @description 类似 uni.showToast 的可定制消息提示，支持语义主题、加载状态、位置、遮罩及结束路由。
+ * @tutorial https://www.uvxui.cn/components/toast.html
+ * @property {String | Number} zIndex Toast 层级，默认使用全局弹层层级
+ * @property {Boolean} loading 是否显示加载状态，默认 false
+ * @property {String | Number} message 显示内容
+ * @property {Boolean | String} icon 图标开关、图标名称或图片地址
+ * @property {String} type 主题类型，默认 default
+ * @property {Boolean} show 是否声明式显示，默认 false
+ * @property {Boolean} overlay 是否阻止操作穿透，默认 true
+ * @property {String} position 显示位置，默认 center
+ * @property {Object} params 跳转参数
+ * @property {String | Number} duration 显示时长，单位毫秒，默认 2000
+ * @property {Boolean} isTab 是否跳转到 tabBar 页面，默认 false
+ * @property {String} url 结束后跳转地址，优先于 back
+ * @property {Function} complete 结束回调
+ * @property {Boolean} back 结束后是否返回上一页，默认 false
+ * @property {String} uStyle 内容自定义样式
+ * @property {String} uClass 内容自定义类名
+ * @example <uvx-toast ref="toast"></uvx-toast>
+ */
+
+import { $uvx } from "../../index.uts";
+import { config } from "../../core/config.uts";
+import { isDark } from "../../core/theme";
+import type {
+   Config,
+   Options,
+   Props,
+   Type,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-toast", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+   zIndex: config.zIndex,
+   loading: false,
+   message: "",
+   icon: true,
+   type: "default",
+   show: false,
+   overlay: true,
+   position: "center",
+   params: {},
+   duration: 2000,
+   isTab: false,
+   url: "",
+   complete: () => {},
+   back: false,
+   uStyle: "",
+   uClass: "",
+});
+
+// Toast 是否显示
+const isShow = ref(false);
+// 自动关闭计时器
+let timer: number | null = null;
+// 当前完整配置
+const activeConfig = ref<Config>({
+   zIndex: config.zIndex,
+   loading: false,
+   message: "",
+   icon: true,
+   type: "default",
+   overlay: true,
+   position: "center",
+   params: {},
+   duration: 2000,
+   isTab: false,
+   url: "",
+   complete: () => {},
+   back: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 规范化显示时长
+ * @param value 显示时长
+ * @returns 有效毫秒数
+ */
+const getDuration = (value: string | number): number => {
+   const duration = parseInt(value.toString());
+   return Number.isNaN(duration) || duration < 0 ? 2000 : duration;
+};
+
+/**
+ * 规范化弹层层级
+ * @param value 弹层层级
+ * @returns 有效层级
+ */
+const getZIndex = (value: string | number): number => {
+   const zIndex = parseInt(value.toString());
+   return Number.isNaN(zIndex) ? config.zIndex : zIndex;
+};
+
+/**
+ * 读取当前属性配置
+ * @returns Config
+ */
+const getPropsConfig = (): Config => {
+   return {
+      zIndex: getZIndex(props.zIndex),
+      loading: props.loading,
+      message: props.message,
+      icon: props.icon,
+      type: props.type,
+      overlay: props.overlay,
+      position: props.position,
+      params: props.params,
+      duration: getDuration(props.duration),
+      isTab: props.isTab,
+      url: props.url,
+      complete: props.complete,
+      back: props.back,
+      uStyle: props.uStyle,
+      uClass: props.uClass,
+   };
+};
+
+/**
+ * 合并本次显示配置
+ * @param options 命令式配置
+ * @returns Config
+ */
+const getActiveConfig = (options: Options | null): Config => {
+   const base = getPropsConfig();
+   if (options == null) return base;
+   return {
+      zIndex: options.zIndex != null ? getZIndex(options.zIndex) : base.zIndex,
+      loading: options.loading != null ? options.loading : base.loading,
+      message: options.message != null ? options.message : base.message,
+      icon: options.icon != null ? options.icon : base.icon,
+      type: options.type != null ? options.type : base.type,
+      overlay: options.overlay != null ? options.overlay : base.overlay,
+      position: options.position != null ? options.position : base.position,
+      params: options.params != null ? options.params : base.params,
+      duration: options.duration != null ? getDuration(options.duration) : base.duration,
+      isTab: options.isTab != null ? options.isTab : base.isTab,
+      url: options.url != null ? options.url : base.url,
+      complete: options.complete != null ? options.complete : base.complete,
+      back: options.back != null ? options.back : base.back,
+      uStyle: options.uStyle != null ? options.uStyle : base.uStyle,
+      uClass: options.uClass != null ? options.uClass : base.uClass,
+   };
+};
+
+/**
+ * 隐藏 Toast 并清理计时器
+ * @returns null
+ */
+const clearTimer = (): void => {
+   isShow.value = false;
+   if (timer != null) {
+      clearTimeout(timer);
+      timer = null;
+   }
+};
+
+/**
+ * 执行自动关闭后的路由与回调
+ * @returns null
+ */
+const handleComplete = (): void => {
+   const completedConfig = activeConfig.value;
+   clearTimer();
+   if (!$uvx.string.empty(completedConfig.url)) {
+      if (completedConfig.isTab) {
+         $uvx.route({
+            "type": "switchTab",
+            "url": completedConfig.url,
+         });
+      } else {
+         $uvx.route(completedConfig.url, completedConfig.params);
+      }
+   } else if (completedConfig.back) {
+      $uvx.route({
+         "type": "navigateBack",
+         "url": "",
+         "delta": 1,
+      });
+   }
+   if (completedConfig.complete != null) completedConfig.complete();
+};
+
+/**
+ * 显示 Toast
+ * @param options 本次显示配置
+ * @returns null
+ */
+const show = (options: Options | null = null): void => {
+   clearTimer();
+   activeConfig.value = getActiveConfig(options);
+   isShow.value = true;
+   timer = setTimeout((): void => {
+      handleComplete();
+   }, activeConfig.value.duration);
+};
+
+/**
+ * 手动隐藏 Toast
+ * @returns null
+ */
+const hide = (): void => {
+   clearTimer();
+};
+
+/**
+ * 是否显示加载动画
+ * @returns boolean
+ */
+const isLoading = computed((): boolean => {
+   return activeConfig.value.loading || activeConfig.value.type == "loading";
+});
+
+/**
+ * 当前图标名称
+ * @returns string
+ */
+const iconName = computed((): string => {
+   if (isLoading.value) return "";
+   const icon = activeConfig.value.icon;
+   if (typeof icon == "boolean") {
+      if (!icon || activeConfig.value.type == "default") return "";
+      return $uvx.type2icon(activeConfig.value.type);
+   }
+   if (icon == "none") return "";
+   if (!$uvx.string.empty(icon)) return icon;
+   if (activeConfig.value.type == "default") return "";
+   return $uvx.type2icon(activeConfig.value.type);
+});
+
+/**
+ * 当前语义图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   const type: Type = activeConfig.value.type;
+   return type == "primary" || type == "success" || type == "error" || type == "warning"
+      ? type
+      : "";
+});
+
+/**
+ * Toast 内容类名
+ * @returns string[]
+ */
+const contentClasses = computed((): string[] => {
+   const classes: string[] = [`uvx-toast__content--${activeConfig.value.type}`];
+   if (isLoading.value) classes.push("uvx-toast__content--loading");
+   return classes;
+});
+
+/**
+ * Toast 固定定位样式
+ * @returns UTSJSONObject
+ */
+const wrapperStyle = computed((): UTSJSONObject => {
+   const windowHeight = $uvx.windowInfo().windowHeight;
+   const style: UTSJSONObject = {
+      "position": "fixed",
+      "top": "0",
+      "right": "0",
+      "bottom": "0",
+      "left": "0",
+      "z-index": activeConfig.value.zIndex + 1,
+      "display": "flex",
+      "align-items": "center",
+      "justify-content": "center",
+      "box-sizing": "border-box",
+      "pointer-events": "none",
+   };
+   if (activeConfig.value.position == "top") {
+      style.set("bottom", `${windowHeight * 0.5}px`);
+   } else if (activeConfig.value.position == "bottom") {
+      style.set("top", `${windowHeight * 0.5}px`);
+   }
+   return style;
+});
+
+/**
+ * Toast 内容样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(activeConfig.value.uStyle);
+});
+
+/** 根据 show 属性同步声明式状态 */
+watch((): boolean => props.show, (value: boolean): void => {
+   if (value) {
+      show();
+   } else {
+      hide();
+   }
+});
+
+/** 首次挂载时处理声明式显示 */
+onMounted((): void => {
+   if (props.show) show();
+});
+
+/** 卸载时清理计时器 */
+onUnmounted((): void => {
+   clearTimer();
+});
+
+defineExpose({ show, hide });
+</script>
+
+<style lang="scss">
+@import '../../core/scss/common.scss';
+
+.uvx-toast {
+   // Toast 内容容器
+   &__content {
+      display: flex;
+      position: relative;
+      flex-direction: row;
+      align-items: center;
+      box-sizing: border-box;
+      max-width: 600rpx;
+      padding: 12px 20px;
+      border-width: 1px;
+      border-style: solid;
+      border-color: transparent;
+      border-radius: 4px;
+      background-color: #585858;
+
+      &--loading {
+         flex-direction: column;
+         padding: 20px;
+      }
+
+      &--primary {
+         border-color: #d7eafe;
+         background-color: #ecf5ff;
+      }
+
+      &--success {
+         border-color: #bef5c8;
+         background-color: #dbf1e1;
+      }
+
+      &--error {
+         border-color: #fde2e2;
+         background-color: #fef0f0;
+      }
+
+      &--warning {
+         border-color: #faecd8;
+         background-color: #fdf6ec;
+      }
+   }
+
+   // Toast 提示文字
+   &__text {
+      max-width: 400rpx;
+      color: #ffffff;
+      font-size: 15px;
+      line-height: 20px;
+
+      &--primary {
+         color: var(--uvx-primary);
+      }
+
+      &--success {
+         color: var(--uvx-success);
+      }
+
+      &--error {
+         color: var(--uvx-error);
+      }
+
+      &--warning {
+         color: var(--uvx-warning);
+      }
+
+      &--loading {
+         margin-top: 12px;
+      }
+   }
+}
+</style>

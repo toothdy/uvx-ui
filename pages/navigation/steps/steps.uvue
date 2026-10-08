@@ -1,0 +1,139 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo steps-demo">
+         <!-- 基础演示 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="基础演示"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="current">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+
+         <!-- 圆点样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="显示点类型"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="1" :dot="true">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+               <uvx-steps :current="1" :dot="true" direction="column" u-class="steps-demo__stack-gap">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+
+         <!-- 错误状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="错误状态"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="1">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="仓库着火" desc="10:35" :error="true"></uvx-steps-item>
+                  <uvx-steps-item title="破产清算" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+
+         <!-- 自定义图标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义图标"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="1" active-icon="checkmark" inactive-icon="arrow-right">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+
+         <!-- 自定义插槽 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义插槽"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="1">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40">
+                     <template #icon>
+                        <view class="steps-demo__slot-icon">
+                           <text class="steps-demo__slot-icon-text">运</text>
+                        </view>
+                     </template>
+                  </uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+
+         <!-- 自定义颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义颜色"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="1" active-color="#3c9cff">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+
+         <!-- 竖向排列 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="竖向展示"></uvx-text></view>
+            <view class="uvx-demo-block__content steps-demo__content">
+               <uvx-steps :current="1" direction="column">
+                  <uvx-steps-item title="已下单" desc="10:30"></uvx-steps-item>
+                  <uvx-steps-item title="已出库" desc="10:35"></uvx-steps-item>
+                  <uvx-steps-item title="运输中" desc="11:40"></uvx-steps-item>
+               </uvx-steps>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 当前步骤
+const current = ref(1);
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 步骤演示内容
+.steps-demo__content {
+   width: 100%;
+   overflow: visible;
+}
+
+// 纵向堆叠示例的间距(ucss 不支持 gap,用 margin)
+.steps-demo__stack-gap {
+   margin-top: 20px;
+}
+
+// 自定义插槽标记
+.steps-demo__slot-icon {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   width: 21px;
+   height: 21px;
+   border-radius: 100px;
+   background-color: var(--uvx-warning);
+}
+
+// 自定义插槽文字
+.steps-demo__slot-icon-text {
+   color: #ffffff;
+   font-size: 12px;
+   line-height: 1.2em;
+   text-align: center;
+}
+</style>

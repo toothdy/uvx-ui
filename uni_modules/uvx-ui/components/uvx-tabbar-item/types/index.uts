@@ -1,0 +1,19 @@
+import type { Value } from "../../uvx-tabbar/types/index.uts";
+
+export type Props = {
+   name: Value;
+   icon: string;
+   iconSize: string | number;
+   badge: string | number;
+   dot: boolean;
+   raised: boolean;
+   raisedColor: string;
+   text: string;
+   badgeStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   click: [value: Value];
+};

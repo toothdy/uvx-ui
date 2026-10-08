@@ -1,0 +1,208 @@
+<template>
+   <uvx-page>
+      <view class="action-sheet-demo">
+         <!-- ActionSheet 演示列表 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in ITEMS"
+               :key="index"
+               :title="item.title"
+               :is-link="true"
+               @click="openSheet(index)"
+            >
+               <template #icon>
+                  <image
+                     class="uv-cell-icon"
+                     :src="item.iconUrl"
+                     mode="widthFix"
+                  ></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 普通使用 -->
+         <uvx-action-sheet
+            ref="uSheet1"
+            :actions="BASIC_ACTIONS"
+            @close="handleClose"
+            @select="handleSelect"
+         ></uvx-action-sheet>
+
+         <!-- 操作项状态 -->
+         <uvx-action-sheet
+            ref="uSheet2"
+            :actions="STATUS_ACTIONS"
+         ></uvx-action-sheet>
+
+         <!-- 取消按钮 -->
+         <uvx-action-sheet
+            ref="uSheet3"
+            :actions="CANCEL_ACTIONS"
+            cancel-text="取消"
+         ></uvx-action-sheet>
+
+         <!-- 描述内容 -->
+         <uvx-action-sheet
+            ref="uSheet4"
+            :actions="DESCRIPTION_ACTIONS"
+            description="这是一段描述文本,字号偏小,颜色偏淡"
+         ></uvx-action-sheet>
+
+         <!-- 标题与自定义内容 -->
+         <uvx-action-sheet
+            ref="uSheet5"
+            title="标题位置"
+            :round="10"
+         >
+            <text class="action-sheet-demo__custom-content">
+               这是一段通过slot传入的内容,您可以在此自定义操作面板
+            </text>
+         </uvx-action-sheet>
+
+         <!-- 微信开放能力 -->
+         <uvx-action-sheet
+            ref="uSheet6"
+            title="微信开放能力"
+            :actions="OPEN_ACTIONS"
+            @getuserinfo="handleUserInfo"
+         ></uvx-action-sheet>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Item } from "@/uni_modules/uvx-ui/components/uvx-action-sheet/types/index.uts";
+
+type DemoItem = {
+   title: string;
+   iconUrl: string;
+};
+
+// 普通操作项
+const BASIC_ACTIONS: Item[] = [
+   { name: "选项1" },
+   { name: "选项2" },
+   { name: "选项3", subname: "描述文本" },
+];
+// 状态操作项
+const STATUS_ACTIONS: Item[] = [
+   { name: "选项1" },
+   { name: "选项2", loading: true },
+   { name: "选项被禁用", disabled: true },
+];
+// 带取消按钮的操作项
+const CANCEL_ACTIONS: Item[] = [
+   { name: "选项1" },
+   { name: "选项2" },
+   { name: "选项3" },
+];
+// 带描述的操作项
+const DESCRIPTION_ACTIONS: Item[] = [
+   { name: "选项1" },
+   { name: "选项2" },
+   { name: "选项3" },
+];
+// 微信开放能力操作项
+const OPEN_ACTIONS: Item[] = [
+   { name: "获取用户信息", openType: "getUserInfo", color: "#5ac725" },
+];
+// 演示入口
+const ITEMS: DemoItem[] = [
+   {
+      title: "普通使用",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/actionSheet/custom.png",
+   },
+   {
+      title: "设置状态",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/actionSheet/status.png",
+   },
+   {
+      title: "显示取消按钮",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/actionSheet/cancel.png",
+   },
+   {
+      title: "描述内容",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/actionSheet/desc.png",
+   },
+   {
+      title: "显示标题(显示圆角)",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/actionSheet/title.png",
+   },
+   {
+      title: "微信开放能力",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/actionSheet/open.png",
+   },
+];
+// 六个 ActionSheet 实例
+const uSheet1 = ref<UvxActionSheetComponentPublicInstance | null>(null);
+const uSheet2 = ref<UvxActionSheetComponentPublicInstance | null>(null);
+const uSheet3 = ref<UvxActionSheetComponentPublicInstance | null>(null);
+const uSheet4 = ref<UvxActionSheetComponentPublicInstance | null>(null);
+const uSheet5 = ref<UvxActionSheetComponentPublicInstance | null>(null);
+const uSheet6 = ref<UvxActionSheetComponentPublicInstance | null>(null);
+
+/**
+ * 打开指定 ActionSheet
+ * @param index 演示项索引
+ * @returns null
+ */
+const openSheet = (index: number): void => {
+   // #ifndef MP-WEIXIN
+   if (index == 5) {
+      uni.showToast({ title: "请在微信内预览", icon: "none" });
+      return;
+   }
+   // #endif
+   if (index == 0) uSheet1.value?.open();
+   else if (index == 1) uSheet2.value?.open();
+   else if (index == 2) uSheet3.value?.open();
+   else if (index == 3) uSheet4.value?.open();
+   else if (index == 4) uSheet5.value?.open();
+   else if (index == 5) uSheet6.value?.open();
+};
+
+/**
+ * 显示当前选择
+ * @param item 选中的操作项
+ * @returns null
+ */
+const handleSelect = (item: Item): void => {
+   uni.showToast({ title: `选择了${item.name}`, icon: "none" });
+};
+
+/**
+ * 记录菜单关闭事件
+ * @returns null
+ */
+const handleClose = (): void => {
+   console.log("close");
+};
+
+/**
+ * 处理获取用户信息回调
+ * @param event 微信原生按钮事件
+ * @returns null
+ */
+const handleUserInfo = (event: UniEvent): void => {
+   console.log(event);
+   uni.showToast({ title: "已获取用户信息", icon: "none" });
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// ActionSheet 演示页面
+.action-sheet-demo {
+   width: 100%;
+
+   // 默认插槽内容
+   &__custom-content {
+      margin: 10px 20px 30px 20px;
+      color: var(--uvx-text-main);
+      font-size: 15px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+}
+</style>

@@ -1,0 +1,62 @@
+/** 二维码纠错等级。 */
+export type ErrorCorrectLevel = "L" | "M" | "Q" | "H";
+
+/** 二维码绘制样式。 */
+export type Style = "square" | "round" | "dot";
+
+/** 二维码配置项。 */
+export type Options = {
+   data?: string;
+   text?: string;
+   typeNumber?: number;
+   errorCorrectLevel?: ErrorCorrectLevel;
+   margin?: number;
+   areaColor?: string;
+   backgroundColor?: string;
+   foregroundColor?: string;
+   foregroundImageSrc?: string;
+   foregroundImageWidth?: number;
+   foregroundImageHeight?: number;
+   foregroundImageX?: number;
+   foregroundImageY?: number;
+   foregroundImagePadding?: number;
+   foregroundImageBackgroundColor?: string;
+   foregroundImageBorderRadius?: number;
+   style?: Style;
+};
+
+/** 组件属性。 */
+export type Props = {
+   value?: string | number;
+   options?: Options;
+   size?: string | number;
+   fileType?: "jpg" | "png";
+   start?: boolean;
+   auto?: boolean;
+   hide?: boolean;
+   loading?: boolean;
+   h5SaveTip?: boolean;
+   uStyle?: string;
+   uClass?: string;
+};
+
+/** 二维码矩阵。 */
+export type Matrix = {
+   cells: boolean[][];
+   size: number;
+};
+
+/** 公开实例接口。 */
+export type Instance = {
+   matrix: Matrix | null;
+   options: Options;
+};
+
+export type Emits = {
+   click: [event: UniEvent];
+   change: [];
+   complete: [];
+   error: [message: string];
+   export: [tempFilePath: string];
+   save: [tempFilePath: string];
+};

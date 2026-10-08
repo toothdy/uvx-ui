@@ -1,0 +1,119 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo qrcode-demo">
+         <!-- 基本使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-qrcode value="https://www.uvxui.cn" :options="options1"></uvx-qrcode>
+            </view>
+         </view>
+
+         <!-- 自定义样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义样式"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-qrcode
+                  value="https://www.uvxui.cn"
+                  :options="options2"
+               >
+                  <template v-slot:loading>
+                     <uvx-loading-icon mode="circle" color="red" :size="24"></uvx-loading-icon>
+                  </template>
+               </uvx-qrcode>
+            </view>
+         </view>
+
+         <!-- 自定义风格 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义风格"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-qrcode
+                  ref="uQrcode"
+                  value="https://www.uvxui.cn"
+                  :options="options3"
+                  @error="handleError"
+                  @export="handleExportSuccess"
+                  @save="handleSaveSuccess"
+               ></uvx-qrcode>
+               <uvx-button
+                  text="保存二维码"
+                  type="primary"
+                  u-style="margin-top: 26px; width: 200px;"
+                  @click="handleSave"
+               ></uvx-button>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 基本使用配置：中央带 logo
+const options1 = ref({
+   foregroundImageSrc: "/static/logo.jpeg",
+});
+// 自定义样式配置：区域底色 + 内容区背景色
+const options2 = ref({
+   data: "https://www.uvxui.cn",
+   errorCorrectLevel: "H",
+   margin: 10,
+   areaColor: "#F95F6B",
+   backgroundColor: "#3c9cff",
+});
+// 自定义风格配置：圆角风格 + 中央 logo
+const options3 = ref({
+   style: "round",
+   foregroundImageSrc: "/static/logo.jpeg",
+});
+// 自定义风格二维码实例
+const uQrcode = ref<UvxQrcodeComponentPublicInstance | null>(null);
+
+/** 导出二维码。 */
+const handleExport = (): void => {
+   uQrcode.value?.toTempFilePath();
+};
+
+/** 保存二维码。 */
+const handleSave = (): void => {
+   uQrcode.value?.save();
+};
+
+/**
+ * 输出二维码导出路径
+ * @param tempFilePath 临时文件路径
+ * @returns null
+ */
+const handleExportSuccess = (tempFilePath: string): void => {
+   console.log("二维码导出路径", tempFilePath);
+};
+
+/**
+ * 提示二维码保存成功
+ * @param _tempFilePath 保存后的临时文件路径
+ * @returns null
+ */
+const handleSaveSuccess = (_tempFilePath: string): void => {
+   uni.showToast({ title: "保存成功", icon: "success" });
+};
+
+/**
+ * 提示二维码操作失败
+ * @param message 错误信息
+ * @returns null
+ */
+const handleError = (message: string): void => {
+   console.error(message);
+   uni.showToast({ title: "保存失败", icon: "none" });
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

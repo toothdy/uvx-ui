@@ -1,0 +1,14 @@
+export type Props = {
+   seconds: number;
+   startText: string;
+   changeText: string;
+   endText: string;
+   keepRunning: boolean;
+   uniqueKey: string;
+};
+
+export type Emits = {
+   change: [text: string];
+   start: [];
+   end: [];
+};

@@ -1,0 +1,42 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+import type {
+   GroupConfig,
+   IconPlacement,
+   Placement,
+   Shape,
+   Value,
+} from "../../uvx-checkbox/types/index.uts";
+
+export type Props = {
+   value: Value[];
+   modelValue: Value[];
+   name: string;
+   shape: Shape;
+   disabled: boolean;
+   activeColor: string;
+   inactiveColor: string;
+   size: string | number;
+   placement: Placement;
+   labelSize: string | number;
+   labelColor: string;
+   labelDisabled: boolean;
+   iconColor: string;
+   iconSize: string | number;
+   iconPlacement: IconPlacement;
+   borderBottom: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [values: Value[]];
+   input: [values: Value[]];
+   change: [values: Value[]];
+};
+
+export type Context = {
+   config: ComputedRef<GroupConfig>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   toggleValue: (value: Value) => void;
+};

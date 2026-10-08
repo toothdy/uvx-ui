@@ -1,0 +1,197 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo color-demo">
+         <!-- 功能色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="功能色"></uvx-text>
+            </view>
+            <view class="color-demo__color-box">
+               <view class="color-demo__color-item color-demo__color-item--primary">
+                  <text class="color-demo__color-label color-demo__color-label--inverse">Primary</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--success">
+                  <text class="color-demo__color-label color-demo__color-label--inverse">Success</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--warning">
+                  <text class="color-demo__color-label color-demo__color-label--inverse">Warning</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--error">
+                  <text class="color-demo__color-label color-demo__color-label--inverse">Error</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--info">
+                  <text class="color-demo__color-label color-demo__color-label--inverse">Info</text>
+               </view>
+            </view>
+         </view>
+
+         <!-- 文字色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="文字颜色"></uvx-text>
+            </view>
+            <view class="color-demo__color-box">
+               <view class="color-demo__color-item color-demo__color-item--text-main">
+                  <text class="color-demo__color-label color-demo__color-label--text-main">主要文字</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--text-content">
+                  <text class="color-demo__color-label color-demo__color-label--text-content">常规文字</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--text-tips">
+                  <text class="color-demo__color-label color-demo__color-label--text-tips">次要文字</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--text-placeholder">
+                  <text class="color-demo__color-label color-demo__color-label--text-placeholder">占位文字</text>
+               </view>
+            </view>
+         </view>
+
+         <!-- 表面色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="背景颜色"></uvx-text>
+            </view>
+            <view class="color-demo__color-box">
+               <view class="color-demo__color-item color-demo__color-item--page">
+                  <text class="color-demo__color-label">页面背景</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--container">
+                  <text class="color-demo__color-label">容器背景</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--hover">
+                  <text class="color-demo__color-label">悬停背景</text>
+               </view>
+            </view>
+         </view>
+
+         <!-- 边框与禁用色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="边框与禁用色"></uvx-text>
+            </view>
+            <view class="color-demo__color-box">
+               <view class="color-demo__color-item color-demo__color-item--border">
+                  <text class="color-demo__color-label">边框颜色</text>
+               </view>
+               <view class="color-demo__color-item color-demo__color-item--disabled">
+                  <text class="color-demo__color-label">禁用颜色</text>
+               </view>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+.color-demo {
+   // 色块横向布局
+   &__color-box {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: -8px;
+   }
+
+   // 通用色块
+   &__color-item {
+      width: 160rpx;
+      height: 54px;
+      margin-bottom: 8px;
+      border: 1px solid var(--uvx-border);
+      border-radius: 3px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      // 功能色
+      &--primary {
+         background-color: var(--uvx-primary);
+      }
+
+      &--success {
+         background-color: var(--uvx-success);
+      }
+
+      &--warning {
+         background-color: var(--uvx-warning);
+      }
+
+      &--error {
+         background-color: var(--uvx-error);
+      }
+
+      &--info {
+         background-color: var(--uvx-info);
+      }
+
+      // 文字色
+      &--text-main {
+         background-color: var(--uvx-container);
+      }
+
+      &--text-content {
+         background-color: var(--uvx-container);
+      }
+
+      &--text-tips {
+         background-color: var(--uvx-container);
+      }
+
+      &--text-placeholder {
+         background-color: var(--uvx-container);
+      }
+
+      // 表面色
+      &--page {
+         background-color: var(--uvx-page);
+      }
+
+      &--container {
+         background-color: var(--uvx-container);
+      }
+
+      &--hover {
+         background-color: var(--uvx-hover);
+      }
+
+      // 边框与禁用色
+      &--border {
+         background-color: var(--uvx-border);
+      }
+
+      &--disabled {
+         background-color: var(--uvx-disabled);
+      }
+   }
+
+   // 色块文字
+   &__color-label {
+      color: var(--uvx-text-main);
+      font-size: 13px;
+
+      &--inverse {
+         color: #ffffff;
+      }
+
+      &--text-main {
+         color: var(--uvx-text-main);
+      }
+
+      &--text-content {
+         color: var(--uvx-text-content);
+      }
+
+      &--text-tips {
+         color: var(--uvx-text-tips);
+      }
+
+      &--text-placeholder {
+         color: var(--uvx-text-placeholder);
+      }
+   }
+}
+</style>

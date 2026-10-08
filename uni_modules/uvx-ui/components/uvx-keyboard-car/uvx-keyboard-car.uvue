@@ -1,0 +1,354 @@
+<template>
+   <view
+      class="uvx-keyboard-car"
+      <!-- #ifdef APP-HARMONY -->
+      @touchmove.stop="handleTouchMove"
+      <!-- #else -->
+      @touchmove.stop.prevent="handleTouchMove"
+      <!-- #endif -->
+   >
+      <!-- 省份或字母数字按键 -->
+      <view
+         v-for="(group, rowIndex) in currentRows"
+         :key="rowIndex"
+         class="uvx-keyboard-car__row"
+      >
+         <!-- 输入模式切换 -->
+         <view v-if="rowIndex == 3" class="uvx-keyboard-car__action-wrapper">
+            <view
+               class="uvx-keyboard-car__action"
+               hover-class="uvx-keyboard-car__key--active"
+               :hover-stay-time="200"
+               @click="changeCarInputMode"
+            >
+               <slot v-if="uSwitchKey"></slot>
+               <view v-else class="uvx-keyboard-car__switch">
+                  <text
+                     class="uvx-keyboard-car__switch-text"
+                     :class="!isAlphabetMode ? 'uvx-keyboard-car__switch-text--active' : ''"
+                  >中</text>
+                  <text class="uvx-keyboard-car__switch-line">/</text>
+                  <text
+                     class="uvx-keyboard-car__switch-text"
+                     :class="isAlphabetMode ? 'uvx-keyboard-car__switch-text--active' : ''"
+                  >英</text>
+               </view>
+            </view>
+         </view>
+
+         <!-- 当前行字符 -->
+         <view
+            v-for="(item, columnIndex) in group"
+            :key="columnIndex"
+            class="uvx-keyboard-car__key-wrapper"
+         >
+            <view
+               class="uvx-keyboard-car__key"
+               :class="isDisabled(item) ? 'uvx-keyboard-car__key--disabled' : ''"
+               :hover-class="isDisabled(item) ? 'none' : 'uvx-keyboard-car__key--active'"
+               :hover-stay-time="200"
+               @click="handleKeyClick(item)"
+            >
+               <text class="uvx-keyboard-car__key-text">{{ item }}</text>
+            </view>
+         </view>
+
+         <!-- 退格按键 -->
+         <view v-if="rowIndex == 3" class="uvx-keyboard-car__action-wrapper">
+            <view
+               class="uvx-keyboard-car__action"
+               hover-class="uvx-keyboard-car__key--active"
+               :hover-stay-time="200"
+               @touchstart.stop="handleBackspaceStart"
+               @touchend.stop="clearBackspaceTimer"
+               @touchcancel.stop="clearBackspaceTimer"
+            >
+               <uvx-icon name="backspace" color="main" size="28"></uvx-icon>
+            </view>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-keyboard-car 车牌键盘
+ * @description 提供省份和字母数字车牌字符输入。
+ * @property {Boolean} random 是否随机排列常规按键，默认 false
+ * @property {Boolean} autoChange 输入省份后是否自动切换到字母数字，默认 false
+ * @property {Array} disKeys 禁用的按键
+ * @property {Boolean} uSwitchKey 是否使用自定义切换键内容，默认 false
+ * @event {Function} change 点击可用按键时触发
+ * @event {Function} backspace 点击或长按退格键时触发
+ * @event {Function} changeCarInputMode 输入模式切换时触发
+ * @method changeCarInputMode 切换省份与字母数字输入模式
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Props,
+   Key,
+   Rows,
+   Emits,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-keyboard-car", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   random: false,
+   autoChange: false,
+   disKeys: (): Key[] => [],
+   uSwitchKey: false,
+});
+
+/** 车牌键盘事件 */
+const emit = defineEmits<Emits>();
+
+// 省级简称及常用首字符
+const AREA_KEYS: Key[] = [
+   "京", "沪", "粤", "津", "冀", "豫", "云", "辽", "黑", "湘",
+   "皖", "鲁", "苏", "浙", "赣", "鄂", "桂", "甘", "晋", "陕",
+   "蒙", "吉", "闽", "贵", "渝", "川", "青", "琼", "宁", "挂",
+   "藏", "港", "澳", "新", "使", "学",
+];
+// 车牌字母与数字
+const ALPHABET_KEYS: Key[] = [
+   1, 2, 3, 4, 5, 6, 7, 8, 9, 0,
+   "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+   "A", "S", "D", "F", "G", "H", "J", "K", "L", "Z",
+   "X", "C", "V", "B", "N", "M",
+];
+// 当前是否为字母数字模式
+const isAlphabetMode = ref(false);
+// 长按退格定时器
+let backspaceTimer: number | null = null;
+
+/**
+ * 返回随机排列的按键副本
+ * @param source 原始按键
+ * @returns Key[]
+ */
+const shuffleKeys = (source: Key[]): Key[] => {
+   const result = source.slice();
+   for (let index = result.length - 1; index > 0; index--) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      const current = result[index];
+      result[index] = result[randomIndex];
+      result[randomIndex] = current;
+   }
+   return result;
+};
+
+/**
+ * 将按键切分为四行
+ * @param source 一维按键
+ * @returns Rows
+ */
+const createRows = (source: Key[]): Rows => {
+   return [
+      source.slice(0, 10),
+      source.slice(10, 20),
+      source.slice(20, 30),
+      source.slice(30, 36),
+   ];
+};
+
+/**
+ * 省份按键行
+ * @returns Rows
+ */
+const areaRows = computed((): Rows => {
+   const keys = props.random ? shuffleKeys(AREA_KEYS) : AREA_KEYS.slice();
+   return createRows(keys);
+});
+
+/**
+ * 字母数字按键行
+ * @returns Rows
+ */
+const alphabetRows = computed((): Rows => {
+   const keys = props.random ? shuffleKeys(ALPHABET_KEYS) : ALPHABET_KEYS.slice();
+   return createRows(keys);
+});
+
+/**
+ * 当前显示的按键行
+ * @returns Rows
+ */
+const currentRows = computed((): Rows => {
+   return isAlphabetMode.value ? alphabetRows.value : areaRows.value;
+});
+
+/**
+ * 按键是否禁用
+ * @param value 按键值
+ * @returns boolean
+ */
+const isDisabled = (value: Key): boolean => {
+   return props.disKeys.includes(value);
+};
+
+/**
+ * 发送车牌按键并按需切换输入模式
+ * @param value 按键值
+ * @returns Promise<void>
+ */
+const handleKeyClick = async (value: Key): Promise<void> => {
+   if (isDisabled(value)) return;
+   emit("change", value);
+   if (!isAlphabetMode.value && props.autoChange) {
+      await $uvx.sleep(200);
+      isAlphabetMode.value = true;
+      emit("changeCarInputMode", true);
+   }
+};
+
+/**
+ * 切换省份与字母数字输入模式
+ * @returns null
+ */
+const changeCarInputMode = (): void => {
+   isAlphabetMode.value = !isAlphabetMode.value;
+   emit("changeCarInputMode", isAlphabetMode.value);
+};
+
+/**
+ * 清除长按退格定时器
+ * @returns null
+ */
+const clearBackspaceTimer = (): void => {
+   if (backspaceTimer == null) return;
+   clearInterval(backspaceTimer);
+   backspaceTimer = null;
+};
+
+/**
+ * 开始连续退格
+ * @returns null
+ */
+const handleBackspaceStart = (): void => {
+   emit("backspace");
+   clearBackspaceTimer();
+   backspaceTimer = setInterval((): void => {
+      emit("backspace");
+   }, 250);
+};
+
+/**
+ * 阻止键盘区域触摸移动穿透
+ * @returns null
+ */
+const handleTouchMove = (): void => {};
+
+/**
+ * 卸载时清理连续退格计时器
+ * @returns null
+ */
+onUnmounted(clearBackspaceTimer);
+
+defineExpose({ changeCarInputMode });
+</script>
+
+<style lang="scss">
+// 车牌键盘容器
+.uvx-keyboard-car {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding: 3px 0;
+   background-color: var(--uvx-page);
+
+   // 按键行
+   &__row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 0 3px;
+   }
+
+   // 普通按键占位
+   &__key-wrapper {
+      flex: 1;
+      box-sizing: border-box;
+      min-width: 0;
+      padding: 4px 2px;
+   }
+
+   // 功能按键占位
+   &__action-wrapper {
+      flex-shrink: 0;
+      box-sizing: border-box;
+      width: 67px;
+      padding: 4px 2px;
+   }
+
+   // 普通按键
+   &__key {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      border-radius: 4px;
+      background-color: var(--uvx-container);
+      box-shadow: 0 1px 0 var(--uvx-border);
+
+      // 禁用状态
+      &--disabled {
+         opacity: 0.45;
+      }
+
+      // 按压状态
+      &--active {
+         background-color: var(--uvx-hover);
+      }
+   }
+
+   // 普通按键文字
+   &__key-text {
+      color: var(--uvx-text-main);
+      font-size: 16px;
+   }
+
+   // 两侧功能按键
+   &__action {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      border-radius: 4px;
+      background-color: var(--uvx-container);
+      box-shadow: 0 1px 0 var(--uvx-border);
+   }
+
+   // 输入模式切换内容
+   &__switch {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 输入模式文字
+   &__switch-text {
+      color: var(--uvx-text-main);
+      font-size: 16px;
+
+      // 当前输入模式
+      &--active {
+         color: var(--uvx-primary);
+      }
+   }
+
+   // 输入模式分隔符
+   &__switch-line {
+      margin: 0 2px;
+      color: var(--uvx-text-main);
+      font-size: 15px;
+   }
+}
+</style>

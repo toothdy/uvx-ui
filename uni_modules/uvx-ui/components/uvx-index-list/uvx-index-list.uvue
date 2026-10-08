@@ -1,0 +1,618 @@
+<template>
+   <view
+      class="uvx-index-list"
+      :class="props.uClass"
+      :style="rootStyle"
+   >
+      <!-- 列表滚动区域 -->
+      <scroll-view
+         :id="scrollId"
+         class="uvx-index-list__scroll"
+         direction="vertical"
+         :bounces="false"
+         :show-scrollbar="false"
+         <!-- #ifdef MP -->
+         :scroll-top="scrollTarget"
+         :scroll-with-animation="true"
+         <!-- #endif -->
+         @scroll="handleScroll"
+      >
+         <view class="uvx-index-list__content">
+            <view class="uvx-index-list__header">
+               <slot name="header"></slot>
+            </view>
+            <slot></slot>
+            <view class="uvx-index-list__footer">
+               <slot name="footer"></slot>
+            </view>
+         </view>
+      </scroll-view>
+
+      <!-- 右侧索引栏 -->
+      <view
+         v-if="resolvedIndexList.length > 0"
+         :id="indexBarId"
+         class="uvx-index-list__index-bar"
+         :style="indexBarStyle"
+         @touchstart.stop="handleTouchStart"
+         @touchmove.stop.prevent="handleTouchMove"
+         @touchend.stop.prevent="handleTouchEnd"
+         @touchcancel.stop.prevent="handleTouchEnd"
+      >
+         <view
+            v-for="(item, index) in resolvedIndexList"
+            :key="index"
+            class="uvx-index-list__index-item"
+            :class="index == activeIndex ? 'uvx-index-list__index-item-active' : ''"
+            :style="getIndexItemStyle(index)"
+         >
+            <text
+               class="uvx-index-list__index-text"
+               :class="index == activeIndex ? 'uvx-index-list__index-text-active' : ''"
+               :style="getIndexTextStyle(index)"
+            >{{ item }}</text>
+         </view>
+      </view>
+
+      <!-- 当前索引提示 -->
+      <view
+         v-if="isIndicatorVisible"
+         class="uvx-index-list__indicator"
+         :style="indicatorStyle"
+      >
+         <text class="uvx-index-list__indicator-text">{{ activeValue }}</text>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-index-list 索引列表
+ * @description 通过右侧索引快速定位分组内容，适合联系人和城市列表。
+ * @tutorial https://www.uvxui.cn/components/index-list.html
+ * @property {String} inactiveColor 非激活索引颜色，空值时跟随主题
+ * @property {String} activeColor 激活索引颜色，空值时跟随主题
+ * @property {Array} indexList 索引字符列表，为空时使用 A-Z
+ * @property {String | Number} customNavHeight 自定义导航栏高度
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} select 触摸结束时返回索引下标和索引值
+ * @slot header 列表头部内容
+ * @slot default 索引分组内容
+ * @slot footer 列表底部内容
+ * @example <uvx-index-list :index-list="indexList" @select="handleSelect">...</uvx-index-list>
+ */
+
+import type { ComponentPublicInstance } from "vue";
+import { $uvx } from "../../index.uts";
+import type {
+   Context,
+   Emits,
+   ItemLayout,
+   Props,
+   Value,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-index-list",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   inactiveColor: "",
+   activeColor: "",
+   indexList: (): Value[] => [],
+   customNavHeight: 0,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 索引选择事件 */
+const emit = defineEmits<Emits>();
+
+// 滚动容器唯一标识
+const scrollId = "uvx-index-list-scroll-" + Date.now().toString() + "-" + Math.floor(Math.random() * 100000).toString();
+// 索引栏唯一标识
+const indexBarId = "uvx-index-list-bar-" + Date.now().toString() + "-" + Math.floor(Math.random() * 100000).toString();
+// 已注册分组实例
+const children = ref<ComponentPublicInstance[]>([]);
+// 分组布局缓存
+const itemLayouts = ref<ItemLayout[]>([]);
+// 当前激活索引
+const activeIndex = ref(-1);
+// 当前滚动位置
+const scrollTop = ref(0);
+// MP 端程序滚动目标
+const scrollTarget = ref(0);
+// 滚动容器页面顶部位置
+const scrollViewportTop = ref(0);
+// 索引栏页面顶部位置
+const indexBarPageTop = ref(0);
+// 单个索引项高度
+const indexItemHeight = ref(18);
+// 是否正在触摸索引栏
+const isTouching = ref(false);
+// 提示隐藏计时器
+let indicatorTimer = 0;
+
+/**
+ * 生成默认 A-Z 索引
+ * @returns Value[]
+ */
+const getDefaultIndexList = (): Value[] => {
+   const values: Value[] = [];
+   const firstCode = "A".charCodeAt(0);
+   for (let index = 0; index < 26; index++) {
+      values.push(String.fromCharCode(firstCode + index));
+   }
+   return values;
+};
+
+/**
+ * 解析尺寸属性为 px
+ * @param value 尺寸属性
+ * @returns number
+ */
+const getPixelValue = (value: string | number): number => {
+   const text = value.toString().trim();
+   const numberValue = parseFloat(text);
+   if (isNaN(numberValue) || numberValue < 0) return 0;
+   if (text.endsWith("rpx")) {
+      return numberValue * uni.getWindowInfo().windowWidth / 750;
+   }
+   return numberValue;
+};
+
+/**
+ * 最终索引列表
+ * @returns Value[]
+ */
+const resolvedIndexList = computed((): Value[] => {
+   return props.indexList.length > 0 ? props.indexList : getDefaultIndexList();
+});
+
+/**
+ * 可用列表高度
+ * @returns number
+ */
+const listHeight = computed((): number => {
+   return Math.max(0, uni.getWindowInfo().windowHeight - getPixelValue(props.customNavHeight));
+});
+
+/**
+ * 右侧索引栏相对组件顶部的位置
+ * @returns number
+ */
+const indexBarTop = computed((): number => {
+   const estimatedHeight = resolvedIndexList.value.length * 18;
+   return Math.max(0, (listHeight.value - estimatedHeight) / 2);
+});
+
+/**
+ * 当前激活索引值
+ * @returns Value
+ */
+const activeValue = computed((): Value => {
+   if (activeIndex.value < 0 || activeIndex.value >= resolvedIndexList.value.length) return "";
+   return resolvedIndexList.value[activeIndex.value];
+});
+
+/**
+ * 是否显示当前索引提示
+ * @returns boolean
+ */
+const isIndicatorVisible = computed((): boolean => {
+   return isTouching.value
+      && activeIndex.value >= 0
+      && activeIndex.value < resolvedIndexList.value.length;
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": `${listHeight.value}px`,
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 索引栏样式
+ * @returns UTSJSONObject
+ */
+const indexBarStyle = computed((): UTSJSONObject => {
+   return { "top": `${indexBarTop.value}px` };
+});
+
+/**
+ * 当前索引提示样式
+ * @returns UTSJSONObject
+ */
+const indicatorStyle = computed((): UTSJSONObject => {
+   const centerTop = indexBarTop.value
+      + indexItemHeight.value * activeIndex.value
+      + indexItemHeight.value / 2
+      - 25;
+   return { "top": `${Math.max(0, Math.min(listHeight.value - 50, centerTop))}px` };
+});
+
+/**
+ * 获取索引项样式
+ * @param index 索引下标
+ * @returns UTSJSONObject
+ */
+const getIndexItemStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (index == activeIndex.value && !$uvx.string.empty(props.activeColor)) {
+      style.set("background-color", props.activeColor);
+   }
+   return style;
+};
+
+/**
+ * 获取索引文字样式
+ * @param index 索引下标
+ * @returns UTSJSONObject
+ */
+const getIndexTextStyle = (index: number): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (index != activeIndex.value && !$uvx.string.empty(props.inactiveColor)) {
+      style.set("color", props.inactiveColor);
+   }
+   return style;
+};
+
+/**
+ * 注册索引分组
+ * @param child 分组组件实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) != -1) return;
+   children.value.push(child);
+   itemLayouts.value.push({ top: 0, height: 0, isReady: false });
+};
+
+/**
+ * 注销索引分组
+ * @param child 分组组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+   itemLayouts.value.splice(index, 1);
+};
+
+/**
+ * 更新分组布局
+ * @param child 分组组件实例
+ * @param top 分组页面顶部位置
+ * @param height 分组高度
+ * @returns null
+ */
+const updateLayout = (child: ComponentPublicInstance, top: number, height: number): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   itemLayouts.value[index] = {
+      top: Math.max(0, top - scrollViewportTop.value + scrollTop.value),
+      height: Math.max(0, height),
+      isReady: height > 0,
+   };
+};
+
+/** 向分组和锚点提供列表上下文 */
+provide<Context>("uvx-index-list-context", {
+   register,
+   unregister,
+   updateLayout,
+});
+
+/**
+ * 获取触摸点页面纵坐标
+ * @param event 触摸事件
+ * @returns 页面纵坐标，无有效触点时返回 null
+ */
+const getTouchPageY = (event: UniTouchEvent): number | null => {
+   if (event.changedTouches.length > 0) return event.changedTouches[0].pageY;
+   if (event.touches.length > 0) return event.touches[0].pageY;
+   return null;
+};
+
+/**
+ * 根据触摸位置计算索引下标
+ * @param pageY 页面纵坐标
+ * @returns number
+ */
+const getIndexFromPageY = (pageY: number): number => {
+   if (resolvedIndexList.value.length == 0 || indexItemHeight.value <= 0) return -1;
+   const rawIndex = Math.floor((pageY - indexBarPageTop.value) / indexItemHeight.value);
+   return Math.max(0, Math.min(resolvedIndexList.value.length - 1, rawIndex));
+};
+
+/**
+ * 激活索引并滚动到对应分组
+ * @param index 索引下标
+ * @returns null
+ */
+const selectIndex = (index: number): void => {
+   if (index < 0 || index >= resolvedIndexList.value.length) return;
+   activeIndex.value = index;
+   if (index >= itemLayouts.value.length) return;
+   const layout = itemLayouts.value[index];
+   if (!layout.isReady) return;
+   scrollTarget.value = layout.top;
+   const element = uni.getElementById<UniScrollViewElement>(scrollId);
+   if (element == null) return;
+   element.scrollTop = layout.top;
+};
+
+/**
+ * 根据触摸事件更新索引
+ * @param event 触摸事件
+ * @returns null
+ */
+const updateFromTouch = (event: UniTouchEvent): void => {
+   const pageY = getTouchPageY(event);
+   if (pageY == null) return;
+   selectIndex(getIndexFromPageY(pageY));
+};
+
+/**
+ * 处理索引栏触摸开始
+ * @param event 触摸事件
+ * @returns null
+ */
+const handleTouchStart = (event: UniTouchEvent): void => {
+   if (indicatorTimer != 0) {
+      clearTimeout(indicatorTimer);
+      indicatorTimer = 0;
+   }
+   isTouching.value = true;
+   updateFromTouch(event);
+};
+
+/**
+ * 处理索引栏触摸移动
+ * @param event 触摸事件
+ * @returns null
+ */
+const handleTouchMove = (event: UniTouchEvent): void => {
+   if (!isTouching.value) isTouching.value = true;
+   updateFromTouch(event);
+};
+
+/**
+ * 处理索引栏触摸结束
+ * @returns null
+ */
+const handleTouchEnd = (): void => {
+   if (activeIndex.value >= 0 && activeIndex.value < resolvedIndexList.value.length) {
+      emit("select", activeIndex.value, resolvedIndexList.value[activeIndex.value]);
+   }
+   indicatorTimer = setTimeout((): void => {
+      isTouching.value = false;
+      indicatorTimer = 0;
+   }, 300);
+};
+
+/**
+ * 根据滚动位置更新激活索引
+ * @param currentTop 当前滚动位置
+ * @returns null
+ */
+const updateActiveIndex = (currentTop: number): void => {
+   if (itemLayouts.value.length == 0 || !itemLayouts.value[0].isReady) {
+      activeIndex.value = -1;
+      return;
+   }
+   if (currentTop < itemLayouts.value[0].top) {
+      activeIndex.value = -1;
+      return;
+   }
+   let matchedIndex = -1;
+   for (let index = 0; index < itemLayouts.value.length; index++) {
+      const layout = itemLayouts.value[index];
+      if (!layout.isReady || currentTop < layout.top) break;
+      matchedIndex = index;
+   }
+   activeIndex.value = matchedIndex;
+};
+
+/**
+ * 处理列表滚动
+ * @param event 滚动事件
+ * @returns null
+ */
+const handleScroll = (event: UniScrollEvent): void => {
+   scrollTop.value = Math.max(0, event.detail.scrollTop);
+   if (!isTouching.value) updateActiveIndex(scrollTop.value);
+};
+
+/**
+ * 测量索引栏布局
+ * @returns null
+ */
+const measureIndexBar = (): void => {
+   const element = uni.getElementById<UniElement>(indexBarId);
+   if (element == null) return;
+   const promise = element.getBoundingClientRectAsync();
+   if (promise == null) return;
+   promise.then((rect: DOMRect): void => {
+      indexBarPageTop.value = rect.top;
+      if (resolvedIndexList.value.length > 0) {
+         indexItemHeight.value = rect.height / resolvedIndexList.value.length;
+      }
+   });
+};
+
+/**
+ * 测量滚动容器并通知分组更新布局
+ * @returns null
+ */
+const measureItems = (): void => {
+   const element = uni.getElementById<UniScrollViewElement>(scrollId);
+   if (element == null) return;
+   const promise = element.getBoundingClientRectAsync();
+   if (promise == null) return;
+   promise.then((rect: DOMRect): void => {
+      scrollViewportTop.value = rect.top;
+      for (let index = 0; index < children.value.length; index++) {
+         children.value[index].$callMethod("measure");
+      }
+   });
+};
+
+/**
+ * 重新测量索引栏和分组布局
+ * @returns null
+ */
+const init = (): void => {
+   nextTick((): void => {
+      measureIndexBar();
+      measureItems();
+   });
+};
+
+/** 索引数据变化后重新测量布局 */
+watch((): Value[] => props.indexList, (): void => {
+   activeIndex.value = -1;
+   init();
+}, { deep: true });
+
+/** 组件挂载后执行首次布局测量 */
+onMounted((): void => {
+   init();
+});
+
+/** 组件卸载时清理提示计时器 */
+onUnmounted((): void => {
+   if (indicatorTimer != 0) clearTimeout(indicatorTimer);
+});
+
+defineExpose({ init });
+</script>
+
+<style lang="scss">
+// 索引列表根节点
+.uvx-index-list {
+   position: relative;
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   overflow: visible;
+   background-color: var(--uvx-page);
+}
+
+// 列表滚动区域
+.uvx-index-list__scroll {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   overflow: hidden;
+}
+
+// 列表内容
+.uvx-index-list__content {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+}
+
+// 头部内容
+.uvx-index-list__header {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+}
+
+// 底部内容
+.uvx-index-list__footer {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+}
+
+// 右侧索引栏
+.uvx-index-list__index-bar {
+   position: absolute;
+   right: 0;
+   z-index: 3;
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   padding-right: 5px;
+   padding-left: 5px;
+   overflow: visible;
+}
+
+// 单个索引项
+.uvx-index-list__index-item {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   width: 18px;
+   height: 18px;
+   flex-shrink: 0;
+   border-radius: 18px;
+}
+
+// 激活索引项
+.uvx-index-list__index-item-active {
+   background-color: var(--uvx-primary);
+}
+
+// 索引文字
+.uvx-index-list__index-text {
+   width: 18px;
+   color: var(--uvx-text-content);
+   font-size: 11px;
+   line-height: 1.2em;
+   text-align: center;
+}
+
+// 激活索引文字
+.uvx-index-list__index-text-active {
+   color: #ffffff;
+}
+
+/* #ifdef APP-IOS */
+// iOS 原生文字基线偏高，激活态向下补偿
+.uvx-index-list__index-text-active {
+   position: relative;
+   top: 1px;
+}
+/* #endif */
+
+// 当前索引提示
+.uvx-index-list__indicator {
+   position: absolute;
+   right: 42px;
+   z-index: 2;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   width: 50px;
+   height: 50px;
+   border-radius: 50px;
+   overflow: visible;
+   background-color: var(--uvx-text-placeholder);
+}
+
+// 当前索引提示文字
+.uvx-index-list__indicator-text {
+   width: 50px;
+   color: #ffffff;
+   font-size: 24px;
+   font-weight: bold;
+   line-height: 1.2em;
+   text-align: center;
+}
+</style>

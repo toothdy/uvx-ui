@@ -1,0 +1,495 @@
+<template>
+   <view
+      class="uvx-checkbox"
+      :class="[checkboxClasses, uClass]"
+      :style="checkboxStyle"
+      @click.stop="handleWrapperClick"
+   >
+      <!-- 勾选图标 -->
+      <view
+         v-if="shape != 'card' || isChecked"
+         class="uvx-checkbox__icon"
+         :class="iconClasses"
+         :style="iconStyle"
+         @click.stop="handleIconClick"
+      >
+         <slot name="icon">
+            <uvx-icon
+               name="checkbox-mark"
+               :size="iconSize"
+               :color="iconColor"
+               :u-style="$uvx.style.stringify(uIconStyle)"
+            ></uvx-icon>
+         </slot>
+      </view>
+      <!-- 标签内容 -->
+      <view class="uvx-checkbox__label" @click.stop="handleLabelClick">
+         <slot>
+            <text
+               class="uvx-checkbox__label-text"
+               :class="{ 'uvx-checkbox__label-text--disabled': isDisabled }"
+               :style="labelStyle"
+            >{{ label }}</text>
+         </slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-checkbox 复选框
+ * @description 配合 uvx-checkbox-group 使用，支持继承组配置和单项覆盖。
+ * @tutorial https://www.uvxui.cn/components/checkbox.html
+ * @property {String | Number | Boolean} name 复选框标识符
+ * @property {String} shape 形状：circle、square、card，空值时继承组配置
+ * @property {String | Number} size 复选框尺寸，空值时继承组配置
+ * @property {Boolean} checked 是否默认选中
+ * @property {String | Boolean} disabled 是否禁用，空值时继承组配置
+ * @property {String} activeColor 选中颜色，空值时继承组配置
+ * @property {String} inactiveColor 未选中颜色，空值时继承组配置
+ * @property {String | Number} iconSize 勾选图标尺寸，空值时继承组配置
+ * @property {String} iconColor 勾选图标颜色，空值时继承组配置
+ * @property {String | Number | Boolean} label 标签文字
+ * @property {String | Number} labelSize 标签字号，空值时继承组配置
+ * @property {String} labelColor 标签颜色，空值时继承组配置或主题
+ * @property {String | Boolean} labelDisabled 是否禁止点击标签切换状态
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} change 状态变化事件，参数为切换后的选中状态
+ * @example <uvx-checkbox-group><uvx-checkbox name="apple" label="苹果"></uvx-checkbox></uvx-checkbox-group>
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Emits,
+   Props,
+   Shape,
+   Value,
+} from "./types/index.uts";
+import type { Context } from "../uvx-checkbox-group/types/index.uts";
+
+defineOptions({ name: "uvx-checkbox", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   name: "",
+   shape: "",
+   size: "",
+   checked: false,
+   disabled: "",
+   activeColor: "",
+   inactiveColor: "",
+   iconSize: "",
+   iconColor: "",
+   label: "",
+   labelSize: "",
+   labelColor: "",
+   labelDisabled: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 复选框状态变化事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件公开实例，用于和复选框组通信
+const instance = getCurrentInstance()!.proxy!;
+// 最近的复选框组上下文
+const group = inject<Context | null>("uvx-checkbox-group-context", null);
+if (group == null) throw new Error("uvx-checkbox 必须在 uvx-checkbox-group 内使用");
+// 当前选中状态
+const isChecked = ref(false);
+// 父级响应式配置
+const groupConfig = group.config;
+
+/**
+ * 当前形状
+ * @returns Shape
+ */
+const shape = computed((): Shape => {
+   return !$uvx.string.empty(props.shape) ? props.shape : groupConfig.value.shape;
+});
+
+/**
+ * 当前禁用状态
+ * @returns boolean
+ */
+const isDisabled = computed((): boolean => {
+   return typeof props.disabled == "boolean" ? props.disabled : groupConfig.value.disabled;
+});
+
+/**
+ * 标签是否禁止点击
+ * @returns boolean
+ */
+const isLabelDisabled = computed((): boolean => {
+   return typeof props.labelDisabled == "boolean" ? props.labelDisabled : groupConfig.value.labelDisabled;
+});
+
+/**
+ * 复选框尺寸
+ * @returns string | number
+ */
+const size = computed((): string | number => {
+   if (!$uvx.string.unset(props.size)) return props.size;
+   return groupConfig.value.size;
+});
+
+/**
+ * 勾选图标尺寸
+ * @returns string | number
+ */
+const iconSize = computed((): string | number => {
+   if (!$uvx.string.unset(props.iconSize)) return props.iconSize;
+   return groupConfig.value.iconSize;
+});
+
+/**
+ * 选中颜色
+ * @returns string
+ */
+const activeColor = computed((): string => {
+   return !$uvx.string.empty(props.activeColor) ? props.activeColor : groupConfig.value.activeColor;
+});
+
+/**
+ * 未选中颜色
+ * @returns string
+ */
+const inactiveColor = computed((): string => {
+   return !$uvx.string.empty(props.inactiveColor) ? props.inactiveColor : groupConfig.value.inactiveColor;
+});
+
+/**
+ * 勾选图标颜色
+ * @returns string
+ */
+const iconColor = computed((): string => {
+   if (!isChecked.value) return "transparent";
+   if (isDisabled.value) return inactiveColor.value;
+   return !$uvx.string.empty(props.iconColor) ? props.iconColor : groupConfig.value.iconColor;
+});
+
+/**
+ * 卡片模式下抵消角标容器旋转，保持勾选图标正向
+ * @returns UTSJSONObject
+ */
+const uIconStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (shape.value == "card") {
+      style.set("transform", groupConfig.value.iconPlacement == "right" ? "rotate(312deg)" : "rotate(50deg)");
+      style.set("margin-top", "5px");
+   }
+   return style;
+});
+
+/**
+ * 标签字号
+ * @returns string
+ */
+const labelSize = computed((): string => {
+   const value = !$uvx.string.unset(props.labelSize) ? props.labelSize : groupConfig.value.labelSize;
+   return $uvx.format.unit(value);
+});
+
+/**
+ * 标签颜色
+ * @returns string
+ */
+const labelColor = computed((): string => {
+   if (isDisabled.value) return inactiveColor.value;
+   if (!$uvx.string.empty(props.labelColor)) return props.labelColor;
+   if (!$uvx.string.empty(groupConfig.value.labelColor)) return groupConfig.value.labelColor;
+   return "";
+});
+
+/**
+ * 复选框布局及状态类名
+ * @returns string[]
+ */
+const checkboxClasses = computed((): string[] => {
+   const classes: string[] = [
+      `uvx-checkbox--${groupConfig.value.iconPlacement}`,
+      `uvx-checkbox--${shape.value}`,
+   ];
+   if (isDisabled.value) classes.push("uvx-checkbox--disabled");
+   if (isChecked.value) classes.push("uvx-checkbox--checked");
+   if (shape.value == "card" && isChecked.value) classes.push("uvx-checkbox--card-checked");
+   if (shape.value == "card" && isDisabled.value) classes.push("uvx-checkbox--card-disabled");
+   if (groupConfig.value.borderBottom && groupConfig.value.placement == "column") {
+      classes.push("uvx-checkbox--border");
+   }
+   return classes;
+});
+
+/**
+ * 图标形状类名
+ * @returns string[]
+ */
+const iconClasses = computed((): string[] => {
+   const classes: string[] = [
+      `uvx-checkbox__icon--${shape.value}`,
+      `uvx-checkbox__icon--${groupConfig.value.iconPlacement}`,
+   ];
+   if (isChecked.value) classes.push("uvx-checkbox__icon--checked");
+   if (isChecked.value && isDisabled.value) {
+      classes.push("uvx-checkbox__icon--disabled-checked");
+   }
+   return classes;
+});
+
+/**
+ * 复选框容器样式
+ * @returns UTSJSONObject
+ */
+const checkboxStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (groupConfig.value.placement == "row" && shape.value != "card") {
+      style.set("padding", "8px");
+   }
+   if (groupConfig.value.placement == "column") {
+      style.set("margin-bottom", "8px");
+   }
+   if (shape.value == "card") {
+      style.set("position", "relative");
+      style.set("padding", "16px");
+      style.set("border-width", "1px");
+      style.set("border-style", "solid");
+      const borderColor = isChecked.value && !isDisabled.value
+         ? activeColor.value
+         : inactiveColor.value;
+      if (!$uvx.string.empty(borderColor)) style.set("border-color", borderColor);
+      style.set("border-radius", "4px");
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 勾选图标样式
+ * @returns UTSJSONObject
+ */
+const iconStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(size.value),
+      "height": $uvx.format.unit(size.value),
+   };
+   const borderColor = isChecked.value && !isDisabled.value
+      ? activeColor.value
+      : inactiveColor.value;
+   if (!$uvx.string.empty(borderColor)) style.set("border-color", borderColor);
+   if (isChecked.value && !isDisabled.value) {
+      if (!$uvx.string.empty(activeColor.value)) {
+         style.set("background-color", activeColor.value);
+      }
+   }
+   if (shape.value == "card") {
+      const currentSize = size.value;
+      const width = typeof currentSize == "number"
+         ? currentSize + 22
+         : ($uvx.validate.number(currentSize) ? Number(currentSize) + 22 : 40);
+      style.set("width", $uvx.format.unit(width));
+      style.set("position", "absolute");
+      style.set("transform", groupConfig.value.iconPlacement == "right"
+         ? "rotate(50deg)"
+         : "rotate(312deg)");
+      style.set("border-color", "transparent");
+      style.set(groupConfig.value.iconPlacement, "-15px");
+   }
+   return style;
+});
+
+/**
+ * 标签文字样式
+ * @returns UTSJSONObject
+ */
+const labelStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": labelSize.value,
+      "line-height": "1.2em",
+   };
+   if (!$uvx.string.empty(labelColor.value)) style.set("color", labelColor.value);
+   return style;
+});
+
+/**
+ * 返回复选框名称供组组件读取
+ * @returns Value
+ */
+const getName = (): Value => {
+   return props.name;
+};
+
+/**
+ * 接收组组件下发的配置和选中状态
+ * @param selected 当前值是否选中
+ * @returns null
+ */
+const syncFromGroup = (selected: boolean): void => {
+   isChecked.value = props.checked || selected;
+};
+
+/**
+ * 切换当前选中状态
+ * @returns null
+ */
+const toggle = (): void => {
+   if (isDisabled.value) return;
+   const checked = !isChecked.value;
+   group.toggleValue(props.name);
+   emit("change", checked);
+};
+
+/**
+ * 点击复选框图标
+ * @returns null
+ */
+const handleIconClick = (): void => {
+   toggle();
+};
+
+/**
+ * 点击标签
+ * @returns null
+ */
+const handleLabelClick = (): void => {
+   if (isLabelDisabled.value) return;
+   toggle();
+};
+
+/**
+ * 卡片模式点击整个区域均可切换
+ * @returns null
+ */
+const handleWrapperClick = (): void => {
+   if (shape.value == "card") toggle();
+};
+
+/**
+ * checked 变化时重新向组同步
+ * @returns null
+ */
+watch((): boolean => props.checked, (): void => {
+   group.register(instance);
+});
+
+/**
+ * name 变化时重新向组同步
+ * @returns null
+ */
+watch((): Value => props.name, (): void => {
+   group.register(instance);
+});
+
+/**
+ * 挂载时注册到直接父级复选框组
+ * @returns null
+ */
+onMounted((): void => {
+   group.register(instance);
+});
+
+/**
+ * 卸载时从组中移除
+ * @returns null
+ */
+onUnmounted((): void => {
+   group.unregister(instance);
+});
+
+defineExpose({ getName, syncFromGroup });
+</script>
+
+<style lang="scss">
+// 复选框主体布局
+.uvx-checkbox {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+
+   &--right {
+      flex-direction: row-reverse;
+      justify-content: space-between;
+   }
+
+   &--card {
+      overflow: hidden;
+      border-color: var(--uvx-text-placeholder);
+   }
+
+   &--card-checked {
+      border-color: var(--uvx-primary);
+   }
+
+   &--card-disabled {
+      border-color: var(--uvx-text-placeholder);
+   }
+
+   &--border {
+      padding-top: 8px;
+      padding-bottom: 8px;
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+   }
+
+   // 勾选图标
+   &__icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-right: 6px;
+      border-width: 1px;
+      border-style: solid;
+      border-color: var(--uvx-text-placeholder);
+      background-color: var(--uvx-container);
+
+      &--circle {
+         border-radius: 100px;
+      }
+
+      &--square {
+         border-radius: 3px;
+      }
+
+      &--right {
+         margin-right: 0;
+         margin-left: 6px;
+      }
+
+      &--card {
+         position: absolute;
+         top: -6rpx;
+         margin-right: 0;
+         margin-left: 0;
+      }
+
+      &--checked {
+         border-color: var(--uvx-primary);
+         background-color: var(--uvx-primary);
+      }
+
+      &--disabled-checked {
+         color: var(--uvx-text-placeholder);
+         border-color: var(--uvx-text-placeholder);
+         background-color: var(--uvx-disabled);
+      }
+   }
+
+   // 标签区域占据剩余空间，保证右侧图标两端对齐
+   &__label {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+   }
+
+   &__label-text {
+      color: var(--uvx-text-main);
+
+      &--disabled {
+         color: var(--uvx-text-placeholder);
+      }
+   }
+}
+</style>

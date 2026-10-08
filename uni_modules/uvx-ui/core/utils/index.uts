@@ -1,0 +1,154 @@
+import validateClass from './validate.uts';
+import stringClass from './string.uts';
+import objectClass from './object.uts';
+import formatClass from './format.uts';
+import styleClass from './style.uts';
+import routerClass from './route.uts';
+import debounceClass from './debounce.uts';
+import throttleClass from './throttle.uts';
+import colorClass from './color.uts';
+import { sleep } from "./sleep.uts";
+
+/**
+ * 工具类 - 统一通过 $uvx 实例访问
+ * 各领域工具按命名空间分组，类只做聚合，不含具体实现
+ */
+export class Utils {
+	/**
+	 * 验证：email / empty / number / date / url
+	 * @param value  输入值
+	 * @returns 是否验证通过
+	 */
+	validate = validateClass;
+	/**
+	 * 字符串：trim / empty
+	 * @param str  输入字符串
+	 * @returns 修剪后的字符串
+	 */
+	string = stringClass;
+	/**
+	 * 对象：deepClone / deepMerge / isNull / forInObject
+	 * @param obj  输入对象
+	 * @returns 深拷贝后的对象
+	 */
+	object = objectClass;
+	/**
+	 * 格式化：unit / price / time / name
+	 * @param value  输入值
+	 * @param format 格式
+	 * @returns 格式化后的值
+	 */
+	format = formatClass;
+	/**
+	 * 样式：parse / stringify / bem
+	 * @param className 类名
+	 * @param modifier 修饰符
+	 * @param element 元素
+	 * @param block 块
+	 * @returns bem 类名
+	 */
+	style = styleClass;
+
+	/**
+	 * 颜色：渐变、混合、规范化及 HSB/RGB/HEX 转换
+	 * @param color1 起始色
+	 * @param color2 目标色
+	 * @param ratio color2 占比 0~1
+	 * @returns 混合后的 #rrggbb
+	 */
+	color = colorClass;
+
+   /**
+    * 根据状态类型获取语义图标
+    * @param type 状态类型
+    * @param fill 是否使用填充图标
+    * @returns 图标名称
+    */
+   type2icon(type: string = "success", fill: boolean = false): string {
+      let icon = "checkmark-circle";
+      switch (type) {
+         case "primary":
+         case "info":
+            icon = "info-circle";
+            break;
+         case "error":
+            icon = "close-circle";
+            break;
+         case "warning":
+            icon = "error-circle";
+            break;
+         case "success":
+            icon = "checkmark-circle";
+            break;
+      }
+      return fill ? `${icon}-fill` : icon;
+   }
+
+   /**
+    * 等待指定时长
+    * @param duration 等待毫秒数，默认 20
+    * @returns 等待完成的 Promise
+    */
+   sleep(duration: number = 20): Promise<void> {
+      return sleep(duration);
+   }
+
+	/**
+	 * 路由跳转
+	 * @param options 跳转配置或 url 字符串
+	 * @param params  参数对象
+	 */
+	route(options: string | UTSJSONObject, params: UTSJSONObject = {}): Promise<void> {
+		return routerClass.route(options, params);
+	}
+
+	/**
+	 * 获取当前页面路径(不含参数)
+	 * @returns 当前页面路径
+	 */
+	page(): string {
+		return routerClass.page();
+	}
+
+	/**
+	 * 对象转 url 查询参数
+	 * @param data  输入对象
+	 * @param isPrefix 是否添加前缀
+	 * @param arrayFormat 数组格式
+	 * @returns url 查询参数字符串
+	 */
+	queryParams(
+		data: UTSJSONObject | null,
+		isPrefix: boolean = true,
+		arrayFormat: 'indices' | 'brackets' | 'repeat' | 'comma' = 'brackets'
+	): string {
+		return routerClass.queryParams(data, isPrefix, arrayFormat);
+	}
+
+	/**
+	 * 防抖：一定时间内只有最后一次操作，再过 wait 毫秒后执行函数
+	 * @param func  函数
+	 * @param immediate 是否立即执行
+	 */
+	debounce(func: () => void, wait: number = 500, immediate: boolean = false): void {
+		debounceClass.run(func, wait, immediate);
+	}
+
+	/**
+	 * 节流：一定时间内只触发一次函数
+	 * @param func  函数
+	 * @param wait  时间间隔
+	 * @param immediate 是否立即执行
+	 */
+	throttle(func: () => void, wait: number = 500, immediate: boolean = false): void {
+		throttleClass.run(func, wait, immediate);
+	}
+
+	/**
+	 * 获取窗口信息（windowWidth / windowHeight / safeAreaInsets 等）
+	 * @returns uni.getWindowInfo() 结果
+	 */
+	windowInfo() : GetWindowInfoResult {
+		return uni.getWindowInfo();
+	}
+}

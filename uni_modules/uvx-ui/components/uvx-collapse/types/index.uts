@@ -1,0 +1,34 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+export type Name = string | number;
+export type Value = Name | Name[];
+export type Status = "open" | "close";
+
+export type Props = {
+   value?: Value;
+   accordion: boolean;
+   border: boolean;
+};
+
+export type Config = {
+   accordion: boolean;
+   border: boolean;
+};
+
+export type ChangeItem = {
+   name: Name;
+   status: Status;
+};
+
+export type Emits = {
+   change: [items: ChangeItem[]];
+   open: [name: Name];
+   close: [name: Name];
+};
+
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   toggle: (child: ComponentPublicInstance) => void;
+};

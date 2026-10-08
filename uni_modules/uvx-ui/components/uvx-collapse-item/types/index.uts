@@ -1,0 +1,15 @@
+import type { Name } from "../../uvx-collapse/types/index.uts";
+
+export type Props = {
+   title: string;
+   value: string;
+   label: string;
+   disabled: boolean;
+   isLink: boolean;
+   clickable: boolean;
+   border: boolean;
+   align: string;
+   name: Name;
+   icon: string;
+   duration: number;
+};

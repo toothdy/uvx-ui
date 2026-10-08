@@ -1,0 +1,86 @@
+<template>
+	<view
+		class="uvx-row"
+		:class="[uClass]"
+		:style="rowStyle"
+		@click="handleClick"
+	>
+		<slot></slot>
+	</view>
+</template>
+
+<script setup lang="uts">
+/**
+ * uvx-row 栅格系统中的行
+ * @description 通过基础的 12 分栏，快速创建布局
+ * @tutorial https://www.uvxui.cn/components/layout.html
+ * @property {String | Number} gutter 栅格间隔，左右各为此值的一半，单位px（默认 0）
+ * @property {String} justify 水平排列方式：flex-start | flex-end | center | space-around | space-between（默认 flex-start）
+ * @property {String} align 垂直排列方式：top | center | bottom（默认 center）
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ *
+ * @event {Function} click 行点击事件
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Emits, Props } from './types/index.uts';
+
+defineOptions({ name: 'uvx-row', externalClasses: ['u-class'] });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+	gutter: 0,
+	justify: 'flex-start',
+	align: 'center',
+	uStyle: "",
+	uClass: ''
+});
+
+// 组件事件
+const emit = defineEmits<Emits>();
+
+/**
+ * 行布局样式
+ * @returns UTSJSONObject
+ */
+const rowStyle = computed(() => {
+	const style: UTSJSONObject = {
+		'display': 'flex',
+		'flex-direction': 'row',
+		'flex-wrap': 'wrap',
+		'justify-content': props.justify,
+		'align-items': props.align == 'top' ? 'flex-start' : props.align == 'bottom' ? 'flex-end' : props.align
+	};
+
+	// 通过给左右负外边距，消除 col 在 gutter 下的左右 padding 对首尾的影响
+	if (props.gutter > 0) {
+	style.set('margin-left', $uvx.format.unit(-props.gutter / 2));
+	style.set('margin-right', $uvx.format.unit(-props.gutter / 2));
+	}
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 点击事件
+ * @param e 点击事件
+ * @returns null
+ */
+const handleClick = (e: Event) => {
+	emit('click', e);
+}
+
+/**
+ * 给 uvx-col 注入上下文,避免依赖父子查找
+ */
+provide('uvx-row-ctx', {
+	gutter: props.gutter
+});
+</script>
+
+<style lang="scss" scoped>
+.uvx-row {
+	width: 100%;
+	flex-shrink: 0;
+}
+</style>

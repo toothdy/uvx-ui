@@ -1,0 +1,7 @@
+export type Props = {
+   bgColor: string;
+   height: string | number;
+   marginTop: string | number;
+   marginBottom: string | number;
+   uStyle: string;
+};

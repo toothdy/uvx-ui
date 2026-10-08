@@ -1,0 +1,524 @@
+<template>
+   <list-item
+      :key="nativeItemKey"
+      class="uvx-list-item"
+      :class="[disabled ? 'uvx-list-item--disabled' : '', uClass]"
+      :style="itemStyle"
+      :hover-class="hoverClass"
+      :hover-stay-time="200"
+      @click="handleClick"
+   >
+      <!-- 子项分隔线 -->
+      <uvx-line v-if="isSeparatorVisible"></uvx-line>
+
+      <slot>
+         <!-- 默认列表项内容 -->
+         <view
+            class="uvx-list-item__container"
+            :class="[
+               resolvedDirection == 'column' ? 'uvx-list-item__container--column' : '',
+               isArrowVisible ? 'uvx-list-item__container--arrow' : '',
+            ]"
+            :style="contentStyle"
+         >
+            <slot name="header">
+               <!-- 左侧缩略图或图标 -->
+               <view class="uvx-list-item__header">
+                  <image
+                     v-if="!$uvx.string.empty(thumb)"
+                     class="uvx-list-item__thumb"
+                     :class="thumbClass"
+                     :src="thumb"
+                     mode="aspectFill"
+                  ></image>
+                  <view
+                     v-else-if="showExtraIcon"
+                     class="uvx-list-item__extra-icon"
+                  >
+                     <uvx-icon
+                        :name="extraIcon.icon"
+                        :u-prefix="extraIcon.customPrefix"
+                        :color="extraIcon.color"
+                        :size="extraIcon.size"
+                     ></uvx-icon>
+                  </view>
+               </view>
+            </slot>
+
+            <slot name="body">
+               <!-- 标题与描述 -->
+               <view
+                  class="uvx-list-item__content"
+                  :class="isContentCentered ? 'uvx-list-item__content--center' : ''"
+               >
+                  <text
+                     v-if="!$uvx.string.empty(title)"
+                     class="uvx-list-item__title"
+                     :class="ellipsisClass"
+                  >{{ title }}</text>
+                  <text
+                     v-if="!$uvx.string.empty(note)"
+                     class="uvx-list-item__note"
+                  >{{ note }}</text>
+               </view>
+            </slot>
+
+            <slot name="footer">
+               <!-- 右侧文字、徽标与开关 -->
+               <view
+                  v-if="isFooterVisible"
+                  class="uvx-list-item__extra"
+                  :class="resolvedDirection == 'column' ? 'uvx-list-item__extra--column' : ''"
+               >
+                  <text
+                     v-if="!$uvx.string.empty(rightText)"
+                     class="uvx-list-item__extra-text"
+                  >{{ rightText }}</text>
+                  <uvx-badge
+                     v-if="showBadge"
+                     :is-dot="badge.isDot"
+                     :value="badge.value"
+                     :max="badge.max"
+                     :type="badge.type"
+                     :show-zero="badge.showZero"
+                     :bg-color="badge.bgColor"
+                     :color="badge.color"
+                     :shape="badge.shape"
+                     :number-type="badge.numberType"
+                     :inverted="badge.inverted"
+                     u-style="margin-left: 4px;"
+                  ></uvx-badge>
+                  <uvx-switch
+                     v-if="showSwitch"
+                     :model-value="switchChecked"
+                     :disabled="disabled"
+                     u-style="margin-left: 8px;"
+                     @change="handleSwitchChange"
+                  ></uvx-switch>
+               </view>
+            </slot>
+
+            <!-- 右侧箭头 -->
+            <view
+               v-if="isArrowVisible"
+               class="uvx-list-item__arrow"
+            >
+               <uvx-icon name="arrow-right" :size="17"></uvx-icon>
+            </view>
+         </view>
+      </slot>
+   </list-item>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-list-item 列表项
+ * @description 搭配 uvx-list 使用，支持常用信息行、跳转和自定义插槽。
+ * @tutorial https://www.uvxui.cn/components/list.html
+ * @property {String} direction 排版方向，空值时继承父列表
+ * @property {String} title 标题
+ * @property {String} note 描述
+ * @property {Number} ellipsis 标题最大行数，支持 0-5
+ * @property {Boolean} disabled 是否禁用
+ * @property {Boolean} clickable 是否开启点击反馈
+ * @property {Boolean} showArrow 是否显示右侧箭头
+ * @property {Boolean | String} link 是否启用链接或指定路由方式
+ * @property {String} to 跳转目标页面
+ * @property {Boolean} showSwitch 是否显示开关
+ * @property {Boolean} switchChecked 开关是否选中
+ * @property {Boolean} showBadge 是否显示徽标
+ * @property {Object} badge 徽标配置
+ * @property {String} rightText 右侧文字
+ * @property {String} thumb 左侧缩略图
+ * @property {String} thumbSize 缩略图尺寸
+ * @property {Boolean} showExtraIcon 是否显示扩展图标
+ * @property {Object} extraIcon 扩展图标配置
+ * @property {Boolean} border 是否显示与上一项之间的分隔线
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} click 点击有效列表项时触发
+ * @event {Function} switchChange 开关值变化时触发
+ * @slot default 完全自定义列表项内容
+ * @slot header 自定义左侧或顶部内容
+ * @slot body 自定义中间内容
+ * @slot footer 自定义右侧或底部内容
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Value } from "../uvx-switch/types/index.uts";
+import type { Context, Direction } from "../uvx-list/types/index.uts";
+import type {
+   Badge,
+   Emits,
+   ExtraIcon,
+   LinkType,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-list-item",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   direction: "",
+   title: "",
+   note: "",
+   ellipsis: 0,
+   disabled: false,
+   clickable: false,
+   showArrow: false,
+   link: false,
+   to: "",
+   showSwitch: false,
+   switchChecked: false,
+   showBadge: false,
+   badge: (): Badge => ({
+      isDot: false,
+      value: "",
+      max: 999,
+      type: "error",
+      showZero: false,
+      bgColor: "",
+      color: "",
+      shape: "circle",
+      numberType: "overflow",
+      inverted: false,
+   }),
+   rightText: "",
+   thumb: "",
+   thumbSize: "base",
+   showExtraIcon: false,
+   extraIcon: (): ExtraIcon => ({
+      icon: "",
+      color: "",
+      size: 20,
+      customPrefix: "",
+   }),
+   border: false,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 列表项交互事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 父列表上下文
+const list = inject<Context | null>("uvx-list-context", null);
+if (list == null) throw new Error("uvx-list-item 必须在 uvx-list 内使用");
+// 当前列表项索引
+const itemIndex = ref(-1);
+// 原生列表项稳定标识
+const nativeItemKey = "uvx-list-item-" + Date.now().toString() + "-" + Math.floor(Math.random() * 100000).toString();
+
+/**
+ * 是否启用链接
+ * @returns boolean
+ */
+const isLinkEnabled = computed((): boolean => {
+   return props.link == true || typeof props.link == "string";
+});
+
+/**
+ * 是否显示右侧箭头
+ * @returns boolean
+ */
+const isArrowVisible = computed((): boolean => {
+   return props.showArrow || isLinkEnabled.value;
+});
+
+/**
+ * 子项最终排版方向
+ * @returns Direction
+ */
+const resolvedDirection = computed((): Direction => {
+   return $uvx.string.empty(props.direction) ? list.config.value.direction : props.direction as Direction;
+});
+
+/**
+ * 是否显示分隔线
+ * @returns boolean
+ */
+const isSeparatorVisible = computed((): boolean => {
+   return props.border && itemIndex.value > 0;
+});
+
+/**
+ * 内容是否需要居中
+ * @returns boolean
+ */
+const isContentCentered = computed((): boolean => {
+   return !$uvx.string.empty(props.thumb)
+      || props.showExtraIcon
+      || props.showBadge
+      || props.showSwitch;
+});
+
+/**
+ * 是否显示右侧扩展区域
+ * @returns boolean
+ */
+const isFooterVisible = computed((): boolean => {
+   return !$uvx.string.empty(props.rightText) || props.showBadge || props.showSwitch;
+});
+
+/**
+ * 列表项点击反馈类
+ * @returns string
+ */
+const hoverClass = computed((): string => {
+   if (props.disabled || props.showSwitch) return "none";
+   return props.clickable || isLinkEnabled.value ? "uvx-list-item--hover" : "none";
+});
+
+/**
+ * 标题截断类
+ * @returns string
+ */
+const ellipsisClass = computed((): string => {
+   if (props.ellipsis < 1 || props.ellipsis > 5) return "";
+   return `uvx-line-${props.ellipsis}`;
+});
+
+/**
+ * 缩略图尺寸类
+ * @returns string
+ */
+const thumbClass = computed((): string => {
+   return `uvx-list-item__thumb--${props.thumbSize}`;
+});
+
+/**
+ * 列表项根节点样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 默认内容样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   return { "padding": list.config.value.padding };
+});
+
+/**
+ * 获取路由方式
+ * @returns LinkType
+ */
+const getLinkType = (): LinkType => {
+   return typeof props.link == "string" ? props.link : "navigateTo";
+};
+
+/**
+ * 点击列表项
+ * @returns null
+ */
+const handleClick = (): void => {
+   if (props.disabled || props.showSwitch) return;
+   const hasTarget = !$uvx.string.empty(props.to);
+   if (!props.clickable && !isLinkEnabled.value && !hasTarget) return;
+
+   emit("click");
+   if (hasTarget) {
+      $uvx.route({
+         "type": getLinkType(),
+         "url": props.to,
+      });
+   }
+};
+
+/**
+ * 转发开关值变化
+ * @param value 开关值
+ * @returns null
+ */
+const handleSwitchChange = (value: Value): void => {
+   if (typeof value == "boolean") emit("switchChange", value);
+};
+
+/**
+ * 同步父列表提供的索引
+ * @param index 当前索引
+ * @returns null
+ */
+const syncFromList = (index: number): void => {
+   itemIndex.value = index;
+};
+
+/** 挂载时注册到父列表 */
+onMounted((): void => {
+   list.register(instance);
+});
+
+/** 卸载时从父列表注销 */
+onUnmounted((): void => {
+   list.unregister(instance);
+});
+
+defineExpose({ syncFromList });
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 列表项根节点
+.uvx-list-item {
+   display: flex;
+   position: relative;
+   flex-direction: column;
+   width: 100%;
+   box-sizing: border-box;
+   overflow: visible;
+   /* #ifdef WEB */
+   cursor: pointer;
+   /* #endif */
+}
+
+// 列表项禁用状态
+.uvx-list-item--disabled {
+   opacity: 0.45;
+}
+
+// 列表项点击反馈
+.uvx-list-item--hover {
+   background-color: var(--uvx-hover);
+}
+
+// 默认内容容器
+.uvx-list-item__container {
+   display: flex;
+   position: relative;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+   min-width: 0;
+   box-sizing: border-box;
+   overflow: hidden;
+}
+
+// 纵向内容容器
+.uvx-list-item__container--column {
+   flex-direction: column;
+   align-items: stretch;
+}
+
+// 带箭头内容容器
+.uvx-list-item__container--arrow {
+   padding-right: 10px;
+}
+
+// 左侧区域
+.uvx-list-item__header {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   flex-shrink: 0;
+}
+
+// 缩略图
+.uvx-list-item__thumb {
+   width: 26px;
+   height: 26px;
+   margin-right: 10px;
+   flex-shrink: 0;
+}
+
+// 大缩略图
+.uvx-list-item__thumb--lg {
+   width: 40px;
+   height: 40px;
+}
+
+// 标准缩略图
+.uvx-list-item__thumb--base {
+   width: 26px;
+   height: 26px;
+}
+
+// 小缩略图
+.uvx-list-item__thumb--sm {
+   width: 20px;
+   height: 20px;
+}
+
+// 扩展图标
+.uvx-list-item__extra-icon {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   margin-right: 9px;
+   flex-shrink: 0;
+}
+
+// 标题描述区域
+.uvx-list-item__content {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   justify-content: space-between;
+   min-width: 0;
+   padding-right: 8px;
+   overflow: hidden;
+}
+
+// 标题描述居中状态
+.uvx-list-item__content--center {
+   justify-content: center;
+}
+
+// 标题文字
+.uvx-list-item__title {
+   color: var(--uvx-text-main);
+   font-size: 14px;
+   line-height: 1.2em;
+   overflow: hidden;
+}
+
+// 描述文字
+.uvx-list-item__note {
+   margin-top: 3px;
+   color: var(--uvx-text-tips);
+   font-size: 12px;
+   line-height: 1.2em;
+   overflow: hidden;
+}
+
+// 右侧扩展区域
+.uvx-list-item__extra {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: flex-end;
+   flex-shrink: 0;
+}
+
+// 纵向右侧扩展区域
+.uvx-list-item__extra--column {
+   align-self: flex-start;
+   justify-content: flex-start;
+   margin-top: 6px;
+}
+
+// 右侧文字
+.uvx-list-item__extra-text {
+   color: var(--uvx-text-tips);
+   font-size: 12px;
+   line-height: 1.2em;
+}
+
+// 右侧箭头
+.uvx-list-item__arrow {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   margin-left: 6px;
+   flex-shrink: 0;
+}
+</style>

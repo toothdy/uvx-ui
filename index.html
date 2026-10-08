@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      var coverSupport =
+        "CSS" in window &&
+        typeof CSS.supports === "function" &&
+        (CSS.supports("top: env(a)") || CSS.supports("top: constant(a)"));
+      document.write(
+        '<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0' +
+          (coverSupport ? ", viewport-fit=cover" : "") +
+          '" />',
+      );
+    </script>
+    <title></title>
+    <style>
+      /* web 端隐藏滚动条(webkit 内核 + Firefox) */
+      ::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+      }
+
+      html {
+        scrollbar-width: none;
+      }
+
+      /* 阻断滚动链:页面滚到边界后不再把滚动传播给外层文档(iframe 嵌入场景),含横向滑动 */
+      html,
+      body {
+        overscroll-behavior: contain;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script>
+      // 桌面端(无触摸能力)把按住鼠标拖拽模拟成触摸事件,使滑动/拖拽类手势组件可用;
+      // 真机与浏览器触摸模拟(maxTouchPoints > 0)不受影响
+      (function () {
+        if ("ontouchstart" in window || navigator.maxTouchPoints > 0) return;
+        var pressing = null; // { target, x, y }
+        var dragging = false; // 本次按压是否发生了拖拽位移
+        var swallowClick = false; // 拖拽后是否拦截 mouseup 补发的 click
+        var makeTouch = function (e) {
+          return new Touch({
+            identifier: 1,
+            target: pressing.target,
+            clientX: e.clientX,
+            clientY: e.clientY,
+          });
+        };
+        var fire = function (type, e) {
+          var touch = makeTouch(e);
+          pressing.target.dispatchEvent(
+            new TouchEvent(type, {
+              touches: type === "touchend" ? [] : [touch],
+              targetTouches: type === "touchend" ? [] : [touch],
+              changedTouches: [touch],
+              bubbles: true,
+              cancelable: true,
+            }),
+          );
+        };
+        // 拖拽结束后拦截浏览器补发的 click,避免触发组件的 tap(误关已滑开的状态)
+        document.addEventListener(
+          "click",
+          function (e) {
+            if (swallowClick) {
+              e.preventDefault();
+              e.stopPropagation();
+              swallowClick = false;
+            }
+          },
+          true,
+        );
+        document.addEventListener(
+          "mousedown",
+          function (e) {
+            // 表单控件保持原生交互,不做触摸模拟
+            if (
+              e.target.closest &&
+              e.target.closest("input, textarea, [contenteditable]")
+            )
+              return;
+            pressing = { target: e.target, x: e.clientX, y: e.clientY };
+            dragging = false;
+            fire("touchstart", e);
+          },
+          true,
+        );
+        document.addEventListener(
+          "mousemove",
+          function (e) {
+            if (pressing == null) return;
+            if (
+              !dragging &&
+              (Math.abs(e.clientX - pressing.x) > 5 ||
+                Math.abs(e.clientY - pressing.y) > 5)
+            )
+              dragging = true;
+            if (dragging) e.preventDefault(); // 拖拽中阻止选中文本
+            fire("touchmove", e);
+          },
+          true,
+        );
+        document.addEventListener(
+          "mouseup",
+          function (e) {
+            if (pressing == null) return;
+            fire("touchend", e);
+            if (dragging) swallowClick = true;
+            pressing = null;
+          },
+          true,
+        );
+      })();
+    </script>
+    <script type="module" src="/main"></script>
+  </body>
+</html>

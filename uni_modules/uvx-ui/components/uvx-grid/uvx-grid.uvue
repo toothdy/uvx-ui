@@ -1,0 +1,177 @@
+<template>
+   <view
+      class="uvx-grid"
+      :class="[customClass]"
+      :style="gridStyle"
+   >
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-grid 宫格布局
+ * @description 用于同时展示多个同类项目，支持列数、边框和末行对齐设置。
+ * @tutorial https://www.uvxui.cn/components/grid.html
+ * @property {String | Number} col 宫格列数
+ * @property {Boolean} border 是否显示宫格边框
+ * @property {String} align 末行数量不足时的水平对齐方式
+ * @property {String} customStyle 自定义样式
+ * @property {String} customClass 自定义类名
+ * @event {Function} click 点击宫格项时触发
+ * @example <uvx-grid :col="3"><uvx-grid-item></uvx-grid-item></uvx-grid>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { ComponentPublicInstance } from "vue";
+import type {
+   Align,
+   ClickValue,
+   Config,
+   Context,
+   CustomStyle,
+   Emits,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-grid",
+   options: { virtualHost: true },
+   externalClasses: ["custom-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   col: 3,
+   border: false,
+   align: "left",
+   customStyle: "",
+   customClass: "",
+});
+
+/** 宫格点击事件 */
+const emit = defineEmits<Emits>();
+
+// 已注册的宫格项
+const children = ref<ComponentPublicInstance[]>([]);
+
+/**
+ * 获取有效列数
+ * @returns number
+ */
+const getColumnCount = (): number => {
+   const value = parseInt(props.col.toString());
+   if (Number.isNaN(value) || value <= 0) return 3;
+   return value;
+};
+
+/**
+ * 获取水平对齐方式
+ * @param align 宫格对齐配置
+ * @returns string
+ */
+const getJustifyContent = (align: Align): string => {
+   if (align == "center") return "center";
+   if (align == "right") return "flex-end";
+   return "flex-start";
+};
+
+/**
+ * 解析组件自定义样式
+ * @param customStyle 自定义样式
+ * @returns UTSJSONObject
+ */
+const getCustomStyle = (customStyle: CustomStyle): UTSJSONObject => {
+   return $uvx.style.parse(customStyle);
+};
+
+/**
+ * 子项共享配置
+ * @returns Config
+ */
+const gridConfig = computed((): Config => {
+   return {
+      col: getColumnCount(),
+      border: props.border,
+   };
+});
+
+/**
+ * 宫格容器样式
+ * @returns UTSJSONObject
+ */
+const gridStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "justify-content": getJustifyContent(props.align),
+   };
+   return $uvx.object.deepMerge(style, getCustomStyle(props.customStyle));
+});
+
+/**
+ * 同步全部子项的索引和数量
+ * @returns null
+ */
+const syncChildren = (): void => {
+   const total = children.value.length;
+   for (let index = 0; index < total; index++) {
+      children.value[index].$callMethod("syncFromGrid", index, total);
+   }
+};
+
+/**
+ * 注册宫格项
+ * @param child 子组件实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+   syncChildren();
+};
+
+/**
+ * 注销宫格项
+ * @param child 子组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+   syncChildren();
+};
+
+/**
+ * 转发宫格项点击事件
+ * @param value 点击参数
+ * @returns null
+ */
+const childClick = (value: ClickValue): void => {
+   emit("click", value);
+};
+
+/** 向宫格项提供响应式配置和组操作 */
+provide<Context>("uvx-grid-context", {
+   config: gridConfig,
+   register,
+   unregister,
+   childClick,
+});
+
+/** 列数或边框变化时重新同步宫格项 */
+watch(gridConfig, (): void => {
+   syncChildren();
+});
+
+defineExpose({ register, unregister, childClick });
+</script>
+
+<style lang="scss">
+// 宫格容器
+.uvx-grid {
+   display: flex;
+   flex-direction: row;
+   flex-wrap: wrap;
+   align-items: center;
+   box-sizing: border-box;
+   width: 100%;
+}
+</style>

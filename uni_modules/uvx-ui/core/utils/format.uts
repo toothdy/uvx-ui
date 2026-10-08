@@ -1,0 +1,96 @@
+/**
+ * 格式化工具
+ */
+class Format {
+	/**
+	 * 为纯数字添加单位，其他字符串原样返回
+	 * @param value 数值或带单位的字符串
+	 * @param unit 单位，默认 px
+	 * @returns 添加单位后的字符串
+	 */
+	unit(value: string | number, unit: string = "px"): string {
+		const v = value.toString().trim();
+		if (typeof value == "number") {
+			return `${v}${unit}`;
+		}
+		return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(v) ? `${v}${unit}` : v;
+	}
+
+	/**
+	 * 金额格式化(千分位)
+	 * @param value 金额数值或字符串
+	 * @param decimals 小数位数(默认 2)
+	 * @returns 如 "1,234.56"
+	 */
+	price(value: string | number, decimals: number = 2): string {
+		const num = parseFloat(value.toString());
+		if (isNaN(num)) return value.toString();
+		const fixed = num.toFixed(decimals);
+		const parts = fixed.split('.');
+		const intPart = parts[0];
+		const decPart = parts.length > 1 ? parts[1] : '';
+		let result = '';
+		let count = 0;
+		for (let i = intPart.length - 1; i >= 0; i--) {
+			const ch = intPart.substring(i, i + 1);
+			if (count > 0 && count % 3 == 0 && ch != '-') {
+				result = ',' + result;
+			}
+			result = ch + result;
+			count++;
+		}
+		return decimals > 0 ? `${result}.${decPart}` : result;
+	}
+
+	/**
+	 * 日期格式化
+	 * @param value 时间戳(秒或毫秒)或日期字符串
+	 * @param format 模板，支持 yyyy/MM/dd/HH/mm/ss(默认 'yyyy-MM-dd')
+	 * @returns 无法解析时原样返回
+	 */
+	time(value: string | number, format: string = 'yyyy-MM-dd'): string {
+		let timestamp = typeof value == 'number' ? value : parseFloat(value.toString());
+		if (isNaN(timestamp)) return value.toString();
+		if (timestamp > 0 && timestamp < 9999999999) {
+			timestamp = timestamp * 1000;
+		}
+		const d = new Date(timestamp);
+		if (isNaN(d.getTime())) return value.toString();
+
+		const year  = d.getFullYear().toString();
+		const month = (d.getMonth() + 1).toString().padStart(2, '0');
+		const day   = d.getDate().toString().padStart(2, '0');
+		const hour  = d.getHours().toString().padStart(2, '0');
+		const min   = d.getMinutes().toString().padStart(2, '0');
+		const sec   = d.getSeconds().toString().padStart(2, '0');
+
+		return format
+			.replace('yyyy', year)
+			.replace('MM', month)
+			.replace('dd', day)
+			.replace('HH', hour)
+			.replace('mm', min)
+			.replace('ss', sec);
+	}
+
+	/**
+	 * 姓名脱敏
+	 * @param name 姓名字符串
+	 * @returns 2字→"张*"，2字以上→"张**伟"，1字→原样
+	 */
+	name(name: string): string {
+		if (name.length == 2) {
+			return name[0] + '*';
+		}
+		if (name.length > 2) {
+			let stars = '';
+			for (let i = 0; i < name.length - 2; i++) {
+				stars += '*';
+			}
+			return name[0] + stars + name[name.length - 1];
+		}
+		return name;
+	}
+}
+
+export default new Format();

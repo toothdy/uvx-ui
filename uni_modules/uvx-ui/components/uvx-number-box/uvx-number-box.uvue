@@ -1,0 +1,578 @@
+<template>
+   <view class="uvx-number-box" :class="uClass" :style="$uvx.style.parse(uStyle)">
+      <!-- 减少按钮 -->
+      <view
+         v-if="showMinus"
+         class="uvx-number-box__slot"
+         @tap.stop="handleOperation('minus')"
+         @touchstart="handleTouchStart('minus')"
+         @touchend="clearLongPressTimers"
+         @touchcancel="clearLongPressTimers"
+      >
+         <slot name="minus">
+            <view
+               class="uvx-number-box__button uvx-number-box__button--minus"
+               :class="{ 'uvx-number-box__button--disabled': isMinusDisabled }"
+               :style="minusButtonStyle"
+               :hover-class="isMinusDisabled ? 'none' : 'uvx-number-box__button--hover'"
+               :hover-stay-time="150"
+            >
+               <uvx-icon
+                  name="minus"
+                  size="15"
+                  bold
+                  :color="minusIconColor"
+                  :u-style="iconStyle"
+               ></uvx-icon>
+            </view>
+         </slot>
+      </view>
+      <!-- 数值输入框 -->
+      <slot name="input">
+         <input
+            ref="inputRef"
+            class="uvx-number-box__input"
+            :class="{ 'uvx-number-box__input--disabled': disabled || disabledInput }"
+            :value="currentValue"
+            :disabled="disabled || disabledInput"
+            :cursor-spacing="cursorSpacingValue"
+            :style="inputStyle"
+            type="number"
+            @input="handleInput"
+            @focus="handleFocus"
+            @blur="handleBlur"
+         />
+      </slot>
+      <!-- 增加按钮 -->
+      <view
+         v-if="showPlus"
+         class="uvx-number-box__slot"
+         @tap.stop="handleOperation('plus')"
+         @touchstart="handleTouchStart('plus')"
+         @touchend="clearLongPressTimers"
+         @touchcancel="clearLongPressTimers"
+      >
+         <slot name="plus">
+            <view
+               class="uvx-number-box__button uvx-number-box__button--plus"
+               :class="{ 'uvx-number-box__button--disabled': isPlusDisabled }"
+               :style="plusButtonStyle"
+               :hover-class="isPlusDisabled ? 'none' : 'uvx-number-box__button--hover'"
+               :hover-stay-time="150"
+            >
+               <uvx-icon
+                  name="plus"
+                  size="15"
+                  bold
+                  :color="plusIconColor"
+                  :u-style="iconStyle"
+               ></uvx-icon>
+            </view>
+         </slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-number-box 步进器
+ * @description 用于选择数量，支持范围限制、小数、长按、异步变更和自定义插槽。
+ * @tutorial https://www.uvxui.cn/components/number-box.html
+ * @property {String | Number} modelValue 双向绑定值
+ * @property {String | Number} name 步进器标识符
+ * @property {String | Number} min 最小值
+ * @property {String | Number} max 最大值
+ * @property {String | Number} step 加减步长
+ * @property {Boolean} integer 是否只允许整数
+ * @property {Boolean} disabled 是否禁用整个步进器
+ * @property {Boolean} disabledInput 是否只禁用输入框
+ * @property {Boolean} asyncChange 是否由外部异步同步绑定值
+ * @property {String | Number} inputWidth 输入框宽度
+ * @property {Boolean} showMinus 是否显示减少按钮
+ * @property {Boolean} showPlus 是否显示增加按钮
+ * @property {String | Number | Null} decimalLength 固定小数位数
+ * @property {Boolean} longPress 是否开启长按连续加减
+ * @property {String} color 输入文字和按钮图标颜色，空值时跟随主题
+ * @property {String | Number} buttonSize 按钮宽高和输入框高度
+ * @property {String} bgColor 输入框和按钮背景色，空值时跟随主题
+ * @property {String | Number} cursorSpacing 光标与键盘的距离
+ * @property {Boolean} disablePlus 是否禁用增加按钮
+ * @property {Boolean} disableMinus 是否禁用减少按钮
+ * @property {String} iconStyle 加减图标自定义样式
+ * @property {String} uStyle 组件自定义样式
+ * @property {String} uClass 组件自定义类名
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 数值更新事件
+ * @event {Function} change 数值变化事件
+ * @event {Function} focus 输入框聚焦事件
+ * @event {Function} blur 输入框失焦事件
+ * @event {Function} overlimit 达到边界或按钮禁用时触发
+ * @event {Function} plus 有效增加时触发
+ * @event {Function} minus 有效减少时触发
+ * @example <uvx-number-box v-model="value"></uvx-number-box>
+ */
+
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import type {
+   BlurDetail,
+   ChangeDetail,
+   Emits,
+   FocusDetail,
+   Operation,
+   Props,
+   Value,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-number-box", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   modelValue: 0,
+   name: "",
+   min: 1,
+   max: Number.MAX_SAFE_INTEGER,
+   step: 1,
+   integer: false,
+   disabled: false,
+   disabledInput: false,
+   asyncChange: false,
+   inputWidth: 35,
+   showMinus: true,
+   showPlus: true,
+   decimalLength: null,
+   longPress: true,
+   color: "",
+   buttonSize: 30,
+   bgColor: "",
+   cursorSpacing: 100,
+   disablePlus: false,
+   disableMinus: false,
+   iconStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 步进器事件 */
+const emit = defineEmits<Emits>();
+
+// 可输入数字字符过滤规则
+const NUMBER_FILTER_PATTERN = /[^0-9.-]/g;
+// 浮点加减精度倍率
+const CALCULATION_CARDINAL = Math.pow(10, 10);
+// 当前显示值
+const currentValue = ref<Value>(0);
+// 当前数值
+const currentNumber = ref(0);
+// 原生输入元素
+const inputRef = ref<UniInputElement | null>(null);
+// 长按首次触发定时器
+let longPressDelayTimer: number | null = null;
+// 长按连续触发定时器
+let longPressRepeatTimer: number | null = null;
+
+/**
+ * 将字符串或数字转换为有效数字
+ * @param value 待转换值
+ * @param fallback 无效时的默认值
+ * @returns number
+ */
+const toNumber = (value: Value, fallback: number): number => {
+   const numberValue = Number(value);
+   return isNaN(numberValue) ? fallback : numberValue;
+};
+
+/**
+ * 最小值
+ * @returns number
+ */
+const minValue = computed((): number => {
+   return toNumber(props.min, 1);
+});
+
+/**
+ * 最大值
+ * @returns number
+ */
+const maxValue = computed((): number => {
+   return toNumber(props.max, Number.MAX_SAFE_INTEGER);
+});
+
+/**
+ * 固定小数位数
+ * @returns number | null
+ */
+const decimalLengthValue = computed((): number | null => {
+   if (props.decimalLength == null) return null;
+   const value = Number(props.decimalLength);
+   if (isNaN(value)) return null;
+   return Math.max(0, Math.floor(value));
+});
+
+/**
+ * 原生输入框光标间距
+ * @returns number
+ */
+const cursorSpacingValue = computed((): number => {
+   const value = parseFloat(props.cursorSpacing.toString());
+   return isNaN(value) ? 100 : value;
+});
+
+/**
+ * 是否禁用增加按钮
+ * @returns boolean
+ */
+const isPlusDisabled = computed((): boolean => {
+   return props.disabled || props.disablePlus || currentNumber.value >= maxValue.value;
+});
+
+/**
+ * 是否禁用减少按钮
+ * @returns boolean
+ */
+const isMinusDisabled = computed((): boolean => {
+   return props.disabled || props.disableMinus || currentNumber.value <= minValue.value;
+});
+
+/**
+ * 输入文字颜色
+ * @returns string
+ */
+const inputColor = computed((): string => {
+   return !$uvx.string.empty(props.color)
+      ? props.color
+      : (isDark.value ? "#f5f5f5" : "#303133");
+});
+
+/**
+ * 减少图标颜色
+ * @returns string
+ */
+const minusIconColor = computed((): string => {
+   if (isMinusDisabled.value) return "main";
+   return !$uvx.string.empty(props.color) ? props.color : "main";
+});
+
+/**
+ * 增加图标颜色
+ * @returns string
+ */
+const plusIconColor = computed((): string => {
+   if (isPlusDisabled.value) return "main";
+   return !$uvx.string.empty(props.color) ? props.color : "main";
+});
+
+/**
+ * 减少按钮样式
+ * @returns UTSJSONObject
+ */
+const minusButtonStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      width: $uvx.format.unit(props.buttonSize),
+      height: $uvx.format.unit(props.buttonSize),
+   };
+   if (!isMinusDisabled.value && !$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   return style;
+});
+
+/**
+ * 增加按钮样式
+ * @returns UTSJSONObject
+ */
+const plusButtonStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      width: $uvx.format.unit(props.buttonSize),
+      height: $uvx.format.unit(props.buttonSize),
+   };
+   if (!isPlusDisabled.value && !$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   return style;
+});
+
+/**
+ * 数值输入框样式
+ * @returns UTSJSONObject
+ */
+const inputStyle = computed((): UTSJSONObject => {
+   const isInputDisabled = props.disabled || props.disabledInput;
+	
+   const style: UTSJSONObject = {
+      width: $uvx.format.unit(props.inputWidth),
+      height: $uvx.format.unit(props.buttonSize),
+      color: inputColor.value,
+   };
+	
+   if (!isInputDisabled && !$uvx.string.empty(props.bgColor)) {
+		style.set("background-color", props.bgColor);
+	}
+	
+   return style;
+});
+
+// #ifdef APP
+/**
+ * App Vapor 下直接同步原生输入框颜色
+ * @param value 当前输入文字颜色
+ * @returns null
+ */
+watch(inputColor, (value: string): void => {
+   inputRef.value?.style.setProperty("color", value);
+});
+// #endif
+
+/**
+ * 清理用户输入中的非数字字符
+ * @param value 输入值
+ * @returns string
+ */
+const filterValue = (value: Value): string => {
+   let result = value.toString().replace(NUMBER_FILTER_PATTERN, "");
+   if (props.integer && result.includes(".")) {
+      result = result.split(".")[0];
+   }
+   return result;
+};
+
+/**
+ * 将输入值限制到有效范围并格式化
+ * @param value 输入值
+ * @returns Value
+ */
+const formatValue = (value: Value): Value => {
+   const filteredValue = filterValue(value);
+   let numberValue = $uvx.string.empty(filteredValue) ? 0 : Number(filteredValue);
+   if (isNaN(numberValue)) numberValue = 0;
+   numberValue = Math.max(Math.min(maxValue.value, numberValue), minValue.value);
+   const decimalLength = decimalLengthValue.value;
+   return decimalLength == null ? numberValue : numberValue.toFixed(decimalLength);
+};
+
+/**
+ * 同步当前显示值与数值
+ * @param value 格式化后的值
+ * @returns null
+ */
+const setCurrentValue = (value: Value): void => {
+   currentValue.value = value;
+   currentNumber.value = toNumber(value, minValue.value);
+};
+
+/**
+ * 发布数值变化
+ * @param value 格式化后的值
+ * @returns null
+ */
+const emitChange = (value: Value): void => {
+   if (!props.asyncChange) {
+      emit("input", value);
+      emit("update:modelValue", value);
+   }
+   const detail: ChangeDetail = {
+      value: value,
+      name: props.name,
+   };
+   emit("change", detail);
+};
+
+/**
+ * 修正浮点加减误差
+ * @param firstValue 当前值
+ * @param secondValue 变化值
+ * @returns number
+ */
+const add = (firstValue: number, secondValue: number): number => {
+   return Math.round((firstValue + secondValue) * CALCULATION_CARDINAL) / CALCULATION_CARDINAL;
+};
+
+/**
+ * 执行增加或减少
+ * @param operation 操作类型
+ * @returns null
+ */
+const handleOperation = (operation: Operation): void => {
+   const isDisabled = operation == "plus" ? isPlusDisabled.value : isMinusDisabled.value;
+   if (isDisabled) {
+      emit("overlimit", operation);
+      return;
+   }
+   const step = toNumber(props.step, 1);
+   const difference = operation == "minus" ? -step : step;
+   const value = formatValue(add(currentNumber.value, difference));
+   setCurrentValue(value);
+   emitChange(value);
+   if (operation == "plus") emit("plus");
+   else emit("minus");
+};
+
+/**
+ * 清理长按定时器
+ * @returns null
+ */
+const clearLongPressTimers = (): void => {
+   if (longPressDelayTimer != null) {
+      clearTimeout(longPressDelayTimer);
+      longPressDelayTimer = null;
+   }
+   if (longPressRepeatTimer != null) {
+      clearInterval(longPressRepeatTimer);
+      longPressRepeatTimer = null;
+   }
+};
+
+/**
+ * 开始长按连续加减
+ * @param operation 操作类型
+ * @returns null
+ */
+const handleTouchStart = (operation: Operation): void => {
+   if (!props.longPress) return;
+   clearLongPressTimers();
+   longPressDelayTimer = setTimeout((): void => {
+      longPressDelayTimer = null;
+      handleOperation(operation);
+      longPressRepeatTimer = setInterval((): void => {
+         handleOperation(operation);
+      }, 250);
+   }, 600);
+};
+
+/**
+ * 处理输入框内容变化
+ * @param event 原生输入事件
+ * @returns null
+ */
+const handleInput = (event: UniInputEvent): void => {
+   const rawValue = event.detail.value;
+   currentValue.value = rawValue;
+   if ($uvx.string.empty(rawValue)) return;
+   let filteredValue = filterValue(rawValue);
+   const decimalLength = decimalLengthValue.value;
+   if (decimalLength != null && filteredValue.includes(".")) {
+      const parts = filteredValue.split(".");
+      const fraction = parts.length > 1 ? parts[1] : "";
+      filteredValue = `${parts[0]}.${fraction.slice(0, decimalLength)}`;
+   }
+   const value = formatValue(filteredValue);
+   setCurrentValue(value);
+   emitChange(value);
+};
+
+/**
+ * 转发输入框聚焦事件
+ * @param event 原生聚焦事件
+ * @returns null
+ */
+const handleFocus = (event: UniInputFocusEvent): void => {
+   const detail: FocusDetail = {
+      value: event.detail.value,
+      height: event.detail.height,
+      name: props.name,
+   };
+   emit("focus", detail);
+};
+
+/**
+ * 格式化输入并转发失焦事件
+ * @param event 原生失焦事件
+ * @returns null
+ */
+const handleBlur = (event: UniInputBlurEvent): void => {
+   const value = formatValue(event.detail.value);
+   setCurrentValue(value);
+   const detail: BlurDetail = {
+      value: event.detail.value,
+      cursor: event.detail.cursor,
+      name: props.name,
+   };
+   emit("blur", detail);
+   emitChange(value);
+};
+
+/**
+ * 外部绑定值变化时同步显示
+ * @param value 外部绑定值
+ * @returns null
+ */
+watch((): Value => props.modelValue, (value: Value): void => {
+   setCurrentValue(formatValue(value));
+}, { immediate: true });
+
+/**
+ * 数值约束签名
+ * @returns string
+ */
+const constraintSignature = computed((): string => {
+   const decimalLength = props.decimalLength == null
+      ? "null"
+      : props.decimalLength.toString();
+   return `${props.integer.toString()}|${decimalLength}|${props.min.toString()}|${props.max.toString()}`;
+});
+
+/**
+ * 数值约束变化时重新格式化显示
+ * @returns null
+ */
+watch(constraintSignature, (): void => {
+   setCurrentValue(formatValue(currentValue.value));
+});
+
+/** 卸载时停止长按任务 */
+onUnmounted(clearLongPressTimers);
+</script>
+
+<style lang="scss">
+// 步进器横向布局
+.uvx-number-box {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+
+   // 自定义按钮插槽的交互容器
+   &__slot {
+      /* #ifdef WEB */
+      touch-action: none;
+      /* #endif */
+   }
+
+   // 默认加减按钮
+   &__button {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--uvx-container);
+
+      &--minus {
+         border-top-left-radius: 4px;
+         border-bottom-left-radius: 4px;
+      }
+
+      &--plus {
+         border-top-right-radius: 4px;
+         border-bottom-right-radius: 4px;
+      }
+
+      &--hover {
+         background-color: var(--uvx-border);
+      }
+
+      &--disabled {
+         background-color: var(--uvx-disabled);
+      }
+   }
+
+   // 原生数值输入框
+   &__input {
+      position: relative;
+      margin: 0 2px;
+      padding: 0;
+      background-color: var(--uvx-container);
+      color: var(--uvx-text-main);
+      font-size: 15px;
+      text-align: center;
+
+      &--disabled {
+         background-color: var(--uvx-disabled);
+         color: var(--uvx-text-main);
+      }
+   }
+}
+</style>

@@ -1,0 +1,28 @@
+.uvx-page-demo {
+   padding: 15px 15px 40px 15px;
+}
+
+.uvx-demo-block {
+   margin-bottom: 22px;
+}
+
+.uvx-demo-block__title {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   margin-bottom: 8px;
+}
+
+.uvx-demo-block__content {
+   display: flex;
+   flex-direction: row;
+   flex-wrap: wrap;
+   align-items: center;
+}
+
+// 单元格左侧图片图标
+.uv-cell-icon {
+   width: 36rpx;
+   height: 36rpx;
+   margin-right: 8rpx;
+}

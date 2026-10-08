@@ -1,0 +1,151 @@
+<template>
+   <uvx-page @scroll="handlePageScroll">
+      <view class="navbar-demo">
+         <!-- 滚动透明度导航栏 -->
+         <uvx-navbar
+            ref="uNavbar"
+            title="滚动透明度"
+            :auto-back="true"
+            :placeholder="false"
+            :scroll-transparent="true"
+         ></uvx-navbar>
+
+         <!-- 滚动效果展示图片 -->
+         <uvx-image
+            src="https://picsum.photos/750/900?random=4"
+            width="100%"
+            height="0"
+            mode="widthFix"
+            :show-loading="false"
+            :show-error="false"
+         ></uvx-image>
+
+         <!-- 导航栏案例 -->
+         <view class="uvx-page-demo">
+            <!-- 基础功能 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="基础功能"></uvx-text>
+               </view>
+               <uvx-navbar
+                  title="个人中心"
+                  :safe-area-inset-top="false"
+                  :fixed="false"
+                  @right-click="handleRightClick"
+                  @left-click="handleLeftClick"
+               ></uvx-navbar>
+            </view>
+
+            <!-- 自定义文本 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="自定义文本"></uvx-text>
+               </view>
+               <uvx-navbar
+                  title="个人中心"
+                  left-text="返回"
+                  right-icon="map"
+                  :safe-area-inset-top="false"
+                  :fixed="false"
+               ></uvx-navbar>
+            </view>
+
+            <!-- 自定义插槽 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="自定义插槽"></uvx-text>
+               </view>
+               <uvx-navbar
+                  title="个人中心"
+                  left-text="返回"
+                  :safe-area-inset-top="false"
+                  :fixed="false"
+               >
+                  <template #left>
+                     <view class="navbar-demo__left-slot">
+                        <uvx-icon name="arrow-left" size="19" color="main"></uvx-icon>
+                        <uvx-line
+                           direction="col"
+                           :hairline="false"
+                           length="16"
+                           margin="8px"
+                        ></uvx-line>
+                        <uvx-icon name="home" size="20" color="main"></uvx-icon>
+                     </view>
+                  </template>
+               </uvx-navbar>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 滚动透明导航栏实例
+const uNavbar = ref<UvxNavbarComponentPublicInstance | null>(null);
+
+/**
+ * 更新导航栏滚动位置
+ * @param scrollTop 页面滚动距离
+ * @returns null
+ */
+const updateNavbarScrollTop = (scrollTop: number): void => {
+   uNavbar.value?.updateScrollTop(scrollTop);
+};
+
+/**
+ * 处理 App 页面滚动
+ * @param event 滚动事件
+ * @returns null
+ */
+const handlePageScroll = (event: UniScrollEvent): void => {
+   updateNavbarScrollTop(event.detail.scrollTop);
+};
+
+/**
+ * 处理左侧点击
+ * @returns null
+ */
+const handleLeftClick = (): void => {
+   console.log("leftClick");
+};
+
+/**
+ * 处理右侧点击
+ * @returns null
+ */
+const handleRightClick = (): void => {
+   console.log("rightClick");
+};
+
+// #ifndef APP
+/** 监听非 App 平台页面滚动 */
+onPageScroll((event) => {
+   updateNavbarScrollTop(event.scrollTop);
+});
+// #endif
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 演示页内容
+.navbar-demo {
+   min-height: 1200px;
+}
+
+// 自定义左侧插槽
+.navbar-demo__left-slot {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: space-between;
+   box-sizing: border-box;
+   padding: 3px 7px;
+   border-width: 0.5px;
+   border-style: solid;
+   border-color: var(--uvx-border);
+   border-radius: 100px;
+   opacity: 0.8;
+}
+</style>

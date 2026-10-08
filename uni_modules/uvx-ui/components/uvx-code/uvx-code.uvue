@@ -1,0 +1,241 @@
+<template>
+   <view class="uvx-code"></view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-code 验证码倒计时
+ * @description 提供验证码倒计时状态和文本，显示内容由调用方通过 change 事件决定。
+ * @tutorial https://www.uvxui.cn/components/code.html
+ * @property {Number} seconds 倒计时秒数（默认 60）
+ * @property {String} startText 开始前提示文字（默认 获取验证码）
+ * @property {String} changeText 倒计时提示文字，包含 x 或 X（默认 X秒重新获取）
+ * @property {String} endText 倒计时结束文字（默认 重新获取）
+ * @property {Boolean} keepRunning 页面离开后是否继续倒计时（默认 false）
+ * @property {String} uniqueKey 持久化倒计时使用的唯一键（默认 code）
+ * @method start 开始倒计时
+ * @method reset 重置倒计时
+ * @property {ComputedRef<Boolean>} canGetCode 当前是否允许开始倒计时
+ * @event {Function} change 倒计时文字变化事件
+ * @event {Function} start 开始倒计时事件
+ * @event {Function} end 倒计时结束事件
+ */
+
+import { t } from "../../core/i18n";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-code" });
+
+const props = withDefaults(defineProps<Props>(), {
+   seconds: 60,
+   startText: t("获取验证码"),
+   changeText: t("X秒重新获取"),
+   endText: t("重新获取"),
+   keepRunning: false,
+   uniqueKey: "code",
+});
+const emit = defineEmits<Emits>();
+
+// 当前剩余秒数
+const secondsLeft = ref<number>(props.seconds);
+// 是否允许外部开始倒计时
+const canGetCode = ref<boolean>(true);
+// 原生定时器编号
+let timer: number | null = null;
+
+/**
+ * 获取持久化倒计时键
+ * @returns string
+ */
+const getStorageKey = (): string => `${props.uniqueKey}_$uvxCountDownTimestamp`;
+
+/**
+ * 读取预计结束时间
+ * @returns 时间戳，不存在时返回 null
+ */
+const readEndTime = (): number | null => {
+   try {
+      const value = uni.getStorageSync(getStorageKey());
+      return typeof value == "number" ? value : null;
+   } catch (error) {
+      console.warn("uvx-code 读取倒计时状态失败", error);
+      return null;
+   }
+};
+
+/**
+ * 保存预计结束时间
+ * @param timestamp 预计结束时间戳
+ * @returns null
+ */
+const writeEndTime = (timestamp: number): void => {
+   try {
+      uni.setStorageSync(getStorageKey(), timestamp);
+   } catch (error) {
+      console.warn("uvx-code 保存倒计时状态失败", error);
+   }
+};
+
+/**
+ * 删除预计结束时间
+ * @returns null
+ */
+const removeEndTime = (): void => {
+   try {
+      uni.removeStorageSync(getStorageKey());
+   } catch (error) {
+      console.warn("uvx-code 清理倒计时状态失败", error);
+   }
+};
+
+/**
+ * 清除当前计时器
+ * @returns null
+ */
+const clearTimer = (): void => {
+   if (timer != null) {
+      clearTimeout(timer);
+      timer = null;
+   }
+};
+
+/**
+ * 保存预计结束时间
+ * @returns null
+ */
+const saveEndTime = (): void => {
+   if (!props.keepRunning || timer == null || secondsLeft.value <= 0) return;
+   writeEndTime(Math.floor(Date.now() / 1000) + secondsLeft.value);
+};
+
+/**
+ * 开始验证码倒计时
+ * @returns null
+ */
+const start = (): void => {
+   if (!canGetCode.value) return;
+   clearTimer();
+   if (secondsLeft.value <= 0) secondsLeft.value = props.seconds;
+   canGetCode.value = false;
+   emit("start");
+   emit("change", props.changeText.replace(/x|X/, secondsLeft.value.toString()));
+   /**
+    * 推进一次倒计时
+    * @returns null
+    */
+   const tick = (): void => {
+      secondsLeft.value -= 1;
+      if (secondsLeft.value > 0) {
+         emit("change", props.changeText.replace(/x|X/, secondsLeft.value.toString()));
+         timer = setTimeout(tick, 1000);
+         return;
+      }
+      clearTimer();
+      secondsLeft.value = props.seconds;
+      canGetCode.value = true;
+      emit("change", props.endText);
+      emit("end");
+   };
+   timer = setTimeout(tick, 1000);
+   saveEndTime();
+};
+
+/**
+ * 重置验证码倒计时
+ * @returns null
+ */
+const reset = (): void => {
+   clearTimer();
+   secondsLeft.value = props.seconds;
+   canGetCode.value = true;
+   removeEndTime();
+   emit("change", props.endText);
+};
+
+/**
+ * 恢复离开页面前尚未结束的倒计时
+ * @returns null
+ */
+const restore = (): void => {
+   if (!props.keepRunning) {
+      emit("change", props.startText);
+      return;
+   }
+   const timestamp = readEndTime();
+   const now = Math.floor(Date.now() / 1000);
+   if (timestamp != null && timestamp > now) {
+      secondsLeft.value = timestamp - now;
+      removeEndTime();
+      // 新组件实例默认可能继承为不可开始状态，恢复前必须先开放启动。
+      canGetCode.value = true;
+      start();
+      return;
+   }
+   removeEndTime();
+   emit("change", props.startText);
+};
+
+/**
+ * 页面隐藏时保存并暂停倒计时
+ * @returns null
+ */
+const pause = (): void => {
+   saveEndTime();
+   clearTimer();
+   canGetCode.value = true;
+};
+
+/**
+ * 页面重新显示时恢复倒计时
+ * @returns null
+ */
+const resume = (): void => {
+   if (timer == null && canGetCode.value) restore();
+};
+
+/**
+ * 秒数变化时同步空闲状态的剩余时间
+ * @param value 新的倒计时秒数
+ * @returns null
+ */
+watch(() => props.seconds, (value: number): void => {
+   if (canGetCode.value) secondsLeft.value = value;
+});
+
+/**
+ * 挂载时恢复倒计时
+ * @returns null
+ */
+onMounted(restore);
+
+// 页面缓存时由页面生命周期接管保存与恢复
+/**
+ * 页面隐藏时保存倒计时
+ * @returns null
+ */
+onHide(pause);
+
+/**
+ * 页面显示时恢复倒计时
+ * @returns null
+ */
+onShow(resume);
+
+/**
+ * 卸载时保存并清理倒计时
+ * @returns null
+ */
+onUnmounted((): void => {
+   saveEndTime();
+   clearTimer();
+});
+
+defineExpose({ start, reset, canGetCode });
+</script>
+
+<style lang="scss">
+// 倒计时组件不占用视觉布局
+.uvx-code {
+   display: none;
+}
+</style>

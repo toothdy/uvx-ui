@@ -1,0 +1,17 @@
+export type Mode = "spinner" | "circle" | "semicircle";
+
+export type Props = {
+   show: boolean;
+   color: string;
+   textColor: string;
+   vertical: boolean;
+   mode: Mode;
+   size: string | number;
+   textSize: string | number;
+   text: string;
+   textStyle: string;
+   easing: string;
+   duration: number;
+   incolor: string;
+   uStyle: string;
+};

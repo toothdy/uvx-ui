@@ -1,0 +1,76 @@
+<template>
+  <view
+    class="uvx-line"
+    :style="lineStyle"
+  ></view>
+</template>
+
+<script setup lang="uts">
+/**
+ * uvx-line 线条
+ * @description 用于显示一根线条,分隔内容块,支持横向和竖向两种模式
+ * @tutorial https://www.uvxui.cn/components/line.html
+ * @property {String} color 线条颜色 (默认主题色)
+ * @property {String | Number} length 长度,竖向时表现为高度,横向时表现为长度 (默认 '100%')
+ * @property {String} direction 线条方向: row-横向, col-竖向 (默认 'row')
+ * @property {Boolean} hairline 是否显示细线条 (默认 true)
+ * @property {String | Number} margin 线条与相邻元素的间距,横向线条为上下间距,竖向线条为左右间距,仅支持单值 (默认 0)
+ * @property {Boolean} dashed 是否虚线 (默认 false)
+ * @property {String} uStyle 自定义样式
+ * @example <uvx-line color="red"></uvx-line>
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Props } from './types/index.uts';
+
+defineOptions({ name: 'uvx-line', options: { virtualHost: true } });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	color: '',
+	length: '100%',
+	direction: 'row',
+	hairline: true,
+	margin: 0,
+	dashed: false,
+	uStyle: ""
+});
+
+/**
+ * 线条样式
+ * @returns UTSJSONObject
+ */
+const lineStyle = computed(() => {
+	const style: UTSJSONObject = {};
+	if (!$uvx.string.empty(props.color)) {
+		style.set('border-color', props.color);
+	}
+
+	if (props.direction == 'row') {
+		style.set('border-bottom-width', '1px');
+		style.set('border-bottom-style', props.dashed ? 'dashed' : 'solid');
+		style.set('width', $uvx.format.unit(props.length));
+		style.set('margin', `${$uvx.format.unit(props.margin)} 0`);
+		if (props.hairline) {
+			style.set('transform', 'scaleY(0.5)');
+		}
+	} else {
+		style.set('border-left-width', '1px');
+		style.set('border-left-style', props.dashed ? 'dashed' : 'solid'); 
+		style.set('height', $uvx.format.unit(props.length));
+		style.set('margin', `0 ${$uvx.format.unit(props.margin)}`);
+		if (props.hairline) {
+			style.set('transform', 'scaleX(0.5)');
+		}
+	}
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+</script>
+
+<style lang="scss">
+.uvx-line {
+	border-color: var(--uvx-border);
+}
+</style>

@@ -1,0 +1,34 @@
+<script lang="uts">
+	// #ifdef APP-ANDROID
+	let firstBackTime = 0;
+	// #endif
+	export default {
+		onLaunch: function () {
+			console.log('启动')
+		},
+		// #ifdef APP-ANDROID
+		onLastPageBackPress: function () {
+			if (firstBackTime == 0) {
+				uni.showToast({
+					title: '再按一次退出应用',
+					position: 'bottom',
+				})
+				firstBackTime = Date.now()
+				setTimeout(() => {
+					firstBackTime = 0
+				}, 2000)
+			} else if (Date.now() - firstBackTime < 2000) {
+				firstBackTime = Date.now()
+				uni.exit()
+			}
+		},
+		// #endif
+		onExit: function () {
+			console.log('退出')
+		},
+	}
+</script>
+
+<style lang="scss">
+@import '@/uni_modules/uvx-ui/index.scss';
+</style>

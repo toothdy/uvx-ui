@@ -1,0 +1,11 @@
+import type { Value } from "../../uvx-index-list/types/index.uts";
+
+/** 索引分组属性 */
+export type Props = {
+   /** 分组标识 */
+   index: Value;
+   /** 根节点自定义样式 */
+   uStyle: string;
+   /** 根节点自定义类名 */
+   uClass: string;
+};

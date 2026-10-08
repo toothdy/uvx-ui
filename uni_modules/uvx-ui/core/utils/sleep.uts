@@ -1,0 +1,12 @@
+/**
+ * 等待指定时长
+ * @param duration 等待毫秒数，默认 20
+ * @returns 等待完成的 Promise
+ */
+export const sleep = (duration: number = 20): Promise<void> => {
+   return new Promise<void>((resolve): void => {
+      setTimeout((): void => {
+         resolve();
+      }, duration);
+   });
+};

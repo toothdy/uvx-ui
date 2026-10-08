@@ -1,0 +1,41 @@
+export type Value = string | number | boolean;
+export type Shape = "circle" | "square" | "card";
+export type Placement = "row" | "column";
+export type IconPlacement = "left" | "right";
+
+export type GroupConfig = {
+   shape: Shape;
+   disabled: boolean;
+   activeColor: string;
+   inactiveColor: string;
+   size: string | number;
+   placement: Placement;
+   labelSize: string | number;
+   labelColor: string;
+   labelDisabled: boolean;
+   iconColor: string;
+   iconSize: string | number;
+   iconPlacement: IconPlacement;
+   borderBottom: boolean;
+};
+
+export type Props = {
+   name: Value;
+   shape: Shape | "";
+   disabled: string | boolean;
+   labelDisabled: string | boolean;
+   activeColor: string;
+   inactiveColor: string;
+   iconSize: string | number;
+   label: Value;
+   labelSize: string | number;
+   labelColor: string;
+   size: string | number;
+   iconColor: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   change: [value: Value];
+};

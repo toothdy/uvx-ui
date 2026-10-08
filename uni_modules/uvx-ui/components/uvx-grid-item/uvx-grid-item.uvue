@@ -1,0 +1,202 @@
+<template>
+   <view
+      ref="itemElement"
+      class="uvx-grid-item"
+      :class="[itemClasses, customClass]"
+      :style="itemStyle"
+      hover-class="uvx-grid-item--hover"
+      :hover-stay-time="200"
+      @click="handleClick"
+   >
+      <slot></slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-grid-item 宫格项
+ * @description 搭配 uvx-grid 使用，支持名称、点击数据、背景和自定义样式。
+ * @tutorial https://www.uvxui.cn/components/grid.html
+ * @property {String | Number} name 宫格名称，未设置时使用索引
+ * @property {Object | Array | String} data 点击时优先返回的数据
+ * @property {String} bgColor 宫格背景颜色
+ * @property {String} customStyle 自定义样式
+ * @property {String} customClass 自定义类名
+ * @event {Function} click 点击宫格项时触发
+ * @example <uvx-grid-item name="photo">内容</uvx-grid-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   ClickValue,
+   Context,
+   CustomStyle,
+} from "../uvx-grid/types/index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-grid-item",
+   options: { virtualHost: true },
+   externalClasses: ["custom-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   name: "",
+   data: "",
+   bgColor: "",
+   customStyle: "",
+   customClass: "",
+});
+
+/** 宫格项点击事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 最近的宫格上下文
+const grid = inject<Context | null>("uvx-grid-context", null);
+if (grid == null) throw new Error("uvx-grid-item 必须在 uvx-grid 内使用");
+// 当前宫格索引
+const itemIndex = ref(-1);
+// 当前宫格项总数
+const itemTotal = ref(0);
+// 当前宫格项元素
+const itemElement = ref<UniElement | null>(null);
+// 当前宫格项正方形边长
+const itemSize = ref(0);
+
+/**
+ * 解析组件自定义样式
+ * @param customStyle 自定义样式
+ * @returns UTSJSONObject
+ */
+const getCustomStyle = (customStyle: CustomStyle): UTSJSONObject => {
+   return $uvx.style.parse(customStyle);
+};
+
+/**
+ * 宫格项状态类名
+ * @returns string[]
+ */
+const itemClasses = computed((): string[] => {
+   const classes: string[] = [];
+   if (!grid.config.value.border || itemIndex.value < 0 || itemTotal.value <= 0) return classes;
+
+   const col = grid.config.value.col;
+   const position = itemIndex.value + 1;
+   if (position % col != 0 && position != itemTotal.value) {
+      classes.push("uvx-grid-item--border-right");
+   }
+
+   const remainder = itemTotal.value % col;
+   const lastRowCount = remainder == 0 ? col : remainder;
+   if (itemIndex.value < itemTotal.value - lastRowCount) {
+      classes.push("uvx-grid-item--border-bottom");
+   }
+   return classes;
+});
+
+/**
+ * 宫格项布局样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   const percent = 100 / grid.config.value.col;
+   const style: UTSJSONObject = {
+      "width": `${percent}%`,
+      "flex-basis": `${percent}%`,
+      "flex-grow": 0,
+      "flex-shrink": 0,
+   };
+   if (itemSize.value > 0) {
+      style.set("height", `${itemSize.value}px`);
+   }
+   if (!$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   return $uvx.object.deepMerge(style, getCustomStyle(props.customStyle));
+});
+
+/**
+ * 按实际宽度同步正方形高度
+ * @returns null
+ */
+const refreshItemSize = (): void => {
+   nextTick((): void => {
+      const element = itemElement.value;
+      if (element == null) return;
+      const width = element.getBoundingClientRect().width;
+      if (width > 0) itemSize.value = width;
+   });
+};
+
+/**
+ * 同步父级提供的索引和总数
+ * @param index 当前索引
+ * @param total 宫格项总数
+ * @returns null
+ */
+const syncFromGrid = (index: number, total: number): void => {
+   itemIndex.value = index;
+   itemTotal.value = total;
+   refreshItemSize();
+};
+
+/** 点击宫格项并转发参数 */
+const handleClick = (): void => {
+   let value: ClickValue;
+   if (!$uvx.validate.empty(props.data)) {
+      value = props.data as ClickValue;
+   } else if (!$uvx.string.unset(props.name)) {
+      value = props.name;
+   } else {
+      value = itemIndex.value;
+   }
+   grid.childClick(value);
+   emit("click", value);
+};
+
+/** 挂载时注册到宫格 */
+onMounted((): void => {
+   grid.register(instance);
+   refreshItemSize();
+});
+
+/** 卸载时从宫格注销 */
+onUnmounted((): void => {
+   grid.unregister(instance);
+});
+
+defineExpose({ syncFromGrid });
+</script>
+
+<style lang="scss">
+// 宫格项主体
+.uvx-grid-item {
+   display: flex;
+   position: relative;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+}
+
+// 宫格项点击反馈
+.uvx-grid-item--hover {
+   opacity: 0.5;
+}
+
+// 宫格项右边框
+.uvx-grid-item--border-right {
+   border-right-width: 1px;
+   border-right-style: solid;
+   border-right-color: var(--uvx-border);
+}
+
+// 宫格项下边框
+.uvx-grid-item--border-bottom {
+   border-bottom-width: 1px;
+   border-bottom-style: solid;
+   border-bottom-color: var(--uvx-border);
+}
+</style>

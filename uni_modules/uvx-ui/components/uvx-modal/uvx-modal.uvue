@@ -1,0 +1,448 @@
+<template>
+   <uvx-popup
+      ref="uPopup"
+      mode="center"
+      :zoom="zoom"
+      :z-index="zIndex"
+      bg-color="none"
+      :round="0"
+      :u-style="$uvx.style.stringify(popupStyle)"
+      :close-on-click-overlay="closeOnClickOverlay"
+      :safe-area-inset-bottom="false"
+      :duration="400"
+      @change="onPopupChange"
+   >
+      <!-- 模态框主体 -->
+      <view
+         class="uvx-modal-wrap"
+         :class="isDark ? 'uvx-dark' : 'uvx-light'"
+         :style="modalWrapStyle"
+      >
+         <view
+            class="uvx-modal"
+            :class="uClass"
+            :style="modalStyle"
+         >
+            <text v-if="!$uvx.string.empty(title)" class="uvx-modal__title">
+               {{ title }}
+            </text>
+
+            <!-- 模态框正文 -->
+            <view class="uvx-modal__content" :style="contentStyle">
+               <slot>
+                  <text class="uvx-modal__content-text" :style="contentTextStyle">
+                     {{ content }}
+                  </text>
+               </slot>
+            </view>
+
+            <!-- 默认操作按钮 -->
+            <slot name="confirmButton">
+               <uvx-line></uvx-line>
+               <view
+                  v-if="showConfirmButton || showCancelButton"
+                  class="uvx-modal__button-group"
+                  :style="buttonGroupStyle"
+               >
+                  <view
+                     v-if="showCancelButton"
+                     class="uvx-modal__button"
+                     :class="showConfirmButton ? '' : 'uvx-modal__button--only-cancel'"
+                     :hover-stay-time="150"
+                     hover-class="uvx-modal__button--hover"
+                     @click="handleCancel"
+                  >
+                     <text
+                        class="uvx-modal__button-text uvx-modal__button-text--cancel"
+                        :style="cancelTextStyle"
+                     >
+                        {{ cancelText }}
+                     </text>
+                  </view>
+                  <uvx-line
+                     v-if="showConfirmButton && showCancelButton"
+                     direction="col"
+                     length="48px"
+                  ></uvx-line>
+                  <view
+                     v-if="showConfirmButton"
+                     class="uvx-modal__button"
+                     :class="showCancelButton ? '' : 'uvx-modal__button--only-confirm'"
+                     :hover-stay-time="150"
+                     hover-class="uvx-modal__button--hover"
+                     @click="handleConfirm"
+                  >
+                     <uvx-loading-icon
+                        v-if="isLoading"
+                        :vertical="false"
+                        mode="circle"
+                        :size="18"
+                        :color="confirmLoadingColor"
+                     ></uvx-loading-icon>
+                     <text
+                        v-else
+                        class="uvx-modal__button-text uvx-modal__button-text--confirm"
+                        :style="confirmTextStyle"
+                     >
+                        {{ confirmText }}
+                     </text>
+                  </view>
+               </view>
+            </slot>
+         </view>
+
+         <!-- 右上角关闭按钮 -->
+         <view
+            v-if="showCloseIcon"
+            class="uvx-modal-wrap__close"
+            hover-class="uvx-modal-wrap__close--hover"
+            @click.stop="close"
+         >
+            <uvx-icon
+               name="close-circle-fill"
+               color="error"
+               :size="24"
+            ></uvx-icon>
+         </view>
+      </view>
+   </uvx-popup>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-modal 模态框
+ * @description 用于消息提示、消息确认和当前页面内的交互操作。
+ * @tutorial https://www.uvxui.cn/components/modal.html
+ * @property {String} title 标题内容
+ * @property {String} content 默认插槽为空时显示的正文
+ * @property {String} confirmText 确认按钮文字，默认通过国际化输出“确认”
+ * @property {String} cancelText 取消按钮文字，默认通过国际化输出“取消”
+ * @property {Boolean} showConfirmButton 是否显示确认按钮，默认 true
+ * @property {Boolean} showCancelButton 是否显示取消按钮，默认 false
+ * @property {Boolean} showCloseIcon 是否显示右上角关闭图标，默认 false
+ * @property {String} confirmColor 确认按钮颜色，默认跟随主题
+ * @property {String} cancelColor 取消按钮颜色，默认跟随主题
+ * @property {Boolean} buttonReverse 是否对调确认和取消按钮，默认 false
+ * @property {Boolean} zoom 是否使用缩放动画，默认 true
+ * @property {String | Number} zIndex 弹层层级，默认 10075
+ * @property {Boolean} asyncClose 是否异步关闭，默认 false
+ * @property {Boolean} closeOnClickOverlay 点击遮罩是否关闭，默认 true
+ * @property {String | Number} negativeTop 向上偏移距离，默认 0
+ * @property {String | Number} width 模态框宽度，默认 650rpx
+ * @property {String} align 正文对齐方式，默认 left
+ * @property {String} textStyle 正文自定义样式
+ * @property {String} uStyle 主体自定义样式
+ * @property {String} uClass 主体自定义类名
+ * @event {Function} confirm 点击确认按钮时触发
+ * @event {Function} cancel 点击取消按钮时触发
+ * @event {Function} close 模态框关闭时触发
+ * @method open() 打开模态框
+ * @method close() 关闭模态框
+ * @method closeLoading() 结束异步确认加载状态
+ * @example <uvx-modal ref="modal" title="标题" content="内容"></uvx-modal>
+ */
+
+import { $uvx } from "../../index.uts";
+import { t } from "../../core/i18n";
+import { isDark } from "../../core/theme";
+import type { ChangeEvent } from "../uvx-popup/types/index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-modal", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+// 组件属性
+const props = withDefaults(defineProps<Props>(), {
+   title: "",
+   content: "",
+   confirmText: t("确认"),
+   cancelText: t("取消"),
+   showConfirmButton: true,
+   showCancelButton: false,
+   showCloseIcon: false,
+   confirmColor: "",
+   cancelColor: "",
+   buttonReverse: false,
+   zoom: true,
+   zIndex: 10075,
+   asyncClose: false,
+   closeOnClickOverlay: true,
+   negativeTop: 0,
+   width: "650rpx",
+   align: "left",
+   textStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+// 组件事件
+const emit = defineEmits<Emits>();
+// 内部弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+// 确认按钮是否加载中
+const isLoading = ref(false);
+
+/**
+ * 获取弹层偏移样式
+ * @returns UTSJSONObject
+ */
+const popupStyle = computed((): UTSJSONObject => {
+   return {
+      "margin-top": `-${$uvx.format.unit(props.negativeTop)}`,
+      "overflow": "visible",
+   };
+});
+
+/**
+ * 获取模态框定位外壳样式
+ * @returns UTSJSONObject
+ */
+const modalWrapStyle = computed((): UTSJSONObject => {
+   return {
+      "width": $uvx.format.unit(props.width),
+   };
+});
+
+/**
+ * 获取模态框主体样式
+ * @returns UTSJSONObject
+ */
+const modalStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 获取正文区域样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   return {
+      "padding-top": $uvx.string.empty(props.title) ? "25px" : "12px",
+   };
+});
+
+/**
+ * 获取正文文字样式
+ * @returns UTSJSONObject
+ */
+const contentTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "text-align": props.align,
+   };
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.textStyle));
+});
+
+/**
+ * 获取按钮排列样式
+ * @returns UTSJSONObject
+ */
+const buttonGroupStyle = computed((): UTSJSONObject => {
+   return {
+      "flex-direction": props.buttonReverse ? "row-reverse" : "row",
+   };
+});
+
+/**
+ * 获取取消按钮文字样式
+ * @returns UTSJSONObject
+ */
+const cancelTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.cancelColor)) style.set("color", props.cancelColor);
+   return style;
+});
+
+/**
+ * 获取确认按钮文字样式
+ * @returns UTSJSONObject
+ */
+const confirmTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.confirmColor)) style.set("color", props.confirmColor);
+   return style;
+});
+
+/**
+ * 获取确认加载图标颜色
+ * @returns 颜色值或主题名称
+ */
+const confirmLoadingColor = computed((): string => {
+   return $uvx.string.empty(props.confirmColor) ? "primary" : props.confirmColor;
+});
+
+/**
+ * 打开模态框
+ * @returns null
+ */
+const open = (): void => {
+   isLoading.value = false;
+   uPopup.value?.open();
+};
+
+/**
+ * 关闭模态框
+ * @returns null
+ */
+const close = (): void => {
+   uPopup.value?.close();
+};
+
+/**
+ * 结束异步确认加载状态
+ * @returns null
+ */
+const closeLoading = (): void => {
+   nextTick((): void => {
+      isLoading.value = false;
+   });
+};
+
+/**
+ * 处理内部弹层状态变化
+ * @param event 弹层状态
+ * @returns null
+ */
+const onPopupChange = (event: ChangeEvent): void => {
+   if (!event.show) emit("close");
+};
+
+/**
+ * 处理确认操作
+ * @returns null
+ */
+const handleConfirm = (): void => {
+   if (isLoading.value) return;
+   emit("confirm");
+   if (props.asyncClose) {
+      isLoading.value = true;
+      return;
+   }
+   close();
+};
+
+/**
+ * 处理取消操作
+ * @returns null
+ */
+const handleCancel = (): void => {
+   emit("cancel");
+   close();
+};
+
+defineExpose({ open, close, closeLoading });
+</script>
+
+<style lang="scss">
+@import "../../core/scss/common.scss";
+
+// 模态框定位外壳
+.uvx-modal-wrap {
+   position: relative;
+   display: flex;
+   flex-direction: column;
+   overflow: visible;
+
+   // 右上角关闭按钮
+   &__close {
+      position: absolute;
+      z-index: 2;
+      top: -8px;
+      right: -8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 28px;
+      height: 28px;
+      overflow: hidden;
+      border-width: 2px;
+      border-style: solid;
+      border-color: var(--uvx-container);
+      border-radius: 50%;
+      background-color: var(--uvx-container);
+
+      &--hover {
+         opacity: 0.75;
+      }
+   }
+}
+
+// 模态框主体
+.uvx-modal {
+   display: flex;
+   flex-direction: column;
+   box-sizing: border-box;
+   width: 100%;
+   overflow: hidden;
+   border-radius: 6px;
+   background-color: var(--uvx-container);
+
+   // 标题
+   &__title {
+      padding-top: 25px;
+      color: var(--uvx-text-content);
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+   }
+
+   // 正文区域
+   &__content {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      padding-right: 25px;
+      padding-bottom: 25px;
+      padding-left: 25px;
+   }
+
+   // 正文文字
+   &__content-text {
+      flex: 1;
+      color: var(--uvx-text-content);
+      font-size: 15px;
+      line-height: 24px;
+   }
+
+   // 操作按钮区域
+   &__button-group {
+      display: flex;
+      height: 48px;
+   }
+
+   // 操作按钮
+   &__button {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      height: 48px;
+
+      &--only-cancel,
+      &--only-confirm {
+         border-bottom-right-radius: 6px;
+         border-bottom-left-radius: 6px;
+      }
+
+      &--hover {
+         background-color: var(--uvx-hover);
+      }
+   }
+
+   // 操作按钮文字
+   &__button-text {
+      font-size: 16px;
+      text-align: center;
+
+      &--cancel {
+         color: var(--uvx-text-tips);
+      }
+
+      &--confirm {
+         color: var(--uvx-primary);
+      }
+   }
+}
+</style>

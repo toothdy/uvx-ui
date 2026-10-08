@@ -1,0 +1,10 @@
+import { appendLocale } from "../core/i18n";
+import zhCn from "./zh-cn.json";
+import zhTw from "./zh-tw.json";
+import en from "./en.json";
+
+export function registerLocales(): void {
+	appendLocale("zh-cn", zhCn as string[][]);
+	appendLocale("zh-tw", zhTw as string[][]);
+	appendLocale("en", en as string[][]);
+}

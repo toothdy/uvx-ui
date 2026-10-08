@@ -1,0 +1,399 @@
+<template>
+	<view
+		v-if="show"
+		class="uvx-loading-icon"
+		:class="[vertical ? 'uvx-loading-icon--vertical' : '']"
+		:style="$uvx.style.parse(uStyle)"
+	>
+		<view ref="uLoadingIcon" class="uvx-loading-icon__spinner" :class="spinnerClasses" :style="iconStyles">
+			<template v-if="mode == 'spinner'">
+				<view
+					v-for="(_, index) in 12"
+					:key="index" class="uvx-loading-icon__dot"
+					:style="{ transform: 'rotate(' + (index * 30) + 'deg)', opacity: getDotOpacity(index) }"
+				>
+					<view class="uvx-loading-icon__dot-bar" :class="dotBarClasses" :style="dotBarStyle"></view>
+				</view>
+			</template>
+		</view>
+		<text
+			v-if="!$uvx.string.empty(text)"
+			class="uvx-loading-icon__text"
+			:class="[vertical ? 'uvx-loading-icon__text--vertical' : '']"
+			:style="labelStyle"
+		>
+			{{ text }}
+		</text>
+	</view>
+</template>
+
+<script setup lang="uts">
+	/**
+ * uvx-loading-icon 加载动画
+ * @description 加载中的小动画,支持 spinner(菊花)/circle(圆环)/semicircle(半圆)三种模式
+ * @tutorial https://www.uvxui.cn/components/loading.html
+ * @property {Boolean} show 是否显示 (默认 true)
+ * @property {String} color 活动色,空则用主题 var(--uvx-text-content)
+ * @property {String} textColor 文字色,空则用主题色
+ * @property {Boolean} vertical 文字与图标是否垂直排列 (默认 true)
+ * @property {String} mode 模式 spinner/circle/semicircle (默认 'spinner')
+ * @property {String | Number} size 图标大小 (默认 24)
+ * @property {String | Number} textSize 文字大小 (默认 15)
+ * @property {String} text 文字内容
+ * @property {String} textStyle 文字样式
+ * @property {String} easing 动画曲线(默认 'linear',仅 APP 端生效)
+ * @property {Number} duration 单圈周期 ms (默认 1200)
+ * @property {String} incolor circle 暗边色,空则自动计算
+ * @property {String} uStyle 自定义样式
+ * @example <uvx-loading-icon mode="circle"></uvx-loading-icon>
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Props } from './types/index.uts';
+
+	defineOptions({ name: 'uvx-loading-icon', options: { virtualHost: true } });
+
+	const props = withDefaults(defineProps<Props>(), {
+		show: true,
+		color: '',
+		textColor: '',
+		vertical: true,
+		mode: 'spinner',
+		size: 24,
+		textSize: 15,
+		text: '',
+		textStyle: "",
+		easing: 'linear',
+		duration: 1200,
+		incolor: '',
+		uStyle: ""
+	});
+
+	// 可直接映射主题变量的语义颜色
+	const themeColors : string[] = ['primary', 'success', 'warning', 'error', 'info', 'content', 'placeholder'];
+
+	// #ifdef APP
+	const uLoadingIcon = ref<UniElement | null>(null);
+	const animation = ref<UniAnimation | null>(null);
+	// #endif
+
+	/**
+	 * 圆环轨道色
+	 * @returns string
+	 */
+	const trackColor = computed(() : string => {
+		if (!$uvx.string.empty(props.incolor)) {
+			return props.incolor;
+		}
+		if (!$uvx.string.empty(props.color) && !themeColors.includes(props.color) && props.color.indexOf('var(') == -1) {
+			return $uvx.color.mix(props.color, '#ffffff', 0.8);
+		}
+		return '';
+	});
+
+	/**
+	 * 当前颜色是否为主题语义色
+	 * @returns boolean
+	 */
+	const isThemeColor = computed(() : boolean => {
+		return themeColors.includes(props.color);
+	});
+
+	/**
+	 * 加载图标类名
+	 * @returns string[]
+	 */
+	const spinnerClasses = computed(() : string[] => {
+		const classes : string[] = [`uvx-loading-icon__spinner--${props.mode}`];
+		if (isThemeColor.value) classes.push(`uvx-loading-icon__spinner--${props.color}`);
+		return classes;
+	});
+
+	/**
+	 * 菊花条类名
+	 * @returns string[]
+	 */
+	const dotBarClasses = computed(() : string[] => {
+		return isThemeColor.value ? [`uvx-loading-icon__dot-bar--${props.color}`] : [];
+	});
+
+	/**
+	 * 图标容器内联样式
+	 * @returns UTSJSONObject
+	 */
+	const iconStyles = computed(() : UTSJSONObject => {
+		const style : UTSJSONObject = {};
+		style.set('width', $uvx.format.unit(props.size));
+		style.set('height', $uvx.format.unit(props.size));
+		// #ifdef WEB || MP
+		style.set('--uvx-spin-dur', $uvx.format.unit(props.duration, 'ms'));
+		style.set('--uvx-spin-easing', props.easing);
+		// #endif
+
+		if (props.mode == 'circle') {
+			if (!$uvx.string.empty(props.color) && !isThemeColor.value) style.set('border-top-color', props.color);
+			if (!$uvx.string.empty(trackColor.value)) {
+				style.set('border-bottom-color', trackColor.value);
+				style.set('border-left-color', trackColor.value);
+				style.set('border-right-color', trackColor.value);
+			}
+		} else if (props.mode == 'semicircle') {
+			if (!$uvx.string.empty(props.color) && !isThemeColor.value) style.set('border-top-color', props.color);
+		}
+		return style;
+	});
+
+	/**
+	 * 菊花条样式
+	 * @returns UTSJSONObject
+	 */
+	const dotBarStyle = computed(() : UTSJSONObject => {
+		const style : UTSJSONObject = {};
+		if (!$uvx.string.empty(props.color) && !isThemeColor.value) style.set('background-color', props.color);
+		return style;
+	});
+
+	/**
+	 * 加载文字样式
+	 * @returns UTSJSONObject
+	 */
+	const labelStyle = computed(() : UTSJSONObject => {
+		const style : UTSJSONObject = {
+			'font-size': $uvx.format.unit(props.textSize)
+		};
+		if (!$uvx.string.empty(props.textColor)) style.set('color', props.textColor);
+		return $uvx.object.deepMerge(style, $uvx.style.parse(props.textStyle));
+	});
+
+	/**
+	 * 第 index 个点的不透明度
+	 * @param index 点索引
+	 * @returns number
+	 */
+	const getDotOpacity = (index : number) : number => {
+		return 1 - 0.0625 * index;
+	};
+
+	// #ifdef APP
+	/**
+	 * 启动旋转动画
+	 * @returns null
+	 */
+	const startAnimate = () : void => {
+		if (animation.value != null) {
+			animation.value.cancel();
+			animation.value = null;
+		}
+		if (!props.show) {
+			return;
+		}
+		nextTick(() => {
+			const el = uLoadingIcon.value;
+			if (el == null) {
+				return;
+			}
+			animation.value = el.animate([
+				{ transform: 'rotate(0deg)' },
+				{ transform: 'rotate(360deg)' }
+			], {
+				duration: props.duration,
+				easing: props.easing,
+				iterations: Infinity
+			});
+		});
+	};
+
+	/**
+	 * 停止动画
+	 * @returns null
+	 */
+	const stopAnimate = () => {
+		if (animation.value != null) {
+			animation.value.cancel();
+			animation.value = null;
+		}
+	};
+
+	/**
+	 * 挂载后启动动画
+	 * @returns null
+	 */
+	onMounted(() => {
+		startAnimate();
+	});
+
+	/**
+	 * mode 变化时重启动画
+	 * @returns null
+	 */
+	watch(() : string => props.mode, () => {
+		startAnimate();
+	});
+
+	/**
+	 * show 变化时启停动画
+	 * @returns null
+	 */
+	watch(() : boolean => props.show, () => {
+		if (!props.show) {
+			stopAnimate();
+			return;
+		}
+		startAnimate();
+	});
+
+	/**
+	 * 卸载时停止动画
+	 * @returns null
+	 */
+	onUnmounted(() => {
+		stopAnimate();
+	});
+	// #endif
+</script>
+
+<style lang="scss">
+	/* #ifdef WEB || MP */
+	@keyframes uvx-loading-spin {
+		from {
+			transform: rotate(0deg);
+		}
+
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	/* #endif */
+
+	.uvx-loading-icon {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+
+		&--vertical {
+			flex-direction: column;
+		}
+
+		&__spinner {
+			position: relative;
+			box-sizing: border-box;
+
+			&--semicircle {
+				border-width: 2px;
+				border-style: solid;
+				border-top-color: var(--uvx-text-content);
+				border-right-color: transparent;
+				border-bottom-color: transparent;
+				border-left-color: transparent;
+				border-radius: 100px;
+			}
+
+			&--circle {
+				border-width: 2px;
+				border-style: solid;
+				border-top-color: var(--uvx-text-content);
+				border-right-color: var(--uvx-text-placeholder);
+				border-bottom-color: var(--uvx-text-placeholder);
+				border-left-color: var(--uvx-text-placeholder);
+				border-radius: 100px;
+			}
+
+			&--primary {
+				border-top-color: var(--uvx-primary);
+			}
+
+			&--success {
+				border-top-color: var(--uvx-success);
+			}
+
+			&--warning {
+				border-top-color: var(--uvx-warning);
+			}
+
+			&--error {
+				border-top-color: var(--uvx-error);
+			}
+
+			&--info {
+				border-top-color: var(--uvx-info);
+			}
+
+			&--content {
+				border-top-color: var(--uvx-text-content);
+			}
+
+			&--placeholder {
+				border-top-color: var(--uvx-text-placeholder);
+			}
+
+			/* #ifdef WEB || MP */
+			&--semicircle,
+			&--circle {
+				animation: uvx-loading-spin var(--uvx-spin-dur, 1200ms) var(--uvx-spin-easing, linear) infinite;
+			}
+
+			&--spinner {
+				animation: uvx-loading-spin var(--uvx-spin-dur, 1200ms) steps(12) infinite;
+			}
+
+			/* #endif */
+		}
+
+		&__dot {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			flex-direction: row;
+			justify-content: center;
+		}
+
+		&__dot-bar {
+			width: 2px;
+			height: 25%;
+			border-radius: 2px;
+			background-color: var(--uvx-text-content);
+
+			&--primary {
+				background-color: var(--uvx-primary);
+			}
+
+			&--success {
+				background-color: var(--uvx-success);
+			}
+
+			&--warning {
+				background-color: var(--uvx-warning);
+			}
+
+			&--error {
+				background-color: var(--uvx-error);
+			}
+
+			&--info {
+				background-color: var(--uvx-info);
+			}
+
+			&--content {
+				background-color: var(--uvx-text-content);
+			}
+
+			&--placeholder {
+				background-color: var(--uvx-text-placeholder);
+			}
+		}
+
+		&__text {
+			margin-left: 4px;
+			color: var(--uvx-text-tips);
+			font-size: 14px;
+
+			&--vertical {
+				margin-left: 0;
+				margin-top: 6px;
+			}
+		}
+	}
+</style>

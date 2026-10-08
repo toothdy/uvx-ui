@@ -1,0 +1,389 @@
+<template>
+   <view
+      class="uvx-code-input"
+      :class="uClass"
+      :style="$uvx.style.parse(uStyle)"
+   >
+      <!-- 验证码格子 -->
+      <view
+         v-for="(_, index) in maxLength"
+         :key="index"
+         class="uvx-code-input__item"
+         :style="itemStyle(index)"
+      >
+         <!-- 圆点内容 -->
+         <view
+            v-if="dot && index < codeArray.length"
+            class="uvx-code-input__dot"
+            :style="dotStyle"
+         ></view>
+         <!-- 字符内容 -->
+         <text
+            v-else-if="index < codeArray.length"
+            class="uvx-code-input__text"
+            :style="textStyle"
+         >{{ codeArray[index] }}</text>
+         <!-- 当前输入位置光标 -->
+         <view
+            v-if="isFocused && codeArray.length == index"
+            class="uvx-code-input__cursor"
+            :style="cursorStyle"
+         ></view>
+         <!-- 横线模式的底线 -->
+         <view
+            v-if="mode == 'line'"
+            class="uvx-code-input__line"
+            :style="lineStyle"
+         ></view>
+      </view>
+      <!-- 透明原生输入层，用于唤起系统键盘并接收输入 -->
+      <input
+         class="uvx-code-input__native"
+         type="number"
+         :value="inputValue"
+         :maxlength="maxLength"
+         :focus="focus"
+         :disabled="disabledKeyboard"
+         <!-- #ifdef MP-WEIXIN || APP -->
+         :adjust-position="adjustPosition"
+         <!-- #endif -->
+         :style="nativeStyle"
+         @input="handleInput"
+         @focus="handleFocus"
+         @blur="handleBlur"
+      />
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-code-input 验证码输入
+ * @description 用于短信验证码输入，支持盒子、横线、圆点和自定义键盘模式。
+ * @tutorial https://www.uvxui.cn/components/code-input.html
+ * @property {String | Number} value 预置值
+ * @property {String | Number} modelValue v-model 绑定值
+ * @property {Boolean} adjustPosition 键盘弹起时是否自动上推页面
+ * @property {String | Number} maxlength 最大输入长度
+ * @property {Boolean} dot 是否用圆点填充
+ * @property {String} mode 显示模式：box、line
+ * @property {Boolean} hairline 是否使用细边框
+ * @property {String | Number} space 字符间距
+ * @property {Boolean} focus 是否自动获取焦点
+ * @property {Boolean} bold 字体是否加粗
+ * @property {String} color 字体颜色，空值时跟随主题
+ * @property {String | Number} fontSize 字体大小
+ * @property {String | Number} size 输入格子的宽高
+ * @property {Boolean} disabledKeyboard 是否禁用原生键盘
+ * @property {String} borderColor 边框和线条颜色，空值时跟随主题
+ * @property {Boolean} disabledDot 是否禁止输入点号
+ * @property {String} uStyle 组件自定义样式
+ * @property {String} uClass 组件自定义类名
+ * @event {Function} update:modelValue 更新双向绑定值
+ * @event {Function} input 输入事件
+ * @event {Function} change 内容变化事件
+ * @event {Function} finish 输入长度达到 maxlength 时触发
+ */
+
+import { $uvx } from "../../index.uts";
+
+type Mode = "box" | "line";
+
+type Props = {
+   value: string | number;
+   modelValue: string | number;
+   adjustPosition: boolean;
+   maxlength: string | number;
+   dot: boolean;
+   mode: Mode;
+   hairline: boolean;
+   space: string | number;
+   focus: boolean;
+   bold: boolean;
+   color: string;
+   fontSize: string | number;
+   size: string | number;
+   disabledKeyboard: boolean;
+   borderColor: string;
+   disabledDot: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+type Emits = {
+   "update:modelValue": [value: string];
+   input: [value: string];
+   change: [value: string];
+   finish: [value: string];
+};
+
+defineOptions({ name: "uvx-code-input", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   value: "",
+   modelValue: "",
+   adjustPosition: true,
+   maxlength: 6,
+   dot: false,
+   mode: "box",
+   hairline: false,
+   space: 10,
+   focus: false,
+   bold: false,
+   color: "",
+   fontSize: 18,
+   size: 35,
+   disabledKeyboard: false,
+   borderColor: "",
+   disabledDot: true,
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+// 当前输入值
+const inputValue = ref("");
+// 输入框是否聚焦
+const isFocused = ref(props.focus);
+
+/**
+ * 最大输入长度
+ * @returns number
+ */
+const maxLength = computed((): number => {
+   const value = parseInt(props.maxlength.toString());
+   return isNaN(value) ? 6 : Math.max(0, value);
+});
+
+/**
+ * 计算外部绑定值，modelValue 优先于 value
+ * @returns string
+ */
+const externalValue = computed((): string => {
+   const modelValue = props.modelValue.toString();
+   const value = props.value.toString();
+   if (!$uvx.string.empty(modelValue) || $uvx.string.empty(value)) return modelValue;
+   return value;
+});
+
+/**
+ * 过滤并截断输入值
+ * @param value 原始输入值
+ * @returns string
+ */
+const normalizeValue = (value: string): string => {
+   let result = value;
+   if (props.disabledDot) result = result.replace(/\./g, "");
+   return result.substring(0, maxLength.value);
+};
+
+/**
+ * 验证码字符数组
+ * @returns string[]
+ */
+const codeArray = computed((): string[] => {
+   return inputValue.value.split("");
+});
+
+/**
+ * 验证码格子样式
+ * @returns (index: number) => UTSJSONObject
+ */
+const itemStyle = computed((): ((index: number) => UTSJSONObject) => {
+   return (index: number): UTSJSONObject => {
+      const style: UTSJSONObject = {
+         "width": $uvx.format.unit(props.size),
+         "height": $uvx.format.unit(props.size),
+         "margin-right": index == maxLength.value - 1 ? "0px" : $uvx.format.unit(props.space),
+      };
+      if (props.mode == "box") {
+         style.set("border-width", props.hairline ? "0.5px" : "1px");
+         style.set("border-style", "solid");
+         if (!$uvx.string.empty(props.borderColor)) style.set("border-color", props.borderColor);
+         if (parseFloat(props.space.toString()) == 0) {
+            if (index == 0) {
+               style.set("border-top-left-radius", "3px");
+               style.set("border-bottom-left-radius", "3px");
+            }
+            if (index == maxLength.value - 1) {
+               style.set("border-top-right-radius", "3px");
+               style.set("border-bottom-right-radius", "3px");
+            } else {
+               style.set("border-right-width", "0px");
+            }
+         }
+      }
+      return style;
+   };
+});
+
+/**
+ * 字符样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.fontSize),
+      "font-weight": props.bold ? "bold" : "normal",
+   };
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   return style;
+});
+
+/**
+ * 圆点样式
+ * @returns UTSJSONObject
+ */
+const dotStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.color)) style.set("background-color", props.color);
+   return style;
+});
+
+/**
+ * 横线样式
+ * @returns UTSJSONObject
+ */
+const lineStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(props.size),
+      "height": props.hairline ? "1px" : "4px",
+   };
+   if (!$uvx.string.empty(props.borderColor)) style.set("background-color", props.borderColor);
+   return style;
+});
+
+/**
+ * 光标样式
+ * @returns UTSJSONObject
+ */
+const cursorStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.color)) style.set("background-color", props.color);
+   return style;
+});
+
+/**
+ * 原生输入层样式
+ * @returns UTSJSONObject
+ */
+const nativeStyle = computed((): UTSJSONObject => {
+   return { "height": $uvx.format.unit(props.size) };
+});
+
+/**
+ * 自定义键盘更新事件
+ * @returns null
+ */
+const customInput = (): void => {
+   const value = normalizeValue(inputValue.value);
+   inputValue.value = value;
+   emit("change", value);
+   if (value.length >= maxLength.value) emit("finish", value);
+};
+
+/**
+ * 外部值变化时同步显示内容
+ * @param value 外部绑定值
+ * @returns null
+ */
+watch(externalValue, (value: string): void => {
+   inputValue.value = normalizeValue(value);
+   if (props.disabledKeyboard) customInput();
+});
+
+/**
+ * 原生输入事件
+ * @param event 原生输入事件
+ * @returns null
+ */
+const handleInput = (event: UniInputEvent): void => {
+   const value = normalizeValue(event.detail.value);
+   inputValue.value = value;
+   emit("change", value);
+   emit("input", value);
+   emit("update:modelValue", value);
+   if (value.length >= maxLength.value) emit("finish", value);
+};
+
+/**
+ * 标记输入框聚焦
+ * @returns null
+ */
+const handleFocus = (): void => {
+   isFocused.value = true;
+};
+
+/**
+ * 标记输入框失焦
+ * @returns null
+ */
+const handleBlur = (): void => {
+   isFocused.value = false;
+};
+
+inputValue.value = normalizeValue(externalValue.value);
+</script>
+
+<style lang="scss">
+// 验证码输入整体布局
+.uvx-code-input {
+   display: flex;
+   flex-direction: row;
+   position: relative;
+   overflow: visible;
+
+   // 验证码格子
+   &__item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-sizing: border-box;
+      border-color: var(--uvx-border);
+   }
+
+   // 验证码字符
+   &__text {
+      color: var(--uvx-text-content);
+   }
+
+   // 圆点内容
+   &__dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 100px;
+      background-color: var(--uvx-text-content);
+   }
+
+   // 横线模式底线
+   &__line {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      border-radius: 100px;
+      background-color: var(--uvx-border);
+   }
+
+   // 当前输入位置光标
+   &__cursor {
+      position: absolute;
+      top: 30%;
+      bottom: 30%;
+      left: 50%;
+      width: 1px;
+      background-color: var(--uvx-text-content);
+   }
+
+   // 透明原生输入层
+   &__native {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      opacity: 0;
+   }
+}
+</style>

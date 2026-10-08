@@ -1,0 +1,68 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+export type Sign = string | number;
+export type Value = string | number;
+
+/** 下拉筛选图标配置 */
+export type Icon = {
+   name: string;
+   size: string | number;
+   color: string;
+};
+
+/** 下拉筛选容器属性 */
+export type Props = {
+   isSticky: boolean;
+   sign: Sign;
+   defaultValue: Value[];
+   textSize: string | number;
+   textColor: string;
+   textActiveSize: string | number;
+   textActiveColor: string;
+   extraIcon: Icon;
+   extraActiveIcon: Icon;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 下拉筛选子项共享配置 */
+export type Config = {
+   defaultValue: Value[];
+   textSize: string | number;
+   textColor: string;
+   textActiveSize: string | number;
+   textActiveColor: string;
+   extraIcon: Icon;
+   extraActiveIcon: Icon;
+};
+
+/** 下拉筛选菜单点击参数 */
+export type ItemClickEvent = {
+   name: string | number;
+   active: boolean;
+   type: string | number;
+};
+
+/** 下拉筛选容器事件 */
+export type Emits = {
+   click: [event: ItemClickEvent];
+};
+
+/** 下拉筛选父级上下文 */
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   childClick: (child: ComponentPublicInstance, event: ItemClickEvent) => void;
+};
+
+/** 下拉筛选锚点信息 */
+export type Rect = {
+   top: number;
+   height: number;
+};
+
+/** 下拉筛选菜单显隐消息 */
+export type MenuMessage = {
+   show: boolean;
+};

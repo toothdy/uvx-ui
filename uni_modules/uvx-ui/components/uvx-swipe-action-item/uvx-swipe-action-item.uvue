@@ -1,0 +1,544 @@
+<template>
+   <view class="uvx-swipe-action-item">
+      <!-- 右侧操作区域 -->
+      <view
+         ref="uRight"
+         class="uvx-swipe-action-item__right"
+      >
+         <slot name="button">
+            <view
+               v-for="(item, index) in optionList"
+               :key="index"
+               class="uvx-swipe-action-item__button"
+               :style="getButtonStyle(item)"
+               @tap="handleButtonClick(item, index)"
+            >
+               <view
+                  class="uvx-swipe-action-item__button-wrapper"
+                  :style="getButtonWrapperStyle(item)"
+               >
+                  <uvx-icon
+                     v-if="hasIcon(item)"
+                     :name="getIconName(item)"
+                     :color="getOptionColor(item)"
+                     :size="getIconSize(item)"
+                     :u-style="hasText(item) ? 'margin-right: 2px;' : ''"
+                  ></uvx-icon>
+                  <text
+                     v-if="hasText(item)"
+                     class="uvx-swipe-action-item__button-text"
+                     :style="getTextStyle(item)"
+                  >{{ getOptionText(item) }}</text>
+               </view>
+            </view>
+         </slot>
+      </view>
+
+      <!-- 可滑动内容区域 -->
+      <view
+         class="uvx-swipe-action-item__content"
+         :style="contentStyle"
+         @touchstart="handleTouchStart"
+         @touchmove="handleTouchMove"
+         @touchend="handleTouchEnd"
+         @touchcancel="handleTouchCancel"
+         @tap="handleContentTap"
+      >
+         <slot></slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-swipe-action-item 滑动单元格子项
+ * @description 左滑显示右侧操作按钮，支持阈值、禁用、自动关闭和外部状态控制。
+ * @tutorial https://www.uvxui.cn/components/swipe-action.html
+ * @property {Boolean} show 是否打开操作区
+ * @property {String | Number} name 子项标识符
+ * @property {Boolean} disabled 是否禁用
+ * @property {Boolean} autoClose 操作当前项时是否关闭其他项
+ * @property {Number} threshold 打开或关闭的滑动距离阈值
+ * @property {Array} options 右侧操作按钮列表
+ * @property {String | Number} duration 过渡时间，单位毫秒
+ * @event {Function} click 点击操作按钮时触发
+ * @event {Function} open 打开操作区时触发
+ * @event {Function} close 关闭操作区时触发
+ * @example <uvx-swipe-action-item :options="options"><view>内容</view></uvx-swipe-action-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Context } from "../uvx-swipe-action/types/index.uts";
+import type {
+   Direction,
+   Emits,
+   Option,
+   OptionStyle,
+   Props,
+   Status,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-swipe-action-item", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   show: false,
+   name: "",
+   disabled: false,
+   autoClose: true,
+   threshold: 20,
+   options: () => [] as Option[],
+   duration: 300,
+});
+
+/**
+ * 模板操作按钮列表
+ * @returns Option[]
+ */
+const optionList = computed((): Option[] => props.options);
+
+/** 滑动单元格事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 最近的滑动单元格组上下文
+const group = inject<Context | null>("uvx-swipe-action-context", null);
+if (group == null) throw new Error("uvx-swipe-action-item 必须在 uvx-swipe-action 内使用");
+// 右侧操作区域元素
+const uRight = ref<UniElement | null>(null);
+// 当前打开状态
+const status = ref<Status>("close");
+// 当前水平位移
+const moveX = ref(0);
+// 操作区域总宽度
+const buttonsWidth = ref(0);
+// 手势起点横坐标
+const startX = ref(0);
+// 手势起点纵坐标
+const startY = ref(0);
+// 当前是否正在拖动
+const isMoving = ref(false);
+// 当前手势方向
+const direction = ref<Direction>("");
+
+/**
+ * 内容区域位移样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   return {
+      "transform": `translateX(${moveX.value}px)`,
+      "transition-duration": isMoving.value ? "0ms" : `${props.duration}ms`,
+      "transition-timing-function": "ease-out",
+   };
+});
+
+/**
+ * 获取按钮样式配置
+ * @param item 操作按钮
+ * @returns OptionStyle | null
+ */
+const getOptionStyle = (item: Option): OptionStyle | null => {
+   return item.style != null ? item.style : null;
+};
+
+/**
+ * 判断按钮是否包含文字
+ * @param item 操作按钮
+ * @returns boolean
+ */
+const hasText = (item: Option): boolean => {
+   return item.text != null && !$uvx.string.empty(item.text);
+};
+
+/**
+ * 判断按钮是否包含图标
+ * @param item 操作按钮
+ * @returns boolean
+ */
+const hasIcon = (item: Option): boolean => {
+   return item.icon != null && !$uvx.string.empty(item.icon);
+};
+
+/**
+ * 获取按钮文字
+ * @param item 操作按钮
+ * @returns string
+ */
+const getOptionText = (item: Option): string => {
+   return item.text != null ? item.text : "";
+};
+
+/**
+ * 获取按钮图标名称
+ * @param item 操作按钮
+ * @returns string
+ */
+const getIconName = (item: Option): string => {
+   return item.icon != null ? item.icon : "";
+};
+
+/**
+ * 获取按钮内容颜色
+ * @param item 操作按钮
+ * @returns string
+ */
+const getOptionColor = (item: Option): string => {
+   const style = getOptionStyle(item);
+   if (style != null && style.color != null && !$uvx.string.empty(style.color)) return style.color;
+   return "#ffffff";
+};
+
+/**
+ * 获取按钮图标尺寸
+ * @param item 操作按钮
+ * @returns string | number
+ */
+const getIconSize = (item: Option): string | number => {
+   if (item.iconSize != null) return item.iconSize;
+   const style = getOptionStyle(item);
+   if (style != null && style.fontSize != null) return style.fontSize;
+   return 17;
+};
+
+/**
+ * 获取按钮外层布局样式
+ * @param item 操作按钮
+ * @returns UTSJSONObject
+ */
+const getButtonStyle = (item: Option): UTSJSONObject => {
+   const style = getOptionStyle(item);
+   const hasRadius = style != null && style.borderRadius != null;
+   return {
+      "align-items": hasRadius ? "center" : "stretch",
+   };
+};
+
+/**
+ * 获取按钮主体样式
+ * @param item 操作按钮
+ * @returns UTSJSONObject
+ */
+const getButtonWrapperStyle = (item: Option): UTSJSONObject => {
+   const optionStyle = getOptionStyle(item);
+   const style: UTSJSONObject = {
+      "border-radius": "0px",
+      "padding": "0px 15px",
+   };
+   if (optionStyle == null) return style;
+   if (optionStyle.backgroundColor != null) style.set("background-color", optionStyle.backgroundColor);
+   if (optionStyle.width != null) style.set("width", $uvx.format.unit(optionStyle.width));
+   if (optionStyle.height != null) style.set("height", $uvx.format.unit(optionStyle.height));
+   if (optionStyle.borderRadius != null) {
+      style.set("border-radius", $uvx.format.unit(optionStyle.borderRadius));
+      style.set("padding", optionStyle.padding != null ? optionStyle.padding : "0px");
+   } else if (optionStyle.padding != null) {
+      style.set("padding", optionStyle.padding);
+   }
+   if (optionStyle.margin != null) style.set("margin", optionStyle.margin);
+   return style;
+};
+
+/**
+ * 获取按钮文字样式
+ * @param item 操作按钮
+ * @returns UTSJSONObject
+ */
+const getTextStyle = (item: Option): UTSJSONObject => {
+   const optionStyle = getOptionStyle(item);
+   const fontSize = optionStyle != null && optionStyle.fontSize != null
+      ? $uvx.format.unit(optionStyle.fontSize)
+      : "16px";
+   return {
+      "color": getOptionColor(item),
+      "font-size": fontSize,
+   };
+};
+
+/**
+ * 保存操作区域宽度并校正打开状态的位置
+ * @param width 操作区域宽度
+ * @returns null
+ */
+const setButtonsWidth = (width: number): void => {
+   buttonsWidth.value = Math.max(0, width);
+   if (status.value == "open") moveX.value = -buttonsWidth.value;
+};
+
+/**
+ * 更新右侧操作区域宽度
+ * @returns null
+ */
+const updateButtonsWidth = (): void => {
+   // #ifdef MP
+   uni.createSelectorQuery()
+      .in(instance)
+      .select(".uvx-swipe-action-item__right")
+      .boundingClientRect()
+      .exec((result): void => {
+         if (result.length == 0 || result[0] == null) return;
+         const rect = result[0] as NodeInfo;
+         if (rect.width != null) setButtonsWidth(rect.width);
+      });
+   // #endif
+
+   // #ifndef MP
+   const element = uRight.value;
+   if (element == null) return;
+   setButtonsWidth(element.getBoundingClientRect().width);
+   // #endif
+};
+
+/**
+ * 获取触摸点横坐标
+ * @param event 触摸事件
+ * @returns number | null
+ */
+const getTouchClientX = (event: UniTouchEvent): number | null => {
+   if (event.touches.length > 0) return event.touches[0].clientX;
+   if (event.changedTouches.length > 0) return event.changedTouches[0].clientX;
+   return null;
+};
+
+/**
+ * 获取触摸点纵坐标
+ * @param event 触摸事件
+ * @returns number | null
+ */
+const getTouchClientY = (event: UniTouchEvent): number | null => {
+   if (event.touches.length > 0) return event.touches[0].clientY;
+   if (event.changedTouches.length > 0) return event.changedTouches[0].clientY;
+   return null;
+};
+
+/**
+ * 打开操作区域
+ * @returns null
+ */
+const open = (): void => {
+   isMoving.value = false;
+   moveX.value = -buttonsWidth.value;
+   if (status.value == "open") return;
+   status.value = "open";
+   emit("open", { name: props.name });
+};
+
+/**
+ * 关闭操作区域
+ * @returns null
+ */
+const close = (): void => {
+   isMoving.value = false;
+   moveX.value = 0;
+   if (status.value == "close") return;
+   status.value = "close";
+   emit("close", { name: props.name });
+};
+
+/**
+ * 供父组件关闭当前子项
+ * @returns null
+ */
+const closeHandler = (): void => {
+   close();
+};
+
+/**
+ * 开始触摸内容区域
+ * @param event 触摸事件
+ * @returns null
+ */
+const handleTouchStart = (event: UniTouchEvent): void => {
+   if (props.disabled) return;
+   const clientX = getTouchClientX(event);
+   const clientY = getTouchClientY(event);
+   if (clientX == null || clientY == null) return;
+   startX.value = clientX;
+   startY.value = clientY;
+   direction.value = "";
+   isMoving.value = true;
+   updateButtonsWidth();
+   if (props.autoClose) group.closeOther(instance);
+};
+
+/**
+ * 移动内容区域
+ * @param event 触摸事件
+ * @returns null
+ */
+const handleTouchMove = (event: UniTouchEvent): void => {
+   if (props.disabled || !isMoving.value) return;
+   const clientX = getTouchClientX(event);
+   const clientY = getTouchClientY(event);
+   if (clientX == null || clientY == null) return;
+   const deltaX = clientX - startX.value;
+   const deltaY = clientY - startY.value;
+   if (direction.value == "") {
+      direction.value = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
+   }
+   if (direction.value != "horizontal") return;
+   event.preventDefault();
+
+   if (status.value == "open") {
+      const closeDistance = Math.max(0, Math.min(buttonsWidth.value, deltaX));
+      moveX.value = -buttonsWidth.value + closeDistance;
+      return;
+   }
+   const openDistance = Math.min(0, Math.max(-buttonsWidth.value, deltaX));
+   moveX.value = openDistance;
+};
+
+/**
+ * 结束触摸内容区域
+ * @param event 触摸事件
+ * @returns null
+ */
+const handleTouchEnd = (event: UniTouchEvent): void => {
+   if (props.disabled || !isMoving.value) return;
+   isMoving.value = false;
+   if (direction.value != "horizontal") return;
+   const clientX = getTouchClientX(event);
+   if (clientX == null) return;
+   const deltaX = clientX - startX.value;
+   if (status.value == "open") {
+      if (deltaX <= 0 || Math.abs(deltaX) < props.threshold) {
+         open();
+      } else {
+         close();
+      }
+      return;
+   }
+   if (deltaX >= 0 || Math.abs(deltaX) < props.threshold) {
+      close();
+   } else {
+      open();
+   }
+};
+
+/**
+ * 触摸被系统中断时恢复稳定状态
+ * @returns null
+ */
+const handleTouchCancel = (): void => {
+   isMoving.value = false;
+   if (status.value == "open") {
+      moveX.value = -buttonsWidth.value;
+   } else {
+      moveX.value = 0;
+   }
+};
+
+/**
+ * 点击已打开的内容区域时关闭操作区
+ * @returns null
+ */
+const handleContentTap = (): void => {
+   if (status.value == "open") close();
+};
+
+/**
+ * 点击右侧操作按钮
+ * @param item 操作按钮
+ * @param index 按钮索引
+ * @returns null
+ */
+const handleButtonClick = (item: Option, index: number): void => {
+   emit("click", {
+      item,
+      index,
+      name: props.name,
+   });
+};
+
+watch(() => props.show, (isShow: boolean): void => {
+   nextTick((): void => {
+      updateButtonsWidth();
+      if (isShow) {
+         open();
+      } else {
+         close();
+      }
+   });
+});
+
+watch(() => props.options, (): void => {
+   nextTick((): void => {
+      updateButtonsWidth();
+      if (status.value == "open") moveX.value = -buttonsWidth.value;
+   });
+}, { deep: true });
+
+onMounted((): void => {
+   group.register(instance);
+   nextTick((): void => {
+      updateButtonsWidth();
+      if (props.show) open();
+   });
+});
+
+onUnmounted((): void => {
+   group.unregister(instance);
+});
+
+defineExpose({ open, close, closeHandler });
+</script>
+
+<style lang="scss">
+// 滑动单元格
+.uvx-swipe-action-item {
+   position: relative;
+   overflow: hidden;
+
+   // 可滑动内容区域
+   &__content {
+      position: relative;
+      z-index: 2;
+      background-color: var(--uvx-page);
+      border-bottom-width: 0.5px;
+      border-bottom-style: solid;
+      border-bottom-color: var(--uvx-border);
+      box-sizing: border-box;
+      transition-property: transform;
+   }
+
+   // 右侧操作区域
+   &__right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+   }
+
+   // 单个操作按钮
+   &__button {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      height: 100%;
+      overflow: hidden;
+   }
+
+   // 操作按钮主体
+   &__button-wrapper {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      box-sizing: border-box;
+      background-color: var(--uvx-info);
+   }
+
+   // 操作按钮文字
+   &__button-text {
+      color: #ffffff;
+      font-size: 16px;
+      line-height: 1.2em;
+      text-align: center;
+   }
+}
+</style>

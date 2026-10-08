@@ -1,0 +1,124 @@
+import { ref } from "vue";
+import { storage } from "./utils/storage";
+import obj from "./utils/object.uts";
+
+const LOCALE_KEY = "locale";
+
+/**
+ * 各语言的词条表，外层 key 为语言标识，内层 key 为词条名、value 为翻译文本
+ * @description 使用嵌套 Map 实现 O(1) 查找
+ */
+const messages = new Map<string, Map<string, string>>();
+
+/**
+ * 当前语言标识
+ */
+export const locale = ref<string>("");
+
+/**
+ * 默认语言标识，"none" 表示未设置(回退到系统语言)
+ */
+export const defaultLocale = ref<string>("none");
+
+/**
+ * 设置当前语言并持久化
+ * @param value 语言标识，如 "zh-Hans"
+ */
+export const setLocale = (value: string): void => {
+	locale.value = value;
+	storage.set(LOCALE_KEY, value, 0);
+};
+
+/**
+ * 获取当前语言标识
+ * @description 优先取本地缓存，其次取默认语言，最后回退到系统语言
+ * @returns 语言标识
+ */
+export const getLocale = (): string => {
+	let value = storage.get(LOCALE_KEY) as string | null;
+	if (value == null || value == "") {
+		if (defaultLocale.value != "none") {
+			value = defaultLocale.value;
+		} else {
+			// #ifdef APP
+			value = uni.getDeviceInfo().osLanguage as string;
+			// #endif
+			// #ifndef APP
+			value = uni.getLocale();
+			// #endif
+		}
+	}
+	return value!;
+};
+
+/**
+ * 追加指定语言的词条
+ * @param name 语言标识
+ * @param data 词条二维数组，[词条名, 翻译文本]；新增词条优先级高于已有词条
+ */
+export const appendLocale = (name: string, data: string[][]): void => {
+	let map = messages.get(name);
+	if (map == null) {
+		map = new Map<string, string>();
+		messages.set(name, map);
+	}
+	// 倒序写入：新批次覆盖旧批次，同一批次内靠前的词条优先(与原 find 首个命中语义一致)
+	for (let i = data.length - 1; i >= 0; i--) {
+		const item = data[i];
+		map.set(item[0], item[1]);
+	}
+};
+
+/**
+ * 翻译词条
+ * @param name 词条名
+ * @returns 当前语言下的翻译文本，未命中时原样返回词条名
+ */
+export const t = (name: string): string => {
+	const map = messages.get(locale.value);
+	if (map == null) {
+		return name;
+	}
+	const text = map.get(name);
+	if (text == null) {
+		return name;
+	}
+	return text == "" ? name : text;
+};
+
+/**
+ * 带占位符替换的翻译词条
+ * @param name 词条名
+ * @param data 占位符数据，按 {key} 形式替换译文中的占位符
+ * @returns 替换后的翻译文本
+ */
+export const $t = (name: string, data: UTSJSONObject): string => {
+	let text = t(name);
+	if (!obj.isNull(data)) {
+		obj.forInObject(data, (value: any, key: string) => {
+			let v = "";
+			if (typeof value == "number") {
+				v = (value as number).toString();
+			} else {
+				v = value as string;
+			}
+			text = text.replaceAll(`{${key}}`, v);
+		});
+	}
+	return text;
+};
+
+/**
+ * 初始化国际化
+ * @param value 默认语言标识
+ * @description 设置默认语言并解析当前语言；非 APP 平台监听宿主语言变化
+ */
+export function initLocale(value: string): void {
+	defaultLocale.value = value;
+	locale.value = getLocale();
+	// #ifndef APP
+	uni.onLocaleChange((res) => {
+		setLocale(res.locale!);
+	});
+	// #endif
+}

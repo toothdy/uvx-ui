@@ -1,0 +1,337 @@
+<template>
+   <view
+      class="uvx-avatar"
+      :class="avatarClasses"
+      :style="avatarStyle"
+      @tap="handleClick"
+   >
+      <slot>
+         <!-- #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU -->
+         <open-data
+            v-if="showMpAvatar"
+            type="userAvatarUrl"
+            :style="contentStyle"
+         />
+         <!-- #endif -->
+         <!-- #ifndef MP-WEIXIN || MP-QQ || MP-BAIDU -->
+         <template v-if="showMpAvatar"></template>
+         <!-- #endif -->
+
+         <!-- 图标头像 -->
+         <uvx-icon
+            v-else-if="hasIcon"
+            :name="props.icon"
+            :size="props.fontSize"
+            :color="props.color"
+         />
+
+         <!-- 文字头像 -->
+         <text
+            v-else-if="hasText"
+            class="uvx-avatar__text"
+            :style="textStyle"
+         >{{ props.text }}</text>
+
+         <!-- 图片头像 -->
+         <image
+            v-else-if="showImage"
+            class="uvx-avatar__image"
+            :src="resolvedSrc"
+            :mode="props.mode"
+            :style="contentStyle"
+            @error="handleImageError"
+         ></image>
+
+         <!-- 无图片或图片失败时的占位图标 -->
+         <uvx-icon
+            v-else
+            name="account-fill"
+            :size="props.fontSize"
+            :color="props.color"
+         />
+      </slot>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-avatar 头像
+ * @description 展示图片、文字或图标头像，支持形状、尺寸和图片失败回退。
+ * @tutorial https://www.uvxui.cn/components/avatar.html
+ * @property {String} src 头像图片地址
+ * @property {String} shape 头像形状：circle 或 square
+ * @property {String | Number} size 头像尺寸
+ * @property {String} mode 图片裁剪模式
+ * @property {String} text 文字头像内容
+ * @property {String} bgColor 头像背景色
+ * @property {String} color 文字或图标颜色
+ * @property {String | Number} fontSize 文字或图标大小
+ * @property {String} icon 图标名称
+ * @property {Boolean} mpAvatar 是否使用小程序开放头像
+ * @property {Boolean} randomBgColor 是否使用随机背景色
+ * @property {String} defaultUrl 图片加载失败后的默认地址
+ * @property {String | Number} colorIndex 随机背景色索引
+ * @property {String} name 点击事件标识
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} click 点击头像时触发，返回 name
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-avatar",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   src: "",
+   shape: "circle",
+   size: 40,
+   mode: "scaleToFill",
+   text: "",
+   bgColor: "",
+   color: "",
+   fontSize: 18,
+   icon: "",
+   mpAvatar: false,
+   randomBgColor: false,
+   defaultUrl: "",
+   colorIndex: "",
+   name: "",
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+// 随机背景色候选值
+const COLORS: string[] = [
+   "#ffb34b",
+   "#f2bba9",
+   "#f7a196",
+   "#f18080",
+   "#88a867",
+   "#bfbf39",
+   "#89c152",
+   "#94d554",
+   "#f19ec2",
+   "#afaae4",
+   "#e1b0df",
+   "#c38cc1",
+   "#72dcdc",
+   "#9acdcb",
+   "#77b1cc",
+   "#448aca",
+   "#86cefa",
+   "#98d1ee",
+   "#73d1f1",
+   "#80a7dc",
+];
+
+// 当前图片地址
+const avatarSource = ref(props.src);
+// 图片是否已确认加载失败
+const imageFailed = ref(false);
+// 小程序开放头像是否可用
+const allowMpAvatar = ref(false);
+// 随机背景色索引
+const colorIndex = Math.floor(Math.random() * COLORS.length);
+
+// #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU
+allowMpAvatar.value = true;
+// #endif
+
+/**
+ * 头像是否使用图标
+ * @returns boolean
+ */
+const hasIcon = computed((): boolean => {
+   return !$uvx.string.empty(props.icon);
+});
+
+/**
+ * 头像是否使用文字
+ * @returns boolean
+ */
+const hasText = computed((): boolean => {
+   return !$uvx.string.empty(props.text);
+});
+
+/**
+ * 小程序开放头像是否生效
+ * @returns boolean
+ */
+const showMpAvatar = computed((): boolean => {
+   return props.mpAvatar && allowMpAvatar.value;
+});
+
+/**
+ * 将头像尺寸转换为可用数值
+ * @returns string | number
+ */
+const avatarSize = computed((): string | number => {
+   if (typeof props.size == "string") {
+      if (props.size == "large") return 50;
+      if (props.size == "mini") return 30;
+      if (props.size == "default") return 40;
+   }
+   return props.size;
+});
+
+/**
+ * 头像最终图片地址
+ * @returns string
+ */
+const resolvedSrc = computed((): string => {
+   if (!$uvx.string.empty(avatarSource.value)) return avatarSource.value;
+   return props.defaultUrl;
+});
+
+/**
+ * 是否显示图片
+ * @returns boolean
+ */
+const showImage = computed((): boolean => {
+   return !showMpAvatar.value && !hasIcon.value && !hasText.value && !imageFailed.value && !$uvx.string.empty(resolvedSrc.value);
+});
+
+/**
+ * 获取随机背景色
+ * @returns string
+ */
+const getRandomColor = (): string => {
+   let index = colorIndex;
+   const value = parseInt(props.colorIndex.toString());
+   if (!Number.isNaN(value) && value >= 0 && value < COLORS.length) index = value;
+   return COLORS[index];
+};
+
+/**
+ * 头像状态类
+ * @returns string[]
+ */
+const avatarClasses = computed((): string[] => {
+   const classes: string[] = [
+      "uvx-avatar--" + props.shape,
+      props.uClass,
+   ];
+   if (hasIcon.value || hasText.value || !showImage.value) classes.push("uvx-avatar--filled");
+   return classes;
+});
+
+/**
+ * 头像根节点样式
+ * @returns UTSJSONObject
+ */
+const avatarStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("width", $uvx.format.unit(avatarSize.value));
+   style.set("height", $uvx.format.unit(avatarSize.value));
+   if (hasIcon.value || hasText.value || !showImage.value) {
+      if (props.randomBgColor) {
+         style.set("background-color", getRandomColor());
+      } else if (!$uvx.string.empty(props.bgColor)) {
+         style.set("background-color", props.bgColor);
+      }
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 头像内容尺寸样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": "100%",
+      "height": "100%",
+      "border-radius": props.shape == "circle" ? "10000px" : "4px",
+   };
+   return style;
+});
+
+/**
+ * 文字头像样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.fontSize),
+      "line-height": "1.2em",
+   };
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   return style;
+});
+
+/**
+ * 处理图片加载失败
+ * @returns null
+ */
+const handleImageError = (): void => {
+   if (!$uvx.string.empty(props.defaultUrl) && avatarSource.value != props.defaultUrl) {
+      avatarSource.value = props.defaultUrl;
+      return;
+   }
+   imageFailed.value = true;
+};
+
+/**
+ * 处理头像地址变化
+ * @param value 新的头像地址
+ * @returns null
+ */
+const handleSourceChange = (value: string): void => {
+   avatarSource.value = value;
+   imageFailed.value = false;
+};
+
+/**
+ * 处理头像点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click", props.name);
+};
+
+watch((): string => props.src, handleSourceChange);
+</script>
+
+<style lang="scss">
+// 头像根节点
+.uvx-avatar {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   overflow: hidden;
+   flex-shrink: 0;
+}
+
+// 圆形头像
+.uvx-avatar--circle {
+   border-radius: 10000px;
+}
+
+// 方形头像
+.uvx-avatar--square {
+   border-radius: 4px;
+}
+
+// 有背景的头像
+.uvx-avatar--filled {
+   background-color: var(--uvx-disabled);
+}
+
+// 文字头像
+.uvx-avatar__text {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   color: #ffffff;
+   text-align: center;
+}
+</style>

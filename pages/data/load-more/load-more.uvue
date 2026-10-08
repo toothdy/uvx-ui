@@ -1,0 +1,121 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础使用 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础使用"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  status="loading"
+                  :is-dot="true"
+                  :icon-size="17"
+               ></uvx-load-more>
+            </view>
+         </view>
+
+         <!-- 无更多数据 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="无更多数据"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  status="nomore"
+                  :line="true"
+               ></uvx-load-more>
+            </view>
+         </view>
+
+         <!-- 点击加载更多 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="加载更多（点击触发事件）"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  status="loadmore"
+                  :line="true"
+                  @loadmore="handleLoadMore"
+               ></uvx-load-more>
+            </view>
+         </view>
+
+         <!-- 自定义图标 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义图标"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  status="loading"
+                  loading-icon="circle"
+               ></uvx-load-more>
+            </view>
+         </view>
+
+         <!-- 显示点 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="显示点"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  status="nomore"
+                  :is-dot="true"
+                  :line="true"
+                  color="#909399"
+               ></uvx-load-more>
+            </view>
+         </view>
+
+         <!-- 自定义提示语 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义提示语"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  status="loading"
+                  loading-text="努力加载中，先喝杯茶"
+                  color="#909399"
+               ></uvx-load-more>
+            </view>
+         </view>
+
+         <!-- 自定义线条颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义线条颜色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-load-more
+                  loadmore-text="看，我和别人不一样"
+                  color="#1cd29b"
+                  line-color="#1cd29b"
+                  :dashed="true"
+                  :line="true"
+               ></uvx-load-more>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+/**
+ * 展示加载更多事件反馈
+ * @returns null
+ */
+const handleLoadMore = (): void => {
+   uni.showToast({
+      title: "加载更多",
+      icon: "none",
+   });
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

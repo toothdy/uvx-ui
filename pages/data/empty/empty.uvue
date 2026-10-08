@@ -1,0 +1,106 @@
+<template>
+   <uvx-page>
+      <view class="empty-demo">
+         <!-- 当前空状态 -->
+         <view class="empty-demo__heading">
+            <text class="empty-demo__heading-text">演示效果</text>
+         </view>
+         <view class="empty-demo__preview">
+            <uvx-empty :mode="mode">
+               <uvx-button
+                  v-if="mode == 'car'"
+                  size="small"
+                  type="primary"
+                  text="查看更多商品"
+               ></uvx-button>
+            </uvx-empty>
+         </view>
+
+         <!-- 空状态列表 -->
+         <view class="empty-demo__list">
+            <uvx-cell
+               v-for="(item, index) in EMPTY_ITEMS"
+               :key="index"
+               :title="item.title"
+               :icon="item.icon"
+               :is-link="true"
+               @click="handleSelect(item.mode)"
+            ></uvx-cell>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Mode } from "@/uni_modules/uvx-ui/components/uvx-empty/types/index.uts";
+
+type EmptyDemoItem = {
+   mode: Mode;
+   title: string;
+   icon: string;
+};
+
+// 空状态演示项
+const EMPTY_ITEMS: EmptyDemoItem[] = [
+   { mode: "car", title: "购物车为空（同时传入 slot）", icon: "empty-car" },
+   { mode: "data", title: "数据为空", icon: "empty-data" },
+   { mode: "comment", title: "评论为空", icon: "chat" },
+   { mode: "coupon", title: "没有优惠券", icon: "empty-coupon" },
+   { mode: "history", title: "无历史记录", icon: "empty-history" },
+   { mode: "list", title: "列表为空", icon: "empty-list" },
+   { mode: "message", title: "消息列表为空", icon: "chat" },
+   { mode: "news", title: "无新闻列表", icon: "empty-news" },
+   { mode: "order", title: "订单为空", icon: "empty-order" },
+   { mode: "page", title: "页面不存在", icon: "empty-page" },
+   { mode: "permission", title: "无权限", icon: "empty-permission" },
+   { mode: "search", title: "没有搜索结果", icon: "empty-search" },
+   { mode: "wifi-off", title: "没有WiFi", icon: "empty-wifi-off" },
+];
+
+// 当前空状态
+const mode = ref<Mode>("car");
+
+/**
+ * 切换空状态
+ * @param value 空状态类型
+ * @returns null
+ */
+const handleSelect = (value: Mode): void => {
+   mode.value = value;
+};
+</script>
+
+<style lang="scss">
+// 空状态演示页
+.empty-demo {
+   padding: 20px 0 40px 0;
+}
+
+// 演示标题容器
+.empty-demo__heading {
+   display: flex;
+   flex-direction: row;
+   padding-left: 20px;
+}
+
+// 演示标题
+.empty-demo__heading-text {
+   color: var(--uvx-text-main);
+   font-size: 15px;
+   font-weight: 500;
+}
+
+// 当前空状态预览
+.empty-demo__preview {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   height: 260px;
+}
+
+// 空状态列表
+.empty-demo__list {
+   margin-top: 10px;
+}
+</style>

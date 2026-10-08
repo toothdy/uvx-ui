@@ -1,0 +1,22 @@
+export type Item = string | UTSJSONObject;
+
+export type Mode = "button" | "subsection";
+
+export type Props = {
+   list: Item[];
+   current: string | number;
+   activeColor: string;
+   inactiveColor: string;
+   mode: Mode;
+   fontSize: string | number;
+   bold: boolean;
+   bgColor: string;
+   keyName: string;
+   uItemStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   change: [index: number];
+};

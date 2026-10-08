@@ -1,0 +1,28 @@
+export type Mode = "scaleToFill" | "aspectFit" | "aspectFill" | "widthFix" | "heightFix" | "top" | "bottom" | "center" | "left" | "right" | "top left" | "top right" | "bottom left" | "bottom right";
+
+export type Props = {
+   src: string;
+   mode: Mode;
+   width: string | number;
+   height: string | number;
+   shape: "circle" | "square";
+   radius: string | number;
+   lazyLoad: boolean;
+   observeLazyLoad: boolean;
+   showMenuByLongpress: boolean;
+   loadingIcon: string;
+   errorIcon: string;
+   showLoading: boolean;
+   showError: boolean;
+   fade: boolean;
+   duration: number;
+   bgColor: string;
+   webp: boolean;
+   uStyle: string;
+};
+
+export type Emits = {
+   click: [];
+   load: [event: UniImageLoadEvent];
+   error: [event: UniImageErrorEvent];
+};

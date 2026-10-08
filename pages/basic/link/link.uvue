@@ -1,0 +1,69 @@
+<template>
+	<uvx-page>
+		<view class="uvx-page-demo">
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="基本案例"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-link href="https://www.uvxui.cn/" text="打开官网文档" @click="onLinkClick"></uvx-link>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="显示下划线"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-link href="https://www.uvxui.cn/" :under-line="true" text="打开官网文档"></uvx-link>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="自定义颜色"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<uvx-link
+						href="https://www.uvxui.cn/"
+						color="#5ac725"
+						line-color="#5ac725"
+						text="打开官网文档"
+					></uvx-link>
+				</view>
+			</view>
+
+			<view class="uvx-demo-block">
+				<view class="uvx-demo-block__title">
+					<uvx-text type="main" text="小程序复制链接"></uvx-text>
+				</view>
+				<view class="uvx-demo-block__content">
+					<!-- #ifdef MP -->
+					<uvx-link
+						href="https://www.uvxui.cn/"
+						text="点击复制链接"
+						mp-tips="链接已复制，请在浏览器打开"
+					></uvx-link>
+					<!-- #endif -->
+					<!-- #ifndef MP -->
+					<uvx-text type="main" text="请在小程序中体验" size="13px"></uvx-text>
+					<!-- #endif -->
+				</view>
+			</view>
+		</view>
+	</uvx-page>
+</template>
+
+<script lang="uts" setup>
+/**
+ * 链接点击回调示例
+ */
+const onLinkClick = () => {
+	console.log('link clicked');
+};
+</script>
+
+<style lang="scss" scoped>
+@import '@/common/demo.scss';
+
+</style>

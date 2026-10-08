@@ -1,0 +1,30 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+export type Align = "left" | "center" | "right";
+export type DataItem = UTSJSONObject | string | number | boolean;
+export type ClickValue = UTSJSONObject | DataItem[] | string | number;
+export type CustomStyle = string;
+
+export type Props = {
+   col: string | number;
+   border: boolean;
+   align: Align;
+   customStyle: CustomStyle;
+   customClass: string;
+};
+
+export type Config = {
+   col: number;
+   border: boolean;
+};
+
+export type Emits = {
+   click: [value: ClickValue];
+};
+
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   childClick: (value: ClickValue) => void;
+};

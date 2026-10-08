@@ -1,0 +1,150 @@
+<template>
+   <uvx-page>
+      <view class="notify-demo">
+         <!-- Notify 演示列表 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               title-style="font-weight: 500;"
+               :is-link="true"
+               @click="handleShow(item)"
+            >
+               <template #icon>
+                  <image
+                     class="uv-cell-icon"
+                     :src="item.iconUrl"
+                     mode="widthFix"
+                  ></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 顶部通知组件 -->
+         <uvx-notify ref="uNotify"></uvx-notify>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Options } from "@/uni_modules/uvx-ui/components/uvx-notify/types/index.uts";
+
+type NotifyDemoItem = {
+   title: string;
+   iconUrl: string;
+   options: Options;
+};
+
+// Notify 演示项
+const demoItems: NotifyDemoItem[] = [
+   {
+      title: "主要通知",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/main.png",
+      options: {
+         message: "顶部提示",
+         type: "primary",
+         color: "#ffffff",
+         bgColor: "",
+         fontSize: 15,
+         duration: 3000,
+      },
+   },
+   {
+      title: "成功通知",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/success.png",
+      options: {
+         message: "顶部提示",
+         type: "success",
+         color: "#ffffff",
+         bgColor: "",
+         fontSize: 15,
+         duration: 3000,
+         safeAreaInsetTop: false,
+      },
+   },
+   {
+      title: "危险通知",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/error.png",
+      options: {
+         message: "顶部提示",
+         type: "error",
+         color: "#ffffff",
+         bgColor: "",
+         fontSize: 14,
+         duration: 3000,
+         safeAreaInsetTop: false,
+      },
+   },
+   {
+      title: "警告通知",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/warning.png",
+      options: {
+         message: "顶部提示",
+         type: "warning",
+         color: "#ffffff",
+         bgColor: "",
+         fontSize: 15,
+         duration: 3000,
+         safeAreaInsetTop: false,
+      },
+   },
+   {
+      title: "自定义样式",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/customStyle.png",
+      options: {
+         message: "顶部提示",
+         color: "#ffffff",
+         bgColor: "#000000",
+         fontSize: 15,
+         duration: 3000,
+         safeAreaInsetTop: false,
+      },
+   },
+   {
+      title: "自定义时间",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/customTime.png",
+      options: {
+         message: "顶部提示",
+         type: "primary",
+         color: "#ffffff",
+         bgColor: "",
+         fontSize: 15,
+         duration: 6000,
+         safeAreaInsetTop: false,
+      },
+   },
+   {
+      title: "插入状态栏高度",
+      iconUrl: "https://cdn.uviewui.com/uview/demo/notify/height.png",
+      options: {
+         message: "顶部提示",
+         color: "#ffffff",
+         bgColor: "",
+         fontSize: 15,
+         duration: 3000,
+         safeAreaInsetTop: true,
+      },
+   },
+];
+// Notify 组件实例
+const uNotify = ref<UvxNotifyComponentPublicInstance | null>(null);
+
+/**
+ * 显示选中的 Notify
+ * @param item 演示项
+ * @returns null
+ */
+const handleShow = (item: NotifyDemoItem): void => {
+   uNotify.value?.show(item.options);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// Notify 演示页面
+.notify-demo {
+   width: 100%;
+}
+</style>

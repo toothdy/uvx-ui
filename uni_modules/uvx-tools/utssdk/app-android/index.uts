@@ -1,0 +1,108 @@
+import Intent from "android.content.Intent";
+import Settings from "android.provider.Settings";
+import Choreographer from "android.view.Choreographer";
+import FrameCallback from "android.view.Choreographer.FrameCallback";
+import { UTSAndroid } from "io.dcloud.uts";
+import Long from "kotlin.Long";
+
+import { AnimationCallback, OpenSystemSettings, StopAnimation } from "../interface.uts";
+
+class AndroidAnimationLoop implements FrameCallback {
+   private callback: AnimationCallback;
+   private choreographer: Choreographer;
+   private isActive: boolean = true;
+
+   /**
+    * 创建 Android 动画循环
+    * @param callback 动画回调
+    * @param choreographer Android 帧同步器
+    * @returns AndroidAnimationLoop
+    */
+   constructor(
+      callback: AnimationCallback,
+      choreographer: Choreographer,
+   ) {
+      this.callback = callback;
+      this.choreographer = choreographer;
+   }
+
+   /**
+    * 执行单帧动画
+    * @param frameTimeNanos 帧时间戳
+    * @returns null
+    */
+   override doFrame(frameTimeNanos: Long): void {
+      if (!this.isActive) {
+         return;
+      }
+
+      this.callback();
+      if (this.isActive) {
+         this.choreographer.postFrameCallback(this);
+      }
+   }
+
+   /**
+    * 停止原生帧回调
+    * @returns null
+    */
+   stop(): void {
+      this.isActive = false;
+      this.choreographer.removeFrameCallback(this);
+   }
+}
+
+// Android 动画任务
+const ANIMATION_LOOPS = new Map<number, AndroidAnimationLoop>();
+
+/**
+ * 启动 Android 原生动画
+ * @param animationId 动画标识
+ * @param callback 动画回调
+ * @returns null
+ */
+@UTSJS.keepAlive
+export function startAnimation(
+   animationId: number,
+   callback: AnimationCallback,
+): void {
+   const PREVIOUS_LOOP = ANIMATION_LOOPS.get(animationId);
+   if (PREVIOUS_LOOP != null) {
+      PREVIOUS_LOOP.stop();
+   }
+
+   const CHOREOGRAPHER = Choreographer.getInstance();
+   const ANIMATION_LOOP = new AndroidAnimationLoop(callback, CHOREOGRAPHER);
+
+   ANIMATION_LOOPS.set(animationId, ANIMATION_LOOP);
+   CHOREOGRAPHER.postFrameCallback(ANIMATION_LOOP);
+}
+
+/**
+ * 停止 Android 原生动画
+ * @param animationId 动画标识
+ * @returns null
+ */
+export const stopAnimation: StopAnimation = function (
+   animationId: number,
+): void {
+   const ANIMATION_LOOP = ANIMATION_LOOPS.get(animationId);
+   if (ANIMATION_LOOP == null) {
+      return;
+   }
+
+   ANIMATION_LOOP.stop();
+   ANIMATION_LOOPS.delete(animationId);
+};
+
+/**
+ * 打开 Android 系统设置主页
+ * @returns null
+ */
+export const openSystemSettings: OpenSystemSettings = (): void => {
+   const ACTIVITY = UTSAndroid.getUniActivity();
+   if (ACTIVITY != null) {
+      const INTENT = new Intent(Settings.ACTION_SETTINGS);
+      ACTIVITY.startActivity(INTENT);
+   }
+};

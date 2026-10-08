@@ -1,0 +1,487 @@
+<template>
+   <view class="uvx-navbar" :class="theme">
+      <!-- 固定导航栏占位 -->
+      <view v-if="fixed && placeholder" class="uvx-navbar__placeholder">
+         <uvx-status-bar v-if="safeAreaInsetTop"></uvx-status-bar>
+         <view class="uvx-navbar__content-spacer" :style="contentHeightStyle"></view>
+      </view>
+
+      <!-- 导航栏主体 -->
+      <view class="uvx-navbar__body" :class="bodyClasses" :style="bodyStyle">
+         <image
+            v-if="isImage"
+            class="uvx-navbar__background-image"
+            :src="bgColor"
+            :mode="imgMode"
+         ></image>
+         <uvx-status-bar v-if="safeAreaInsetTop"></uvx-status-bar>
+
+         <!-- 导航栏内容 -->
+         <view
+            class="uvx-navbar__content"
+            :class="contentClasses"
+            :style="contentHeightStyle"
+         >
+            <!-- 左侧区域 -->
+            <view
+               class="uvx-navbar__side uvx-navbar__left"
+               :class="leftClasses"
+               :hover-class="shouldRespondToClick ? 'uvx-navbar__side--hover' : 'none'"
+               hover-start-time="150"
+               @click="handleLeftClick"
+            >
+               <slot name="left">
+                  <uvx-icon
+                     v-if="!$uvx.string.empty(leftIcon) && autoBack"
+                     :name="pagesLength <= 1 ? 'home' : leftIcon"
+                     :size="leftIconSize"
+                     :color="leftIconColorValue"
+                  ></uvx-icon>
+                  <text
+                     v-if="!$uvx.string.empty(leftText)"
+                     class="uvx-navbar__left-text"
+                     :style="leftTextStyle"
+                  >{{ leftText }}</text>
+               </slot>
+            </view>
+
+            <!-- 标题区域 -->
+            <slot name="center">
+               <text class="uvx-navbar__title" :style="titleStyleValue">{{ title }}</text>
+            </slot>
+
+            <!-- 右侧区域 -->
+            <view
+               class="uvx-navbar__side uvx-navbar__right"
+               :class="rightClasses"
+               @click="handleRightClick"
+            >
+               <slot name="right">
+                  <uvx-icon
+                     v-if="!$uvx.string.empty(rightIcon)"
+                     :name="rightIcon"
+                     size="20"
+                     color="main"
+                  ></uvx-icon>
+                  <text
+                     v-if="!$uvx.string.empty(rightText)"
+                     class="uvx-navbar__right-text"
+                  >{{ rightText }}</text>
+               </slot>
+            </view>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-navbar 自定义导航栏
+ * @description 用于需要自定义顶部导航栏的页面，支持安全区、固定定位、背景图片和滚动透明度。
+ * @tutorial https://www.uvxui.cn/components/navbar.html
+ * @property {Boolean} safeAreaInsetTop 是否开启顶部安全区适配
+ * @property {Boolean} placeholder 固定在顶部时是否生成等高占位
+ * @property {Boolean} fixed 是否固定在顶部
+ * @property {Boolean} border 是否显示底部边框
+ * @property {String} leftIcon 左侧返回图标名称
+ * @property {String} leftText 左侧文字
+ * @property {String} rightText 右侧文字
+ * @property {String} rightIcon 右侧图标名称
+ * @property {String | Number} title 导航栏标题
+ * @property {String} bgColor 背景颜色、渐变或图片地址
+ * @property {String} imgMode 背景图片裁剪模式
+ * @property {String | Number} titleWidth 标题宽度
+ * @property {String | Number} height 内容栏高度
+ * @property {String | Number} leftIconSize 左侧图标尺寸
+ * @property {String} leftIconColor 左侧图标和文字颜色，空值时跟随主题
+ * @property {Boolean} autoBack 点击左侧区域时是否自动返回
+ * @property {String} titleStyle 标题自定义样式
+ * @property {Boolean} scrollTransparent 是否启用滚动透明度
+ * @property {String | Number} scrollDistance 完全显示所需的滚动距离
+ * @property {String | Number} initialOpacity 初始透明度
+ * @event {Function} leftClick 点击左侧区域时触发
+ * @event {Function} rightClick 点击右侧区域时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import { isDark } from "../../core/theme";
+import type {
+   Emits,
+   Props,
+   Style,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-navbar", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   safeAreaInsetTop: true,
+   placeholder: true,
+   fixed: true,
+   border: false,
+   leftIcon: "arrow-left",
+   leftText: "",
+   rightText: "",
+   rightIcon: "",
+   title: "",
+   bgColor: "",
+   imgMode: "aspectFill",
+   titleWidth: "400rpx",
+   height: "44px",
+   leftIconSize: 20,
+   leftIconColor: "",
+   autoBack: false,
+   titleStyle: "",
+   scrollTransparent: false,
+   scrollDistance: 200,
+   initialOpacity: 0,
+});
+
+/** 导航栏事件 */
+const emit = defineEmits<Emits>();
+
+/**
+ * 当前主题类
+ * @returns string
+ */
+const theme = computed((): string => {
+   return isDark.value ? "uvx-dark" : "uvx-light";
+});
+
+/**
+ * 将透明度限制在有效范围内
+ * @param value 透明度
+ * @returns number
+ */
+const getSafeOpacity = (value: string | number): number => {
+   const opacity = Number(value);
+   if (Number.isNaN(opacity)) return 0;
+   return Math.min(1, Math.max(0, opacity));
+};
+
+// 当前导航栏透明度
+const currentOpacity = ref(getSafeOpacity(props.initialOpacity));
+
+/**
+ * 当前页面栈长度
+ * @returns number
+ */
+const pagesLength = computed((): number => {
+   return getCurrentPages().length;
+});
+
+/**
+ * 背景是否为渐变
+ * @returns boolean
+ */
+const isGradient = computed((): boolean => {
+   return props.bgColor.indexOf("gradient") > -1;
+});
+
+/**
+ * 背景是否为图片
+ * @returns boolean
+ */
+const isImage = computed((): boolean => {
+   if (isGradient.value || $uvx.string.empty(props.bgColor)) return false;
+   const isBase64 = props.bgColor.indexOf("data:") > -1
+      && props.bgColor.indexOf("base64") > -1;
+   return props.bgColor.indexOf("/") > -1 || isBase64;
+});
+
+/**
+ * 是否响应左右点击
+ * @returns boolean
+ */
+const shouldRespondToClick = computed((): boolean => {
+   if (!props.scrollTransparent) return true;
+   return currentOpacity.value >= 0.1;
+});
+
+/**
+ * 导航栏主体状态类
+ * @returns string[]
+ */
+const bodyClasses = computed((): string[] => {
+   const classes: string[] = [];
+   if (props.fixed) classes.push("uvx-navbar__body--fixed");
+   return classes;
+});
+
+/**
+ * 内容区域状态类
+ * @returns string[]
+ */
+const contentClasses = computed((): string[] => {
+   const classes: string[] = [];
+   if (props.border) classes.push("uvx-navbar__content--border");
+   return classes;
+});
+
+/**
+ * 左侧区域状态类
+ * @returns string[]
+ */
+const leftClasses = computed((): string[] => {
+   return shouldRespondToClick.value ? [] : ["uvx-navbar__side--disabled"];
+});
+
+/**
+ * 右侧区域状态类
+ * @returns string[]
+ */
+const rightClasses = computed((): string[] => {
+   return shouldRespondToClick.value ? [] : ["uvx-navbar__side--disabled"];
+});
+
+/**
+ * 导航栏主体样式
+ * @returns UTSJSONObject
+ */
+const bodyStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (isGradient.value) {
+      style.set("background-image", props.bgColor);
+   } else if (!isImage.value && !$uvx.string.empty(props.bgColor)) {
+      style.set("background-color", props.bgColor);
+   }
+   if (props.scrollTransparent) {
+      style.set("opacity", currentOpacity.value.toString());
+   }
+   return style;
+});
+
+/**
+ * 内容栏高度样式
+ * @returns UTSJSONObject
+ */
+const contentHeightStyle = computed((): UTSJSONObject => {
+   return {
+      "height": $uvx.format.unit(props.height),
+   };
+});
+
+/**
+ * 解析标题样式
+ * @param value 标题样式配置
+ * @returns UTSJSONObject
+ */
+const getTitleStyle = (value: Style): UTSJSONObject => {
+   return $uvx.style.parse(value);
+};
+
+/**
+ * 标题样式
+ * @returns UTSJSONObject
+ */
+const titleStyleValue = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": $uvx.format.unit(props.titleWidth),
+   };
+   return $uvx.object.deepMerge(style, getTitleStyle(props.titleStyle));
+});
+
+/**
+ * 左侧图标颜色
+ * @returns string
+ */
+const leftIconColorValue = computed((): string => {
+   return $uvx.string.empty(props.leftIconColor) ? "main" : props.leftIconColor;
+});
+
+/**
+ * 左侧文字样式
+ * @returns UTSJSONObject
+ */
+const leftTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.leftIconColor)) {
+      style.set("color", props.leftIconColor);
+   }
+   return style;
+});
+
+/**
+ * 跳转首页
+ * @returns null
+ */
+const redirectHome = (): void => {
+   uni.redirectTo({ url: "/pages/index/index" });
+};
+
+/**
+ * 处理左侧点击
+ * @returns null
+ */
+const handleLeftClick = (): void => {
+   if (!shouldRespondToClick.value) return;
+   emit("leftClick");
+   if (!props.autoBack) return;
+   if (pagesLength.value <= 1) {
+      redirectHome();
+      return;
+   }
+   uni.navigateBack({
+      fail: () => {
+         redirectHome();
+      },
+   });
+};
+
+/**
+ * 处理右侧点击
+ * @returns null
+ */
+const handleRightClick = (): void => {
+   if (!shouldRespondToClick.value) return;
+   emit("rightClick");
+};
+
+/**
+ * 更新页面滚动位置
+ * @param scrollTop 页面滚动距离
+ * @returns null
+ */
+const updateScrollTop = (scrollTop: number): void => {
+   if (!props.scrollTransparent) return;
+   const distance = Number(props.scrollDistance);
+   if (Number.isNaN(distance) || distance <= 0) {
+      currentOpacity.value = 1;
+      return;
+   }
+   const progress = Math.min(1, Math.max(0, scrollTop / distance));
+   const initialOpacity = getSafeOpacity(props.initialOpacity);
+   currentOpacity.value = initialOpacity + (1 - initialOpacity) * progress;
+};
+
+defineExpose({ updateScrollTop });
+</script>
+
+<style lang="scss">
+// 导航栏根节点
+.uvx-navbar {
+   position: relative;
+   width: 100%;
+   overflow: visible;
+}
+
+// 导航栏占位
+.uvx-navbar__placeholder {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+}
+
+// 内容栏占位
+.uvx-navbar__content-spacer {
+   width: 100%;
+   flex-shrink: 0;
+}
+
+// 导航栏主体
+.uvx-navbar__body {
+   position: relative;
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   background-color: var(--uvx-container);
+   overflow: hidden;
+}
+
+// 顶部固定状态
+.uvx-navbar__body--fixed {
+   position: fixed;
+   top: 0;
+   right: 0;
+   left: 0;
+   z-index: 11;
+}
+
+// 背景图片
+.uvx-navbar__background-image {
+   position: absolute;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   width: 100%;
+   height: 100%;
+}
+
+// 导航栏内容
+.uvx-navbar__content {
+   position: relative;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   box-sizing: border-box;
+   width: 100%;
+   flex-shrink: 0;
+}
+
+// 内容底部边框
+.uvx-navbar__content--border {
+   border-bottom-width: 0.5px;
+   border-bottom-style: solid;
+   border-bottom-color: var(--uvx-border);
+}
+
+// 左右操作区域
+.uvx-navbar__side {
+   position: absolute;
+   top: 0;
+   bottom: 0;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   padding-left: 13px;
+   padding-right: 13px;
+}
+
+// 左侧操作区域
+.uvx-navbar__left {
+   left: 0;
+}
+
+// 右侧操作区域
+.uvx-navbar__right {
+   right: 0;
+}
+
+// 操作区域按下状态
+.uvx-navbar__side--hover {
+   opacity: 0.7;
+}
+
+// 操作区域禁用状态
+.uvx-navbar__side--disabled {
+   opacity: 0.3;
+}
+
+// 导航栏标题
+.uvx-navbar__title {
+   flex-grow: 0;
+   flex-shrink: 1;
+   min-width: 0;
+   overflow: hidden;
+   color: var(--uvx-text-main);
+   font-size: 16px;
+   text-align: center;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+// 左侧文字
+.uvx-navbar__left-text {
+   margin-left: 3px;
+   color: var(--uvx-text-main);
+   font-size: 15px;
+}
+
+// 右侧文字
+.uvx-navbar__right-text {
+   margin-left: 3px;
+   color: var(--uvx-text-main);
+   font-size: 15px;
+}
+</style>

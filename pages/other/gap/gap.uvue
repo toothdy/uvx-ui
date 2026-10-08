@@ -1,0 +1,51 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基本案例 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本案例"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-gap bg-color="var(--uvx-container)"></uvx-gap>
+            </view>
+         </view>
+
+         <!-- 自定义颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义颜色"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-gap bg-color="#2979ff"></uvx-gap>
+            </view>
+         </view>
+
+         <!-- 自定义高度 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义高度"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-gap bg-color="var(--uvx-container)" height="40"></uvx-gap>
+            </view>
+         </view>
+
+         <!-- 自定义上下边距 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义上下边距"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content">
+               <uvx-gap bg-color="var(--uvx-container)" margin-top="20" margin-bottom="20"></uvx-gap>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup></script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

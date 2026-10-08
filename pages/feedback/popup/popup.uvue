@@ -1,0 +1,163 @@
+<template>
+   <uvx-page>
+      <view class="popup-demo">
+         <!-- 弹出方式列表 -->
+         <uvx-cell-group>
+            <uvx-cell
+               v-for="(item, index) in demoItems"
+               :key="index"
+               :title="item.title"
+               :is-link="true"
+               @click="handleOpen(item)"
+            >
+               <template #icon>
+                  <image class="uv-cell-icon" :src="item.iconUrl" mode="widthFix"></image>
+               </template>
+            </uvx-cell>
+         </uvx-cell-group>
+
+         <!-- 通用弹层 -->
+         <uvx-popup
+            ref="uPopup"
+            :mode="popupMode"
+            :round="popupRound"
+            :overlay="hasOverlay"
+            :closeable="isCloseable"
+            :close-on-click-overlay="canOverlayClose"
+            :safe-area-inset-top="popupMode == 'top'"
+            @change="handleChange"
+            @mask-click="handleMaskClick"
+         >
+            <view
+               class="popup-demo__content"
+               :class="`popup-demo__content--${popupMode}`"
+            >
+               <view class="popup-demo__button">
+                  <uvx-button type="primary" text="关闭" @click="handleClose"></uvx-button>
+               </view>
+            </view>
+         </uvx-popup>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   Mode,
+   ChangeEvent,
+} from "@/uni_modules/uvx-ui/components/uvx-popup/types/index.uts";
+
+type PopupDemoItem = {
+   title: string;
+   iconUrl: string;
+   mode: Mode;
+   round: number;
+   hasOverlay: boolean;
+   isCloseable: boolean;
+   canOverlayClose: boolean;
+};
+
+// 弹层演示项
+const demoItems: PopupDemoItem[] = [
+   { title: "顶部弹出", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/modeTop.png", mode: "top", round: 10, hasOverlay: true, isCloseable: false, canOverlayClose: true },
+   { title: "右侧弹出", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/modeRight.png", mode: "right", round: 0, hasOverlay: true, isCloseable: false, canOverlayClose: true },
+   { title: "底部弹出", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/modeBottom.png", mode: "bottom", round: 0, hasOverlay: true, isCloseable: false, canOverlayClose: true },
+   { title: "左侧弹出", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/modeLeft.png", mode: "left", round: 0, hasOverlay: true, isCloseable: false, canOverlayClose: true },
+   { title: "居中弹出", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/modeCenter.png", mode: "center", round: 6, hasOverlay: true, isCloseable: false, canOverlayClose: true },
+   { title: "显示圆角", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/showRadis.png", mode: "bottom", round: 10, hasOverlay: true, isCloseable: false, canOverlayClose: true },
+   { title: "禁止点击遮罩关闭", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/noClose.png", mode: "bottom", round: 10, hasOverlay: true, isCloseable: false, canOverlayClose: false },
+   { title: "显示关闭按钮", iconUrl: "https://cdn.uviewui.com/uview/demo/popup/showCloseBtn.png", mode: "bottom", round: 10, hasOverlay: true, isCloseable: true, canOverlayClose: true },
+];
+// 弹层实例
+const uPopup = ref<UvxPopupComponentPublicInstance | null>(null);
+// 当前弹出方向
+const popupMode = ref<Mode>("center");
+// 当前圆角
+const popupRound = ref(0);
+// 是否显示遮罩
+const hasOverlay = ref(true);
+// 是否显示关闭按钮
+const isCloseable = ref(false);
+// 遮罩是否可关闭
+const canOverlayClose = ref(true);
+
+/**
+ * 打开选中的弹层案例
+ * @param item 演示配置
+ * @returns null
+ */
+const handleOpen = (item: PopupDemoItem): void => {
+   popupMode.value = item.mode;
+   popupRound.value = item.round;
+   hasOverlay.value = item.hasOverlay;
+   isCloseable.value = item.isCloseable;
+   canOverlayClose.value = item.canOverlayClose;
+   nextTick((): void => {
+      uPopup.value?.open();
+   });
+};
+
+/**
+ * 关闭弹层
+ * @returns null
+ */
+const handleClose = (): void => {
+   uPopup.value?.close();
+};
+
+/**
+ * 输出弹层状态
+ * @param event 弹层状态
+ * @returns null
+ */
+const handleChange = (event: ChangeEvent): void => {
+   console.log("弹层状态：", event.show, event.type);
+};
+
+/**
+ * 输出遮罩点击
+ * @returns null
+ */
+const handleMaskClick = (): void => {
+   console.log("点击遮罩");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 弹层演示页面
+.popup-demo {
+   // 弹层内容
+   &__content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 35px 24px 24px;
+
+      &--top,
+      &--bottom {
+         width: 100%;
+         min-height: 180px;
+      }
+
+      &--left,
+      &--right {
+         width: 240px;
+         height: 100%;
+      }
+
+      &--center {
+         width: 280px;
+         min-height: 180px;
+      }
+   }
+
+   // 关闭按钮
+   &__button {
+      width: 160px;
+   }
+}
+</style>

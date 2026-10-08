@@ -1,0 +1,294 @@
+<template>
+	<view
+		class="uvx-float-view"
+		:class="{ 'no-dragging': !position.isDragging }"
+		:style="viewStyle"
+		@touchstart="onTouchStart"
+		@touchmove.stop.prevent="onTouchMove"
+		@touchend="onTouchEnd"
+		@touchcancel="onTouchEnd"
+	>
+		<slot></slot>
+	</view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-float-view 悬浮按钮
+ * @description 可拖动的悬浮按钮组件，支持自动吸附边缘、边界限制、安全区适配
+ * @tutorial https://www.uvxui.cn/components/float-view.html
+ * @property {Number} size 按钮尺寸，单位px (默认 40)
+ * @property {Number} left 初始左边距，单位px (默认 10)
+ * @property {Number} bottom 初始底部距离，单位px (默认 10)
+ * @property {Number} gap 距离边缘的最小间距，单位px (默认 10)
+ * @property {Number} zIndex 层级 (默认 500)
+ * @property {Boolean} disabled 是否禁用拖动 (默认 false)
+ * @property {Boolean} noSnapping 是否禁用边缘吸附 (默认 false)
+ * 
+ * @example <uvx-float-view><view>内容</view></uvx-float-view>
+ */
+
+import { $uvx } from "../../index.uts";
+
+defineOptions({ name: 'uvx-float-view', options: { virtualHost: true } });
+
+import type {
+	Props,
+	Position,
+	DragState
+} from "./types/index.uts";
+
+const props = withDefaults(defineProps<Props>(), {
+	size: 40,
+	left: 10,
+	bottom: 10,
+	gap: 10,
+	zIndex: 500,
+	disabled: false,
+	noSnapping: false
+});
+
+// 获取设备屏幕信息
+const windowInfo = uni.getWindowInfo();
+const screenWidth = windowInfo.screenWidth;
+const screenHeight = windowInfo.screenHeight;
+const safeAreaInsets = windowInfo.safeAreaInsets;
+const safeBottom = safeAreaInsets?.bottom ?? 0;
+const safeTop = safeAreaInsets?.top ?? 0;
+
+/**
+ * 水平方向边界限制
+ * @param value 当前X坐标
+ * @returns 限制后的X坐标
+ */
+const clampHorizontal = (value: number): number => {
+	const minX = props.gap;
+	const maxXValue = screenWidth - props.size - props.gap;
+	const maxX = maxXValue > minX ? maxXValue : minX;
+	return Math.max(minX, Math.min(maxX, value));
+};
+
+/**
+ * 垂直方向边界限制
+ * @param value 当前Y坐标（相对底部的距离）
+ * @returns 限制后的Y坐标
+ */
+const clampVertical = (value: number): number => {
+	// 最小bottom值：距离底部的最小间距（包含安全区）
+	const minY = props.gap + safeBottom;
+	// 最大bottom值：当元素顶部刚好在屏幕顶部安全区下方时的bottom值
+	// bottom = screenHeight - 元素顶部位置 = screenHeight - (safeTop + gap + size)
+	const maxY = screenHeight - safeTop - props.gap - props.size;
+	// 确保maxY不小于minY
+	const finalMaxY = maxY > minY ? maxY : minY;
+	return Math.max(minY, Math.min(finalMaxY, value));
+};
+
+// 悬浮按钮位置状态管理
+const position = reactive<Position>({
+	x: clampHorizontal(props.left),
+	y: clampVertical(props.bottom),
+	isDragging: false
+});
+
+// 拖拽操作状态管理
+const dragState = reactive<DragState>({
+	startX: 0,
+	startY: 0
+});
+
+/**
+ * 动态位置样式计算
+ * 根据当前位置和拖拽状态计算组件的CSS样式
+ * @returns UTSJSONObject
+ */
+const viewStyle = computed(() => {
+	const style: UTSJSONObject = {};
+	style.set("left", $uvx.format.unit(position.x));
+	style.set("bottom", $uvx.format.unit(position.y));
+	style.set("width", $uvx.format.unit(props.size));
+	style.set("height", $uvx.format.unit(props.size));
+	style.set("z-index", `${props.zIndex}`);
+	return style;
+});
+
+/**
+ * 执行边缘吸附逻辑
+ * 拖拽结束后自动将按钮吸附到屏幕边缘
+ * @returns null
+ */
+const performEdgeSnapping = (): void => {
+	// 先确保在边界内
+	position.x = clampHorizontal(position.x);
+	position.y = clampVertical(position.y);
+	
+	// 如果禁用吸附，直接返回
+	if (props.noSnapping) {
+		return;
+	}
+	
+	const edgePadding = props.gap;
+	const rightEdge = clampHorizontal(screenWidth - props.size - edgePadding);
+	const leftEdge = edgePadding;
+	const edgeThreshold = edgePadding + 60;
+	
+	// 判断是否靠近左右边缘
+	const nearLeft = position.x <= edgeThreshold;
+	const nearRight = position.x >= rightEdge - 60;
+	
+	if (nearLeft) {
+		position.x = leftEdge;
+		return;
+	}
+	if (nearRight) {
+		position.x = rightEdge;
+		return;
+	}
+	
+	// 根据中心位置判断吸附到哪一边
+	const centerX = screenWidth / 2;
+	position.x = position.x < centerX ? leftEdge : rightEdge;
+};
+
+/**
+ * 触摸开始事件处理
+ * 初始化拖拽状态，记录起始触摸位置
+ * @param event 触摸开始事件
+ * @returns null
+ */
+const onTouchStart = (event: UniTouchEvent): void => {
+	// 如果禁用，直接返回
+	if (props.disabled) {
+		return;
+	}
+	if (event.touches.length == 0) {
+		return;
+	}
+	const touch = event.touches[0];
+	// 记录初始触摸位置
+	dragState.startX = touch.clientX;
+	dragState.startY = touch.clientY;
+	// 标记为拖拽状态
+	position.isDragging = true;
+};
+
+/**
+ * 触摸移动事件处理
+ * 实时更新按钮位置，实现拖拽效果（增量式计算）
+ * @param event 触摸移动事件
+ * @returns null
+ */
+const onTouchMove = (event: UniTouchEvent): void => {
+	// 如果不在拖拽状态，直接返回
+	if (!position.isDragging) {
+		return;
+	}
+	if (event.touches.length == 0) {
+		return;
+	}
+	
+	const touch = event.touches[0];
+	// 计算相对于上一次触摸位置的偏移量（增量）
+	const deltaX = touch.clientX - dragState.startX;
+	const deltaY = dragState.startY - touch.clientY; // Y轴方向相反（屏幕坐标向下为正，bottom向上为正）
+	
+	// 根据增量更新位置
+	let newX = position.x + deltaX;
+	let newY = position.y + deltaY;
+	
+	// 应用边界限制
+	newX = clampHorizontal(newX);
+	newY = clampVertical(newY);
+	
+	// 更新位置
+	position.x = newX;
+	position.y = newY;
+	
+	// 更新拖拽起始点为当前触摸位置，为下次移动做准备
+	dragState.startX = touch.clientX;
+	dragState.startY = touch.clientY;
+};
+
+/**
+ * 触摸结束事件处理
+ * 结束拖拽状态并执行边缘吸附
+ * @returns null
+ */
+const onTouchEnd = (): void => {
+	// 如果不在拖拽状态，直接返回
+	if (!position.isDragging) {
+		return;
+	}
+	// 结束拖拽状态，恢复过渡动画
+	position.isDragging = false;
+	// 执行边缘吸附逻辑
+	if (!props.noSnapping) {
+		performEdgeSnapping();
+	}
+};
+
+/**
+ * 获取左边距属性
+ * @returns number
+ */
+const getLeftProp = (): number => {
+	return props.left;
+};
+
+/**
+ * 获取底部距离属性
+ * @returns number
+ */
+const getBottomProp = (): number => {
+	return props.bottom;
+};
+
+/**
+ * 获取尺寸属性
+ * @returns number
+ */
+const getSizeProp = (): number => {
+	return props.size;
+};
+
+/**
+ * 同步左边距变化
+ * @param newValue 新的左边距
+ * @returns null
+ */
+watch(getLeftProp, (newValue: number) => {
+	position.x = clampHorizontal(newValue);
+});
+
+/**
+ * 同步底部距离变化
+ * @param newValue 新的底部距离
+ * @returns null
+ */
+watch(getBottomProp, (newValue: number) => {
+	position.y = clampVertical(newValue);
+});
+
+/**
+ * 尺寸变化后重新限制组件位置
+ * @param _value 新的组件尺寸
+ * @returns null
+ */
+watch(getSizeProp, (_value: number) => {
+	position.x = clampHorizontal(position.x);
+	position.y = clampVertical(position.y);
+});
+</script>
+
+<style lang="scss">
+.uvx-float-view {
+	position: fixed;
+	transition-duration: 0s;
+	transition-property: none;
+
+	&.no-dragging {
+		transition-duration: 0.3s;
+		transition-property: left, bottom;
+	}
+}
+</style>

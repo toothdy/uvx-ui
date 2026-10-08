@@ -1,0 +1,45 @@
+<template>
+   <view class="uvx-safe-bottom" :style="safeBottomStyle"></view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-safe-bottom 底部安全区
+ * @description 填充设备底部安全区域，避免内容与系统手势区域重叠。
+ * @tutorial https://www.uvxui.cn/components/safe-area-inset.html
+ * @property {String} uStyle 自定义样式
+ * @example <uvx-safe-bottom></uvx-safe-bottom>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-safe-bottom", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   uStyle: "",
+});
+
+// 设备底部安全区高度
+const SAFE_BOTTOM = uni.getWindowInfo().safeAreaInsets?.bottom ?? 0;
+
+/**
+ * 底部安全区样式
+ * @returns UTSJSONObject
+ */
+const safeBottomStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "height": $uvx.format.unit(SAFE_BOTTOM),
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+</script>
+
+<style lang="scss">
+// 底部安全区容器
+.uvx-safe-bottom {
+   width: 100%;
+   flex-shrink: 0;
+}
+</style>

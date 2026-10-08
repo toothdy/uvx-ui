@@ -1,0 +1,38 @@
+import type { ComponentPublicInstance, ComputedRef } from "vue";
+
+export type Direction = "row" | "column";
+
+export type Props = {
+   direction: Direction;
+   current: string | number;
+   activeColor: string;
+   inactiveColor: string;
+   activeIcon: string;
+   inactiveIcon: string;
+   dot: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Config = {
+   direction: Direction;
+   current: number;
+   activeColor: string;
+   inactiveColor: string;
+   activeIcon: string;
+   inactiveIcon: string;
+   dot: boolean;
+};
+
+export type Child = {
+   instance: ComponentPublicInstance;
+   isError: boolean;
+};
+
+export type Context = {
+   config: ComputedRef<Config>;
+   register: (child: ComponentPublicInstance, isError: boolean) => void;
+   unregister: (child: ComponentPublicInstance) => void;
+   setError: (child: ComponentPublicInstance, isError: boolean) => void;
+   isNextError: (index: number) => boolean;
+};

@@ -1,0 +1,18 @@
+export type Direction = "none" | "vertical" | "horizontal" | "all";
+
+export type Props = {
+   direction: Direction;
+   bounces: boolean;
+   showScrollbar: boolean;
+   upperThreshold: number;
+   lowerThreshold: number;
+   scrollTop: number;
+   scrollWithAnimation: boolean;
+};
+
+export type Emits = {
+   scroll: [event: UniScrollEvent];
+   scrolltoupper: [event: UniScrollToUpperEvent];
+   scrolltolower: [event: UniScrollToLowerEvent];
+   scrollend: [event: UniScrollEvent];
+};

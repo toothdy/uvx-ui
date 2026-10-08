@@ -1,0 +1,20 @@
+/** 阅读更多组件属性 */
+export type Props = {
+   showHeight: string | number;
+   toggle: boolean;
+   closeText: string;
+   openText: string;
+   color: string;
+   fontSize: string | number;
+   shadowStyle: string;
+   textIndent: string;
+   name: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 阅读更多组件事件 */
+export type Emits = {
+   open: [name: string | number];
+   close: [name: string | number];
+};

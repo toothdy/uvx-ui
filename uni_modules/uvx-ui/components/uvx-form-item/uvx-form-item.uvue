@@ -1,0 +1,382 @@
+<template>
+   <view class="uvx-form-item" :class="uClass" :style="itemStyle">
+      <!-- 表单项主体 -->
+      <view class="uvx-form-item__body" :style="bodyStyle" @click="handleClick">
+         <!-- 自定义或默认标签 -->
+         <slot name="label">
+            <view v-if="hasDefaultLabel" class="uvx-form-item__label" :style="labelWrapperStyle">
+               <text v-if="required" class="uvx-form-item__required">*</text>
+               <view v-if="!$uvx.string.empty(leftIcon)" class="uvx-form-item__left-icon">
+                  <uvx-icon :name="leftIcon" :u-style="leftIconStyle"></uvx-icon>
+               </view>
+               <text class="uvx-form-item__label-text" :style="labelTextStyle">{{ label }}</text>
+            </view>
+         </slot>
+
+         <!-- 字段内容 -->
+         <view class="uvx-form-item__content">
+            <view class="uvx-form-item__slot">
+               <slot></slot>
+            </view>
+            <view class="uvx-form-item__right">
+               <slot name="right"></slot>
+               <uvx-icon
+                  v-if="!$uvx.string.empty(rightIcon)"
+                  :name="rightIcon"
+               ></uvx-icon>
+            </view>
+         </view>
+      </view>
+
+      <!-- 自定义或默认错误消息 -->
+      <slot name="error">
+         <text
+            v-if="showMessage"
+            class="uvx-form-item__message"
+            :style="messageStyle"
+         >{{ message }}</text>
+      </slot>
+
+      <!-- 下边框 -->
+      <view
+         v-if="showBorder"
+         class="uvx-form-item__line"
+         :class="lineClass"
+      ></view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-form-item 表单项
+ * @description 配合 uvx-form 使用，管理标签、字段插槽和错误状态。
+ * @tutorial https://www.uvxui.cn/components/form.html
+ * @property {String} label 标签文字
+ * @property {String} prop 模型字段路径
+ * @property {Boolean} borderBottom 是否显示下边框
+ * @property {String} labelPosition 标签位置，空值时继承表单
+ * @property {String | Number} labelWidth 标签宽度，空值时继承表单
+ * @property {String} rightIcon 右侧图标
+ * @property {String} leftIcon 左侧图标
+ * @property {Boolean} required 是否显示必填标记
+ * @property {String} leftIconStyle 左侧图标样式
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @event {Function} click 点击表单项
+ * @example <uvx-form-item label="姓名" prop="userInfo.name"><uvx-input></uvx-input></uvx-form-item>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Context, LabelPosition } from "../uvx-form/types/index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-form-item", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+const props = withDefaults(defineProps<Props>(), {
+   label: "",
+   prop: "",
+   borderBottom: false,
+   labelPosition: "",
+   labelWidth: "",
+   rightIcon: "",
+   leftIcon: "",
+   required: false,
+   leftIconStyle: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/** 表单项点击事件 */
+const emit = defineEmits<Emits>();
+
+// 当前组件公开实例
+const instance = getCurrentInstance()!.proxy!;
+// 最近的表单上下文
+const form = inject<Context | null>("uvx-form-context", null);
+if (form == null) throw new Error("uvx-form-item 必须在 uvx-form 内使用");
+// 当前错误消息
+const message = ref("");
+
+/**
+ * 当前标签位置
+ * @returns LabelPosition
+ */
+const labelPosition = computed((): LabelPosition => {
+   return !$uvx.string.empty(props.labelPosition)
+      ? props.labelPosition
+      : form.config.value.labelPosition;
+});
+
+/**
+ * 当前标签宽度
+ * @returns string | number
+ */
+const labelWidth = computed((): string | number => {
+   return !$uvx.string.unset(props.labelWidth)
+      ? props.labelWidth
+      : form.config.value.labelWidth;
+});
+
+/**
+ * 是否渲染默认标签
+ * @returns boolean
+ */
+const hasDefaultLabel = computed((): boolean => {
+   return props.required
+      || !$uvx.string.empty(props.label)
+      || !$uvx.string.empty(props.leftIcon);
+});
+
+/**
+ * 是否存在错误
+ * @returns boolean
+ */
+const hasError = computed((): boolean => {
+   return !$uvx.string.empty(message.value);
+});
+
+/**
+ * 是否显示错误文字
+ * @returns boolean
+ */
+const showMessage = computed((): boolean => {
+   return hasError.value && form.config.value.errorType == "message";
+});
+
+/**
+ * 是否显示下边框
+ * @returns boolean
+ */
+const showBorder = computed((): boolean => {
+   return props.borderBottom || form.config.value.borderBottom;
+});
+
+/**
+ * 表单项根节点样式
+ * @returns UTSJSONObject
+ */
+const itemStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * 表单项主体布局
+ * @returns UTSJSONObject
+ */
+const bodyStyle = computed((): UTSJSONObject => {
+   return {
+      "flex-direction": labelPosition.value == "left" ? "row" : "column",
+      "align-items": labelPosition.value == "left" ? "center" : "stretch",
+   };
+});
+
+/**
+ * 标签容器样式
+ * @returns UTSJSONObject
+ */
+const labelWrapperStyle = computed((): UTSJSONObject => {
+   if (labelPosition.value == "top") {
+      return {
+         "width": "100%",
+         "margin-bottom": "5px",
+      };
+   }
+   return {
+      "width": $uvx.format.unit(labelWidth.value),
+      "margin-bottom": "0",
+   };
+});
+
+/**
+ * 标签文字样式
+ * @returns UTSJSONObject
+ */
+const labelTextStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "text-align": form.config.value.labelAlign,
+   };
+   if (!$uvx.string.empty(form.config.value.labelStyle)) {
+      return $uvx.object.deepMerge(style, $uvx.style.parse(form.config.value.labelStyle));
+   }
+   return style;
+});
+
+/**
+ * 错误文字缩进样式
+ * @returns UTSJSONObject
+ */
+const messageStyle = computed((): UTSJSONObject => {
+   return {
+      "margin-left": labelPosition.value == "left"
+         ? $uvx.format.unit(labelWidth.value)
+         : "0",
+   };
+});
+
+/**
+ * 下边框状态类
+ * @returns string
+ */
+const lineClass = computed((): string => {
+   return hasError.value && form.config.value.errorType == "border-bottom"
+      ? "uvx-form-item__line-error"
+      : "uvx-form-item__line-default";
+});
+
+/**
+ * 返回当前字段路径
+ * @returns string
+ */
+const getProp = (): string => {
+   return props.prop;
+};
+
+/**
+ * 设置错误消息
+ * @param value 错误消息
+ * @returns null
+ */
+const setMessage = (value: string): void => {
+   message.value = value;
+};
+
+/**
+ * 发布点击事件
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click");
+};
+
+/**
+ * 挂载时注册到表单
+ * @returns null
+ */
+onMounted((): void => {
+   form.register(instance);
+});
+
+/**
+ * 卸载时从表单注销
+ * @returns null
+ */
+onUnmounted((): void => {
+   form.unregister(instance);
+});
+
+defineExpose({ getProp, setMessage });
+</script>
+
+<style lang="scss">
+// 表单项根布局
+.uvx-form-item {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   min-width: 0;
+   overflow: visible;
+   color: var(--uvx-text-main);
+   font-size: 14px;
+
+   // 表单项主体
+   &__body {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+      padding: 10px 0;
+      overflow: visible;
+   }
+
+   // 标签容器
+   &__label {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+      min-width: 0;
+      padding-right: 5px;
+      overflow: visible;
+   }
+
+   // 必填标记
+   &__required {
+      flex-shrink: 0;
+      margin-right: 3px;
+      color: var(--uvx-error);
+      font-size: 18px;
+      line-height: 1.2em;
+   }
+
+   // 左侧图标
+   &__left-icon {
+      display: flex;
+      flex-shrink: 0;
+      margin-right: 4px;
+   }
+
+   // 标签文字
+   &__label-text {
+      flex: 1;
+      min-width: 0;
+      color: var(--uvx-text-main);
+      font-size: 15px;
+      line-height: 1.2em;
+   }
+
+   // 字段内容
+   &__content {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+      min-width: 0;
+      overflow: visible;
+   }
+
+   // 默认插槽容器
+   &__slot {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+      min-width: 0;
+      overflow: visible;
+   }
+
+   // 右侧插槽与图标
+   &__right {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 5px;
+      overflow: visible;
+   }
+
+   // 错误消息
+   &__message {
+      margin-top: -4px;
+      padding-bottom: 4px;
+      color: var(--uvx-error);
+      font-size: 12px;
+      line-height: 1.2em;
+   }
+
+   // 下边框
+   &__line {
+      width: 100%;
+      height: 0.5px;
+   }
+
+   // 默认下边框色
+   &__line-default {
+      background-color: var(--uvx-border);
+   }
+
+   // 错误下边框色
+   &__line-error {
+      background-color: var(--uvx-error);
+   }
+}
+</style>

@@ -1,0 +1,120 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基础用法 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="基础用法"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-upload :file-list="lists[0]" name="0" multiple :max-count="10" @afterRead="handleAfterRead" @delete="handleDelete"></uvx-upload>
+            </view>
+         </view>
+
+         <!-- 上传视频 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="上传视频"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-upload :file-list="lists[1]" name="1" accept="video" :max-count="10" @afterRead="handleAfterRead" @delete="handleDelete"></uvx-upload>
+            </view>
+         </view>
+
+         <!-- 文件预览 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="文件预览"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-upload :file-list="lists[2]" name="2" multiple :max-count="10" @afterRead="handleAfterRead" @delete="handleDelete"></uvx-upload>
+            </view>
+         </view>
+
+         <!-- 隐藏上传按钮 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="隐藏上传按钮"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-upload :file-list="lists[3]" name="3" multiple :max-count="2" @afterRead="handleAfterRead" @delete="handleDelete"></uvx-upload>
+            </view>
+         </view>
+
+         <!-- 限制上传数量 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="限制上传数量"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-upload :file-list="lists[4]" name="4" multiple :max-count="3" @afterRead="handleAfterRead" @delete="handleDelete"></uvx-upload>
+            </view>
+         </view>
+
+         <!-- 自定义上传样式 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title"><uvx-text type="main" text="自定义上传样式"></uvx-text></view>
+            <view class="uvx-demo-block__content">
+               <uvx-upload :file-list="lists[5]" name="5" multiple :max-count="1" :width="250" :height="150" @afterRead="handleAfterRead" @delete="handleDelete">
+                  <image src="https://cdn.uviewui.com/uview/demo/upload/positive.png" mode="aspectFill" class="uvx-upload-demo__entry"></image>
+               </uvx-upload>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { UploadFile, UploadReadEvent, UploadDeleteEvent } from "@/uni_modules/uvx-ui/components/uvx-upload/types/index.uts";
+
+// 六组演示文件列表
+const lists = ref<UploadFile[][]>([
+   [],
+   [],
+   [{ url: "https://dummyimage.com/300x300/4caf50/ffffff&text=Image+1", type: "image" }],
+   [
+      { url: "https://dummyimage.com/300x300/2196f3/ffffff&text=Image+1", type: "image" },
+      { url: "https://dummyimage.com/300x300/ff9800/ffffff&text=Image+2", type: "image" },
+   ],
+   [],
+   [],
+]);
+
+/**
+ * 接收文件并模拟上传状态
+ * @param event 读取完成事件
+ * @returns null
+ */
+const handleAfterRead = (event: UploadReadEvent): void => {
+   const group = Number(event.name);
+   if (group < 0 || group >= lists.value.length) return;
+   const files: UploadFile[] = Array.isArray(event.file) ? event.file : [event.file];
+   const next = lists.value[group].slice();
+   for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      next.push({ url: file.url, thumb: file.thumb, size: file.size, type: file.type, status: "uploading", message: "上传中" });
+   }
+   lists.value[group] = next;
+   setTimeout((): void => {
+      const done = lists.value[group].slice();
+      for (let index = next.length - files.length; index < next.length; index++) {
+         const file = done[index];
+         if (file != null) done[index] = { url: file.url, thumb: file.thumb, size: file.size, type: file.type, status: "success" };
+      }
+      lists.value[group] = done;
+   }, 1000);
+};
+
+/**
+ * 删除对应演示文件
+ * @param event 删除事件
+ * @returns null
+ */
+const handleDelete = (event: UploadDeleteEvent): void => {
+   const group = Number(event.name);
+   if (group < 0 || group >= lists.value.length) return;
+   const next = lists.value[group].slice();
+   next.splice(event.index, 1);
+   lists.value[group] = next;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 自定义选择入口
+.uvx-upload-demo__entry {
+   width: 250px;
+   height: 150px;
+}
+</style>

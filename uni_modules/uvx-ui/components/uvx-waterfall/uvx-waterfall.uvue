@@ -1,0 +1,423 @@
+<template>
+   <!-- #ifdef APP -->
+   <waterflow
+      class="uvx-waterfall"
+      :class="[props.uClass]"
+      :style="nativeStyle"
+      :cross-axis-count="columnCountValue"
+      :main-axis-gap="rowGapValue"
+      :cross-axis-gap="columnGapValue"
+      :show-scrollbar="props.showScrollbar"
+      :lower-threshold="props.lowerThreshold"
+      @scrolltolower="handleScrollToLower"
+   >
+      <flow-item
+         v-for="(item, index) in props.modelValue"
+         :key="getItemKey(item, index)"
+         :item-key="getItemKey(item, index)"
+         :type="1"
+      >
+         <slot :item="item" :index="index"></slot>
+      </flow-item>
+
+      <!-- 原生瀑布流整行加载区 -->
+      <flow-item
+         slot="load-more"
+         :type="2"
+         class="uvx-waterfall__loadmore"
+      >
+         <slot name="loadmore">
+            <uvx-load-more
+               :status="props.loadStatus"
+               @loadmore="handleLoadMore"
+            ></uvx-load-more>
+         </slot>
+      </flow-item>
+   </waterflow>
+   <!-- #endif -->
+
+   <!-- #ifndef APP -->
+   <scroll-view
+      class="uvx-waterfall"
+      :class="[props.uClass]"
+      :style="rootStyle"
+      direction="vertical"
+      :show-scrollbar="props.showScrollbar"
+      :lower-threshold="props.lowerThreshold"
+      @scrolltolower="handleScrollToLower"
+   >
+      <!-- Web 和小程序使用高度元数据确定性分列 -->
+      <view class="uvx-waterfall__content" :style="contentStyle">
+         <view
+            v-for="(column, columnIndex) in layoutColumns"
+            :key="columnIndex"
+            class="uvx-waterfall__column"
+            :style="getColumnStyle(columnIndex)"
+         >
+            <view
+               v-for="renderItem in column"
+               :key="getItemKey(renderItem.item, renderItem.index)"
+               class="uvx-waterfall__item"
+               :style="fallbackItemStyle"
+            >
+               <slot :item="renderItem.item" :index="renderItem.index"></slot>
+            </view>
+         </view>
+      </view>
+
+      <!-- 回退布局加载区 -->
+      <view class="uvx-waterfall__loadmore">
+         <slot name="loadmore">
+            <uvx-load-more
+               :status="props.loadStatus"
+               @loadmore="handleLoadMore"
+            ></uvx-load-more>
+         </slot>
+      </view>
+   </scroll-view>
+   <!-- #endif -->
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-waterfall 瀑布流布局
+ * @description App 使用原生 waterflow，Web 和微信使用按高度元数据分配的多列布局。
+ * @tutorial https://www.uvxui.cn/components/waterfall.html
+ * @property {Array} modelValue 瀑布流数据
+ * @property {String} idKey 数据唯一标识字段，默认 id
+ * @property {String} heightKey Web 和微信端用于分列的预估高度字段，默认 height
+ * @property {String | Number} columnCount 列数，取值 1–5，默认 2
+ * @property {String | Number} columnGap 列间距，默认 10
+ * @property {String | Number} rowGap 行间距，默认 10
+ * @property {String | Number} leftGap 左侧间距，默认 0
+ * @property {String | Number} rightGap 右侧间距，默认 0
+ * @property {Boolean} showScrollbar 是否显示滚动条，默认 false
+ * @property {Number} lowerThreshold 距底部多少 px 触发 scrolltolower，默认 50
+ * @property {String} loadStatus 加载状态：loadmore/loading/nomore，默认 loadmore
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * 
+ * @event {Function} update:modelValue 数据清空或删除后触发
+ * @event {Function} finish 当前数据布局完成后触发
+ * @event {Function} clear 清空数据后触发
+ * @event {Function} remove 删除指定数据后触发，返回标识值
+ * @event {Function} loadmore 需要加载更多数据时触发
+ * @event {Function} scrolltolower 滚动到底部时触发
+ * @slot default 瀑布流项，提供 item 和 index
+ * @slot loadmore 自定义底部加载内容
+ * @method clear() 清空瀑布流数据
+ * @method remove(id) 按 idKey 删除数据
+ * @example <uvx-waterfall v-model="list"><template #default="{ item }">...</template></uvx-waterfall>
+ */
+
+import { $uvx } from "../../index.uts";
+import type {
+   Emits,
+   Item,
+   Props,
+   RenderItem,
+   SlotProps,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-waterfall",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   modelValue: () => [] as Item[],
+   idKey: "id",
+   heightKey: "height",
+   columnCount: 2,
+   columnGap: 10,
+   rowGap: 10,
+   leftGap: 0,
+   rightGap: 0,
+   showScrollbar: false,
+   lowerThreshold: 50,
+   loadStatus: "loadmore",
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+defineSlots<{
+   default(props: SlotProps): void;
+   loadmore(): void;
+}>();
+
+/**
+ * 将尺寸转换为 px 数值
+ * @param value 尺寸值
+ * @param fallback 无效值回退
+ * @returns px 数值
+ */
+const getPixelValue = (value: string | number, fallback: number): number => {
+   const text = value.toString().trim();
+   const numberValue = parseFloat(text);
+   if (isNaN(numberValue) || numberValue < 0) return fallback;
+   if (text.endsWith("rpx")) {
+      return numberValue * uni.getWindowInfo().windowWidth / 750;
+   }
+   return numberValue;
+};
+
+/**
+ * 有效列数
+ * @returns 1–5 的整数
+ */
+const columnCountValue = computed((): number => {
+   const value = typeof props.columnCount == "number"
+      ? props.columnCount
+      : parseFloat(props.columnCount);
+   if (isNaN(value)) return 2;
+   return Math.max(1, Math.min(5, Math.floor(value)));
+});
+
+/**
+ * 列间距 px 数值
+ * @returns number
+ */
+const columnGapValue = computed((): number => {
+   return getPixelValue(props.columnGap, 10);
+});
+
+/**
+ * 行间距 px 数值
+ * @returns number
+ */
+const rowGapValue = computed((): number => {
+   return getPixelValue(props.rowGap, 10);
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   return $uvx.style.parse(props.uStyle);
+});
+
+/**
+ * App 原生瀑布流样式
+ * @returns UTSJSONObject
+ */
+const nativeStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "padding-left": $uvx.format.unit(props.leftGap),
+      "padding-right": $uvx.format.unit(props.rightGap),
+   };
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * Web 和小程序列容器样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   return {
+      "padding-left": $uvx.format.unit(props.leftGap),
+      "padding-right": $uvx.format.unit(props.rightGap),
+   };
+});
+
+/**
+ * Web 和小程序项间距样式
+ * @returns UTSJSONObject
+ */
+const fallbackItemStyle = computed((): UTSJSONObject => {
+   return { "margin-bottom": $uvx.format.unit(props.rowGap) };
+});
+
+/**
+ * 获取数据标识
+ * @param item 瀑布流数据项
+ * @param index 原数据索引
+ * @returns 数据标识或索引
+ */
+const getItemKey = (item: Item, index: number): string | number => {
+   const value = item[props.idKey];
+   if (typeof value == "string" || typeof value == "number") return value;
+   return index;
+};
+
+/**
+ * 获取数据项预估高度
+ * @param item 瀑布流数据项
+ * @returns 大于 0 的高度权重
+ */
+const getEstimatedHeight = (item: Item): number => {
+   if ($uvx.string.empty(props.heightKey)) return 1;
+   const value = item[props.heightKey];
+   if (typeof value == "number" && !isNaN(value) && value > 0) return value;
+   if (typeof value == "string") {
+      const parsed = parseFloat(value);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+   }
+   return 1;
+};
+
+/**
+ * 获取当前最短列索引
+ * @param heights 各列累计高度
+ * @returns 最短列索引
+ */
+const getShortestColumnIndex = (heights: number[]): number => {
+   let result = 0;
+   for (let index = 1; index < heights.length; index++) {
+      if (heights[index] < heights[result]) result = index;
+   }
+   return result;
+};
+
+/**
+ * Web 和小程序瀑布流分列结果
+ * @returns RenderItem[][]
+ */
+const layoutColumns = computed((): RenderItem[][] => {
+   const columns: RenderItem[][] = [];
+   const heights: number[] = [];
+   for (let index = 0; index < columnCountValue.value; index++) {
+      columns.push([]);
+      heights.push(0);
+   }
+   for (let index = 0; index < props.modelValue.length; index++) {
+      const columnIndex = getShortestColumnIndex(heights);
+      const renderItem: RenderItem = {
+         item: props.modelValue[index],
+         index,
+      };
+      columns[columnIndex].push(renderItem);
+      heights[columnIndex] = heights[columnIndex] + getEstimatedHeight(renderItem.item) + rowGapValue.value;
+   }
+   return columns;
+});
+
+/**
+ * 获取回退布局列样式
+ * @param index 列索引
+ * @returns UTSJSONObject
+ */
+const getColumnStyle = (index: number): UTSJSONObject => {
+   if (index == 0) return {};
+   return { "margin-left": $uvx.format.unit(props.columnGap) };
+};
+
+/**
+ * 通知当前布局完成
+ * @returns null
+ */
+const emitFinish = (): void => {
+   nextTick((): void => {
+      emit("finish");
+   });
+};
+
+/**
+ * 请求加载更多数据
+ * @returns null
+ */
+const handleLoadMore = (): void => {
+   if (props.loadStatus != "loadmore") return;
+   emit("loadmore");
+};
+
+/**
+ * 处理滚动到底部
+ * @param event 滚动到底部事件
+ * @returns null
+ */
+const handleScrollToLower = (event: UniScrollToLowerEvent): void => {
+   emit("scrolltolower", event);
+   handleLoadMore();
+};
+
+/**
+ * 清空瀑布流数据
+ * @returns null
+ */
+const clear = (): void => {
+   emit("update:modelValue", []);
+   nextTick((): void => {
+      emit("clear");
+   });
+};
+
+/**
+ * 按标识删除第一个匹配项
+ * @param id 数据标识
+ * @returns null
+ */
+const remove = (id: string | number): void => {
+   const nextValue: Item[] = [];
+   let hasRemoved = false;
+   for (let index = 0; index < props.modelValue.length; index++) {
+      const item = props.modelValue[index];
+      if (!hasRemoved && getItemKey(item, index) == id) {
+         hasRemoved = true;
+         continue;
+      }
+      nextValue.push(item);
+   }
+   if (hasRemoved) emit("update:modelValue", nextValue);
+   emit("remove", id);
+};
+
+/** 数据长度变化后通知布局完成 */
+watch((): number => props.modelValue.length, (): void => {
+   emitFinish();
+});
+
+/** 组件挂载后通知首次布局完成 */
+onMounted((): void => {
+   emitFinish();
+});
+
+defineExpose({ clear, remove });
+</script>
+
+<style lang="scss">
+// 瀑布流根容器
+.uvx-waterfall {
+   display: flex;
+   flex: 1;
+   width: 100%;
+   box-sizing: border-box;
+}
+
+// Web 和小程序多列容器
+.uvx-waterfall__content {
+   display: flex;
+   flex-direction: row;
+   align-items: flex-start;
+   width: 100%;
+   box-sizing: border-box;
+}
+
+// Web 和小程序单列容器
+.uvx-waterfall__column {
+   display: flex;
+   flex: 1;
+   flex-direction: column;
+   min-width: 0;
+}
+
+// Web 和小程序瀑布流项
+.uvx-waterfall__item {
+   display: flex;
+   width: 100%;
+   box-sizing: border-box;
+}
+
+// 底部加载区
+.uvx-waterfall__loadmore {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   width: 100%;
+}
+</style>

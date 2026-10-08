@@ -1,0 +1,338 @@
+import { t } from "../../core/i18n";
+import type {
+   FieldError,
+   FieldValue,
+   Trigger,
+   Validator,
+} from "./types/index.uts";
+
+/**
+ * 读取嵌套字段值
+ * @param model 表单模型
+ * @param field 点分字段路径
+ * @returns 动态字段值
+ */
+export const getValue = (
+   model: UTSJSONObject,
+   field: string,
+): FieldValue => {
+   if (field.length == 0) return null;
+   const fields = field.split(".");
+   let value: FieldValue = model;
+   for (let i = 0; i < fields.length; i++) {
+      if (value == null || typeof value != "object" || value instanceof Array) return null;
+      value = (value as UTSJSONObject)[fields[i]];
+   }
+   return value;
+};
+
+/**
+ * 写入嵌套字段值
+ * @param model 表单模型
+ * @param field 点分字段路径
+ * @param value 字段值
+ * @returns 是否写入成功
+ */
+export const setValue = (
+   model: UTSJSONObject,
+   field: string,
+   value: FieldValue,
+): boolean => {
+   const fields = field.split(".");
+   if (fields.length == 0 || fields[0].length == 0) return false;
+   let target = model;
+   for (let i = 0; i < fields.length - 1; i++) {
+      const child = target[fields[i]];
+      if (child == null || typeof child != "object" || child instanceof Array) return false;
+      target = child as UTSJSONObject;
+   }
+   target[fields[fields.length - 1]] = value;
+   return true;
+};
+
+/**
+ * 获取字段规则数组
+ * @param rules 全部规则
+ * @param field 字段路径
+ * @returns UTSJSONObject[]
+ */
+export const getRules = (
+   rules: UTSJSONObject,
+   field: string,
+): UTSJSONObject[] => {
+   // 规则字段是带点的字面键，必须直接按键读取。
+   const value = rules[field];
+   if (value == null) return [];
+   if (value instanceof Array) {
+      const result: UTSJSONObject[] = [];
+      for (let i = 0; i < value.length; i++) {
+         const item = value[i];
+         if (item != null && typeof item == "object" && !(item instanceof Array)) {
+            result.push(item as UTSJSONObject);
+         }
+      }
+      return result;
+   }
+   return typeof value == "object" ? [value as UTSJSONObject] : [];
+};
+
+/**
+ * 读取规则字段
+ * @param rule 校验规则
+ * @param key 字段名
+ * @returns 动态字段值
+ */
+const getRule = (rule: UTSJSONObject, key: string): FieldValue => {
+   return rule[key];
+};
+
+/**
+ * 读取规则字符串
+ * @param rule 校验规则
+ * @param key 字段名
+ * @param fallback 默认值
+ * @returns string
+ */
+const getString = (rule: UTSJSONObject, key: string, fallback: string): string => {
+   const value = getRule(rule, key);
+   return typeof value == "string" ? value : fallback;
+};
+
+/**
+ * 读取规则布尔值
+ * @param rule 校验规则
+ * @param key 字段名
+ * @param fallback 默认值
+ * @returns boolean
+ */
+const getBoolean = (rule: UTSJSONObject, key: string, fallback: boolean): boolean => {
+   const value = getRule(rule, key);
+   return typeof value == "boolean" ? value : fallback;
+};
+
+/**
+ * 读取规则数值
+ * @param rule 校验规则
+ * @param key 字段名
+ * @returns number | null
+ */
+const getNumber = (rule: UTSJSONObject, key: string): number | null => {
+   const value = getRule(rule, key);
+   return typeof value == "number" ? value : null;
+};
+
+/**
+ * 判断动态值是否为空
+ * @param value 字段值
+ * @returns boolean
+ */
+const isEmpty = (value: FieldValue): boolean => {
+   if (value == null) return true;
+   if (typeof value == "string") return value.length == 0;
+   if (value instanceof Array) return value.length == 0;
+   return false;
+};
+
+/**
+ * 将基础类型转换为可校验字符串
+ * @param value 字段值
+ * @returns string | null
+ */
+const getText = (value: FieldValue): string | null => {
+   if (value == null) return null;
+   if (typeof value == "string") return value;
+   if (typeof value == "number") return value.toString();
+   if (typeof value == "boolean") return value.toString();
+   return null;
+};
+
+/**
+ * 获取数值或长度
+ * @param value 字段值
+ * @param type 规则类型
+ * @returns number | null
+ */
+const getComparable = (value: FieldValue, type: string): number | null => {
+   if (value == null) return null;
+   if (type == "number" || type == "integer" || type == "float") {
+      const text = getText(value);
+      if (text == null) return null;
+      const numberValue = Number(text);
+      return Number.isNaN(numberValue) ? null : numberValue;
+   }
+   if (typeof value == "number") return value;
+   if (typeof value == "string") return value.length;
+   if (value instanceof Array) return value.length;
+   return null;
+};
+
+/**
+ * 判断规则是否匹配当前触发方式
+ * @param rule 校验规则
+ * @param trigger 当前触发方式
+ * @returns boolean
+ */
+const matchTrigger = (
+   rule: UTSJSONObject,
+   trigger: Trigger | null,
+): boolean => {
+   if (trigger == null) return true;
+   const value = getRule(rule, "trigger");
+   if (value == null) return true;
+   if (typeof value == "string") return value == trigger;
+   if (value instanceof Array) {
+      for (let i = 0; i < value.length; i++) {
+         if (typeof value[i] == "string" && value[i] == trigger) return true;
+      }
+   }
+   return false;
+};
+
+/**
+ * 校验字段类型
+ * @param value 字段值
+ * @param type 规则类型
+ * @returns boolean
+ */
+const isTypeValid = (value: FieldValue, type: string): boolean => {
+   if (type.length == 0) return true;
+   if (type == "string") return typeof value == "string";
+   if (type == "boolean") return typeof value == "boolean";
+   if (type == "array") return value instanceof Array;
+   if (type == "object") return value != null && typeof value == "object" && !(value instanceof Array);
+   if (type == "date") return value instanceof Date;
+   if (type == "regexp") {
+      if (value instanceof RegExp) return true;
+      if (typeof value != "string") return false;
+      try {
+         new RegExp(value);
+         return true;
+      } catch (_error) {
+         return false;
+      }
+   }
+   if (type == "method") return typeof value == "function";
+   const text = getText(value);
+   if (text == null) return false;
+   if (type == "number") return !Number.isNaN(Number(text));
+   if (type == "integer") return /^[-+]?\d+$/.test(text);
+   if (type == "float") return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(text);
+   if (type == "email") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+   if (type == "url") return /^(https?|ftp):\/\/[^\s]+$/i.test(text);
+   if (type == "hex") return /^#?([a-f0-9]{3}|[a-f0-9]{6})$/i.test(text);
+   return false;
+};
+
+/**
+ * 校验枚举范围
+ * @param value 字段值
+ * @param values 允许值列表
+ * @returns boolean
+ */
+const isEnumValid = (value: FieldValue, values: any[]): boolean => {
+   for (let i = 0; i < values.length; i++) {
+      const candidate = values[i];
+      if (typeof candidate == typeof value && candidate == value) return true;
+   }
+   return false;
+};
+
+/**
+ * 执行单条规则
+ * @param field 字段路径
+ * @param value 字段值
+ * @param rule 校验规则
+ * @param trigger 当前触发方式
+ * @returns FieldError | null
+ */
+const validateRule = (
+   field: string,
+   value: FieldValue,
+   rule: UTSJSONObject,
+   trigger: Trigger | null,
+): FieldError | null => {
+   if (!matchTrigger(rule, trigger)) return null;
+   const message = getString(rule, "message", t("校验失败"));
+   const isRequired = getBoolean(rule, "required", false);
+   const isEmptyValue = isEmpty(value);
+   if (isRequired && isEmptyValue) return { field: field, message: message };
+   // whitespace 规则独立于 required：空字符串与纯空白字符串均校验失败
+   const text = getText(value);
+   if (getBoolean(rule, "whitespace", false) && text != null && /^\s*$/.test(text)) {
+      return { field: field, message: message };
+   }
+   if (isEmptyValue) return null;
+
+   const type = getString(rule, "type", "");
+   if (!isTypeValid(value, type)) return { field: field, message: message };
+
+   const comparable = getComparable(value, type);
+   const len = getNumber(rule, "len");
+   const min = getNumber(rule, "min");
+   const max = getNumber(rule, "max");
+   if (comparable != null) {
+      if (len != null && comparable != len) return { field: field, message: message };
+      if (min != null && comparable < min) return { field: field, message: message };
+      if (max != null && comparable > max) return { field: field, message: message };
+   }
+
+   const pattern = getRule(rule, "pattern");
+   if (pattern != null && text != null) {
+      if (pattern instanceof RegExp && !pattern.test(text)) {
+         return { field: field, message: message };
+      }
+      if (typeof pattern == "string") {
+         try {
+            if (!(new RegExp(pattern)).test(text)) {
+               return { field: field, message: message };
+            }
+         } catch (_error) {
+            return { field: field, message: message };
+         }
+      }
+   }
+
+   const enumValue = getRule(rule, "enum");
+   if (enumValue instanceof Array) {
+      if (!isEnumValid(value, enumValue)) return { field: field, message: message };
+   }
+
+   const validatorValue = getRule(rule, "validator");
+   if (validatorValue != null && typeof validatorValue == "function") {
+      const validator = validatorValue as Validator;
+      try {
+         const result = validator(rule, value);
+         if (typeof result == "boolean" && !result) {
+            return { field: field, message: message };
+         }
+         if (typeof result == "string" && result.length > 0) {
+            return { field: field, message: result };
+         }
+      } catch (_error) {
+         return { field: field, message: message };
+      }
+   }
+   return null;
+};
+
+/**
+ * 校验一个字段
+ * @param field 字段路径
+ * @param value 字段值
+ * @param rules 字段规则
+ * @param trigger 当前触发方式
+ * @returns FieldError[]
+ */
+export const validateValue = (
+   field: string,
+   value: FieldValue,
+   rules: UTSJSONObject[],
+   trigger: Trigger | null,
+): FieldError[] => {
+   const errors: FieldError[] = [];
+   for (let i = 0; i < rules.length; i++) {
+      const error = validateRule(field, value, rules[i], trigger);
+      if (error != null) errors.push(error);
+   }
+   return errors;
+};

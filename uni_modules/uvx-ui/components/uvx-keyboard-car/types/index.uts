@@ -1,0 +1,15 @@
+export type Key = string | number;
+export type Rows = Key[][];
+
+export type Props = {
+   random: boolean;
+   autoChange: boolean;
+   disKeys: Key[];
+   uSwitchKey: boolean;
+};
+
+export type Emits = {
+   change: [value: Key];
+   backspace: [];
+   changeCarInputMode: [isAlphabet: boolean];
+};

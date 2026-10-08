@@ -1,0 +1,211 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo">
+         <!-- 基本案例 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基本案例"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="苹果、香蕉和橙子哪个最甜？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group v-model="value1" placement="column" @change="onGroupChange">
+               <uvx-radio
+                  v-for="(item, index) in list1"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+                  @change="onRadioChange"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+         <!-- 自定义形状 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义形状"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="王者荣耀谁最帅？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group v-model="value2" placement="column" shape="circle">
+               <uvx-radio
+                  v-for="(item, index) in list2"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+         <!-- 禁用状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="是否禁用"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="苹果、香蕉和菠萝哪个最甜？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group v-model="value3" placement="column">
+               <uvx-radio
+                  v-for="(item, index) in list3"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+                  :disabled="index == 0"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+         <!-- 禁止标签点击 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="禁止点击提示语"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="狙击枪用哪个倍镜最好？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group v-model="value4" placement="column" label-disabled>
+               <uvx-radio
+                  v-for="(item, index) in list4"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+         <!-- 卡片与自定义颜色 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义颜色"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="你比较喜欢下面哪个颜色？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group v-model="value5" placement="column" shape="card">
+               <uvx-radio
+                  v-for="(item, index) in list5"
+                  :key="index"
+                  :active-color="item.color"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+         <!-- 横向排列 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="横向排列形式"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="王者荣耀哪个英雄最美？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group v-model="value6">
+               <uvx-radio
+                  v-for="(item, index) in list6"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+         <!-- 图标右置及下边框 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="横向两端排列形式"></uvx-text>
+            </view>
+            <uvx-text type="tips" text="你觉得阿木木可爱吗？" margin="0 0 8px 0"></uvx-text>
+            <uvx-radio-group
+               v-model="value7"
+               placement="column"
+               icon-placement="right"
+               border-bottom
+            >
+               <uvx-radio
+                  v-for="(item, index) in list7"
+                  :key="index"
+                  :label="item.name"
+                  :name="item.name"
+               ></uvx-radio>
+            </uvx-radio-group>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type { Value } from "@/uni_modules/uvx-ui/components/uvx-radio/types/index.uts";
+
+type Item = {
+   name: string;
+};
+
+type ColorItem = {
+   name: string;
+   color: string;
+};
+
+// 基本案例
+const value1 = ref<Value>("苹果");
+const list1: Item[] = [
+   { name: "苹果" },
+   { name: "香蕉" },
+   { name: "橙子" },
+   { name: "榴莲" },
+];
+// 圆形案例
+const value2 = ref<Value>("李白");
+const list2: Item[] = [
+   { name: "李白" },
+   { name: "韩信" },
+   { name: "马可波罗" },
+   { name: "百里守约" },
+];
+// 禁用案例
+const value3 = ref<Value>("苹果");
+const list3: Item[] = [
+   { name: "苹果" },
+   { name: "香蕉" },
+   { name: "菠萝" },
+];
+// 标签禁点案例
+const value4 = ref<Value>("6倍镜");
+const list4: Item[] = [
+   { name: "3倍镜" },
+   { name: "4倍镜" },
+   { name: "6倍镜" },
+   { name: "8倍镜" },
+];
+// 卡片颜色案例
+const value5 = ref<Value>("绿色");
+const list5: ColorItem[] = [
+   { name: "红色", color: "#f56c6c" },
+   { name: "黄色", color: "#f9ae3d" },
+   { name: "绿色", color: "#5ac725" },
+   { name: "蓝色", color: "#3c9cff" },
+];
+// 横向排列案例
+const value6 = ref<Value>("妲己");
+const list6: Item[] = [
+   { name: "妲己" },
+   { name: "虞姬" },
+   { name: "不知火舞" },
+   { name: "李元芳" },
+   { name: "典韦" },
+   { name: "黄忠" },
+];
+// 图标右置案例
+const value7 = ref<Value>("可爱");
+const list7: Item[] = [
+   { name: "可爱" },
+   { name: "一般" },
+   { name: "不可爱" },
+];
+
+/**
+ * 输出单选框组选中值
+ * @param value 选中值
+ * @returns null
+ */
+const onGroupChange = (value: Value): void => {
+   console.log("单选框组选中值：", value);
+};
+
+/**
+ * 输出单个单选框选中值
+ * @param value 选中值
+ * @returns null
+ */
+const onRadioChange = (value: Value): void => {
+   console.log("单选框选中值：", value);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+</style>

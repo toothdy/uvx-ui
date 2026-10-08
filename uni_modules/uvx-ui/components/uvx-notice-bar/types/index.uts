@@ -1,0 +1,32 @@
+export type Direction = "row" | "column";
+export type Mode = "" | "link" | "closable";
+export type LinkType = "navigateTo" | "redirectTo" | "reLaunch" | "switchTab";
+export type NoticeText = string | string[] | UTSJSONObject[];
+
+/** 滚动通知属性 */
+export type Props = {
+   text: NoticeText;
+   keyName: string;
+   direction: Direction;
+   step: boolean;
+   icon: string | boolean;
+   mode: Mode;
+   color: string;
+   bgColor: string;
+   speed: string | number;
+   fontSize: string | number;
+   duration: string | number;
+   url: string;
+   linkType: LinkType;
+   disableTouch: boolean;
+   disableScroll: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 滚动通知事件 */
+export type Emits = {
+   click: [index: number | null];
+   close: [];
+   change: [index: number];
+};

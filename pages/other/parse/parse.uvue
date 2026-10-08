@@ -1,0 +1,97 @@
+<template>
+   <uvx-page>
+      <!-- App 端滚动容器 -->
+      <!-- #ifdef APP -->
+      <scroll-view class="parse-page-scroll">
+      <!-- #endif -->
+         <view class="uvx-page-demo">
+            <!-- 富文本示例 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="富文本内容"></uvx-text>
+               </view>
+               <view class="uvx-demo-block__content">
+                  <uvx-parse
+                     :content="content"
+                     :tag-style="tagStyle"
+                     :selectable="true"
+                     :use-anchor="true"
+                     @load="handleLoad"
+                     @ready="handleReady"
+                     @imgtap="handleImageTap"
+                     @linktap="handleLinkTap"
+                  />
+               </view>
+            </view>
+
+            <!-- 状态回调 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="事件状态"></uvx-text>
+               </view>
+               <view class="uvx-demo-block__content">
+                  <uvx-text :text="statusText" type="content"></uvx-text>
+               </view>
+            </view>
+         </view>
+      <!-- #ifdef APP -->
+      </scroll-view>
+      <!-- #endif -->
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+// 演示富文本内容
+const content = "<title>富文本解析器</title><h2 id=\"top\">uvx-parse</h2><p>这是基于 uni-app x 原生 rich-text 的富文本组件。</p><p style=\"color:#3c9cff;\"><strong>支持 HTML 文本、图片、链接和文本选择。</strong></p><p><a href=\"#top\">返回顶部</a>　<a href=\"https://www.uvxui.cn\">访问官网</a></p><p><img src=\"/static/logo.jpeg\" /></p>";
+// 标签默认样式
+const tagStyle: UTSJSONObject = {
+   p: "margin: 8px 0;",
+   img: "max-width: 100%;",
+};
+// 事件状态
+const statusText = ref("等待内容加载");
+
+/**
+ * 处理内容加载事件
+ * @returns null
+ */
+const handleLoad = (): void => {
+   statusText.value = "内容结构已加载";
+};
+
+/**
+ * 处理内容渲染完成事件
+ * @param rect 根节点尺寸
+ * @returns null
+ */
+const handleReady = (rect: DOMRect | null): void => {
+   statusText.value = rect == null ? "内容渲染完成" : "内容渲染完成，宽度 " + rect.width.toString() + "px";
+};
+
+/**
+ * 处理图片点击事件
+ * @param detail 图片点击详情
+ * @returns null
+ */
+const handleImageTap = (detail: UniRichTextItemClickEventDetail): void => {
+   if (detail.src != null) statusText.value = "点击图片：" + detail.src;
+};
+
+/**
+ * 处理链接点击事件
+ * @param detail 链接点击详情
+ * @returns null
+ */
+const handleLinkTap = (detail: UniRichTextItemClickEventDetail): void => {
+   if (detail.href != null) statusText.value = "点击链接：" + detail.href;
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// App 页面滚动容器
+.parse-page-scroll {
+   flex: 1;
+}
+</style>

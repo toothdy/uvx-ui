@@ -1,0 +1,168 @@
+<template>
+   <view
+      class="uvx-line-progress"
+      :class="props.uClass"
+      :style="rootStyle"
+   >
+      <!-- 激活轨道 -->
+      <view
+         class="uvx-line-progress__line"
+         :style="lineStyle"
+      >
+         <slot>
+            <text
+               v-if="isTextVisible"
+               class="uvx-line-progress__text"
+            >{{ percentageText }}</text>
+         </slot>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-line-progress 线型进度条
+ * @description 展示任务或操作的当前进度，支持自定义颜色、高度和轨道内容。
+ * @tutorial https://www.uvxui.cn/components/progress.html
+ * @property {String} activeColor 激活轨道颜色，空值时跟随主题
+ * @property {String} inactiveColor 背景轨道颜色，空值时跟随主题
+ * @property {String | Number} percentage 当前进度，范围为 0 至 100
+ * @property {Boolean} showText 是否显示默认百分比文字
+ * @property {String | Number} height 进度条高度，单位 px
+ * @property {String} uStyle 根节点自定义样式
+ * @property {String} uClass 根节点自定义类名
+ * @slot default 自定义激活轨道内容
+ * @example <uvx-line-progress :percentage="50"></uvx-line-progress>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props, ProgressValue } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-line-progress",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   activeColor: "",
+   inactiveColor: "",
+   percentage: 0,
+   showText: true,
+   height: 12,
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 转换数值属性
+ * @param value 待转换值
+ * @param fallback 无效值回退结果
+ * @returns number
+ */
+const toNumber = (value: ProgressValue, fallback: number): number => {
+   const numberValue = Number(value);
+   return isNaN(numberValue) ? fallback : numberValue;
+};
+
+/**
+ * 规范化后的进度
+ * @returns number
+ */
+const percentageValue = computed((): number => {
+   return Math.max(0, Math.min(100, toNumber(props.percentage, 0)));
+});
+
+/**
+ * 规范化后的高度
+ * @returns number
+ */
+const heightValue = computed((): number => {
+   const value = toNumber(props.height, 12);
+   return value > 0 ? value : 12;
+});
+
+/**
+ * 是否显示默认百分比文字
+ * @returns boolean
+ */
+const isTextVisible = computed((): boolean => {
+   return props.showText && percentageValue.value >= 10;
+});
+
+/**
+ * 百分比文字
+ * @returns string
+ */
+const percentageText = computed((): string => {
+   return `${percentageValue.value}%`;
+});
+
+/**
+ * 根节点样式
+ * @returns UTSJSONObject
+ */
+const rootStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      height: `${heightValue.value}px`,
+   };
+   if (!$uvx.string.empty(props.inactiveColor)) {
+      style.set("backgroundColor", props.inactiveColor);
+   }
+   if ($uvx.string.empty(props.uStyle)) return style;
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 激活轨道样式
+ * @returns UTSJSONObject
+ */
+const lineStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      width: `${percentageValue.value}%`,
+   };
+   if (!$uvx.string.empty(props.activeColor)) {
+      style.set("backgroundColor", props.activeColor);
+   }
+   return style;
+});
+</script>
+
+<style lang="scss">
+// 进度条背景轨道
+.uvx-line-progress {
+   position: relative;
+   display: flex;
+   flex-direction: row;
+   align-items: stretch;
+   width: 100%;
+   overflow: hidden;
+   border-radius: 100px;
+   background-color: var(--uvx-border);
+}
+
+// 进度条激活轨道
+.uvx-line-progress__line {
+   position: absolute;
+   top: 0;
+   bottom: 0;
+   left: 0;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: flex-end;
+   overflow: hidden;
+   border-radius: 100px;
+   background-color: var(--uvx-primary);
+   transition: width 0.5s ease;
+}
+
+// 默认百分比文字
+.uvx-line-progress__text {
+   margin-right: 5px;
+   color: #ffffff;
+   font-size: 10px;
+   line-height: 1.2em;
+   text-align: right;
+}
+</style>

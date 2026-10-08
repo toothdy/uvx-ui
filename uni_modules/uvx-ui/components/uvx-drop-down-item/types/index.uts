@@ -1,0 +1,20 @@
+import type {
+   ItemClickEvent,
+   Value,
+} from "../../uvx-drop-down/types/index.uts";
+
+/** 下拉筛选菜单项属性 */
+export type Props = {
+   name: string | number;
+   type: string | number;
+   label: string;
+   value: Value;
+   isDrop: boolean;
+   uStyle: string;
+   uClass: string;
+};
+
+/** 下拉筛选菜单项事件 */
+export type Emits = {
+   click: [event: ItemClickEvent];
+};

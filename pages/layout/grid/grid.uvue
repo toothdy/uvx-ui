@@ -1,0 +1,208 @@
+<template>
+   <uvx-page ref="uPage">
+      <!-- #ifdef APP -->
+      <scroll-view class="grid-page-scroll">
+      <!-- #endif -->
+         <view class="uvx-page-demo grid-page">
+            <!-- 基础案例 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="基本案例"></uvx-text>
+               </view>
+               <uvx-grid align="center" :border="false" @click="handleClick">
+                  <uvx-grid-item
+                     v-for="(item, index) in BASIC_ITEMS"
+                     :key="index"
+                  >
+                     <uvx-icon :name="item.icon" :size="22" u-style="padding-top: 20px;"></uvx-icon>
+                     <text class="grid-page__text">{{ item.title }}</text>
+                  </uvx-grid-item>
+               </uvx-grid>
+            </view>
+
+            <!-- 显示边框 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="显示边框"></uvx-text>
+               </view>
+               <uvx-grid border>
+                  <uvx-grid-item
+                     v-for="(item, index) in GRID_ITEMS"
+                     :key="index"
+                     custom-style="padding-top: 10px; padding-bottom: 10px;"
+                  >
+                     <uvx-icon :name="item.icon" :size="22" u-style="padding-top: 20px;"></uvx-icon>
+                     <text class="grid-page__text">{{ item.title }}</text>
+                  </uvx-grid-item>
+               </uvx-grid>
+            </view>
+
+            <!-- 自定义列数 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="绑定点击事件和自定义列数"></uvx-text>
+               </view>
+               <uvx-grid :border="false" :col="4" @click="handleClick">
+                  <uvx-grid-item
+                     v-for="(item, index) in GRID_ITEMS"
+                     :key="index"
+                     custom-style="padding-top: 10px; padding-bottom: 10px;"
+                  >
+                     <uvx-icon :name="item.icon" :size="22" u-style="padding-top: 20px;"></uvx-icon>
+                     <text class="grid-page__text">{{ item.title }}</text>
+                  </uvx-grid-item>
+               </uvx-grid>
+            </view>
+
+            <!-- 可滑动宫格 -->
+            <view class="uvx-demo-block">
+               <view class="uvx-demo-block__title">
+                  <uvx-text type="main" text="可滑动"></uvx-text>
+               </view>
+               <swiper
+                  class="grid-page__swiper"
+                  :indicator-dots="true"
+                  :indicator-color="swiperIndicatorColor"
+                  :indicator-active-color="swiperIndicatorActiveColor"
+                  :indicator-style="swiperIndicatorStyle"
+                  :indicator-active-style="swiperIndicatorActiveStyle"
+               >
+                  <swiper-item v-for="pageIndex in 3" :key="pageIndex">
+                     <uvx-grid border>
+                        <uvx-grid-item
+                           v-for="(iconName, index) in SWIPER_ICONS"
+                           :key="index"
+                        >
+                           <uvx-icon :name="iconName" :size="22" u-style="padding-top: 20px;"></uvx-icon>
+                           <text class="grid-page__text">宫格{{ index + 1 }}</text>
+                        </uvx-grid-item>
+                     </uvx-grid>
+                  </swiper-item>
+               </swiper>
+            </view>
+         </view>
+      <!-- #ifdef APP -->
+      </scroll-view>
+      <!-- #endif -->
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import { isDark } from "@/uni_modules/uvx-ui/core/theme";
+import type { Options } from "@/uni_modules/uvx-ui/components/uvx-toast/types/index.uts";
+import type { ClickValue } from "@/uni_modules/uvx-ui/components/uvx-grid/types/index.uts";
+
+type GridDemoItem = {
+   icon: string;
+   title: string;
+};
+
+// 页面容器实例
+const uPage = ref<UvxPageComponentPublicInstance | null>(null);
+
+// 基础宫格数据
+const BASIC_ITEMS: GridDemoItem[] = [
+   { icon: "photo", title: "图片" },
+   { icon: "lock", title: "锁头" },
+];
+
+// 完整宫格数据
+const GRID_ITEMS: GridDemoItem[] = [
+   { icon: "photo", title: "图片" },
+   { icon: "lock", title: "锁头" },
+   { icon: "star", title: "星星" },
+   { icon: "map", title: "地图" },
+   { icon: "home", title: "首页" },
+   { icon: "volume", title: "音量" },
+];
+
+// 滑动宫格图标
+const SWIPER_ICONS: string[] = [
+   "integral",
+   "kefu-ermai",
+   "coupon",
+   "gift",
+   "scan",
+   "pause-circle",
+   "volume-off",
+   "email",
+   "list",
+];
+
+/**
+ * 轮播未激活指示点颜色
+ * @returns string
+ */
+const swiperIndicatorColor = computed((): string => {
+   return isDark.value ? "rgba(216, 216, 216, 0.45)" : "rgba(96, 98, 102, 0.35)";
+});
+
+/**
+ * 轮播激活指示点颜色
+ * @returns string
+ */
+const swiperIndicatorActiveColor = computed((): string => {
+   return isDark.value ? "#398ade" : "#3c9cff";
+});
+
+/**
+ * Vapor 轮播未激活指示点样式
+ * @returns string
+ */
+const swiperIndicatorStyle = computed((): string => {
+   return `background-color: ${swiperIndicatorColor.value};`;
+});
+
+/**
+ * Vapor 轮播激活指示点样式
+ * @returns string
+ */
+const swiperIndicatorActiveStyle = computed((): string => {
+   return `background-color: ${swiperIndicatorActiveColor.value};`;
+});
+
+/**
+ * 显示宫格点击结果
+ * @param value 宫格点击参数
+ * @returns null
+ */
+const handleClick = (value: ClickValue): void => {
+   let message = "已点击宫格";
+   if (typeof value == "string" || typeof value == "number") {
+      message = `点击了第${value}个`;
+   }
+   const options: Options = {
+      type: "success",
+      message,
+   };
+   uPage.value?.toast(options);
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// App 页面滚动容器
+.grid-page-scroll {
+   flex: 1;
+}
+
+// 宫格演示页
+.grid-page {
+   padding-bottom: 20px;
+}
+
+// 宫格文字
+.grid-page__text {
+   box-sizing: border-box;
+   padding-top: 10px;
+   padding-bottom: 20px;
+   color: var(--uvx-text-content);
+   font-size: 14px;
+}
+
+// 滑动宫格容器
+.grid-page__swiper {
+   height: 750rpx;
+}
+</style>

@@ -1,0 +1,48 @@
+export type Mode = "top" | "center" | "bottom" | "left" | "right";
+export type CloseIconPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+export type Props = {
+   mode: Mode;
+   duration: number;
+   zIndex: string | number;
+   bgColor: string;
+   safeArea: boolean;
+   overlay: boolean;
+   closeOnClickOverlay: boolean;
+   overlayOpacity: string | number;
+   overlayStyle: string;
+   safeAreaInsetBottom: boolean;
+   safeAreaInsetTop: boolean;
+   closeable: boolean;
+   closeIconPos: CloseIconPosition;
+   zoom: boolean;
+   round: string | number;
+   uStyle: string;
+   uClass: string;
+};
+
+export type ChangeEvent = {
+   show: boolean;
+   type: Mode;
+};
+
+export type Emits = {
+   change: [event: ChangeEvent];
+   maskClick: [];
+};
+
+export type KeypressProps = {
+   disable: boolean;
+};
+
+export type KeypressEmits = {
+   esc: [];
+   tab: [];
+   enter: [];
+   space: [];
+   up: [];
+   left: [];
+   right: [];
+   down: [];
+   delete: [];
+};

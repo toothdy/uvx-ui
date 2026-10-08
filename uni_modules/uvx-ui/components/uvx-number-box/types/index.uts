@@ -1,0 +1,57 @@
+export type Value = string | number;
+export type Name = string | number;
+export type Operation = "plus" | "minus";
+
+export type ChangeDetail = {
+   value: Value;
+   name: Name;
+};
+
+export type FocusDetail = {
+   value: string;
+   height: number;
+   name: Name;
+};
+
+export type BlurDetail = {
+   value: string;
+   cursor: number;
+   name: Name;
+};
+
+export type Props = {
+   modelValue: Value;
+   name: Name;
+   min: Value;
+   max: Value;
+   step: Value;
+   integer: boolean;
+   disabled: boolean;
+   disabledInput: boolean;
+   asyncChange: boolean;
+   inputWidth: Value;
+   showMinus: boolean;
+   showPlus: boolean;
+   decimalLength?: Value;
+   longPress: boolean;
+   color: string;
+   buttonSize: Value;
+   bgColor: string;
+   cursorSpacing: Value;
+   disablePlus: boolean;
+   disableMinus: boolean;
+   iconStyle: string;
+   uStyle: string;
+   uClass: string;
+};
+
+export type Emits = {
+   "update:modelValue": [value: Value];
+   input: [value: Value];
+   change: [detail: ChangeDetail];
+   focus: [detail: FocusDetail];
+   blur: [detail: BlurDetail];
+   overlimit: [operation: Operation];
+   plus: [];
+   minus: [];
+};

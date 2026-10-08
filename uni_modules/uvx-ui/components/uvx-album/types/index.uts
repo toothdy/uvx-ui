@@ -1,0 +1,27 @@
+import type { Mode } from "../../uvx-image/types/index.uts";
+
+export type Item = string | UTSJSONObject;
+
+export type DisplayItem = {
+   src: string;
+   originalIndex: number;
+};
+
+export type Props = {
+   urls: Item[];
+   keyName: string;
+   singleSize: string | number;
+   multipleSize: string | number;
+   space: string | number;
+   radius: string | number;
+   singleMode: Mode;
+   multipleMode: Mode;
+   maxCount: string | number;
+   previewFullImage: boolean;
+   rowCount: string | number;
+   showMore: boolean;
+};
+
+export type Emits = {
+   albumWidth: [width: number];
+};

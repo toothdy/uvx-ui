@@ -1,0 +1,189 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo avatar-demo">
+         <!-- 基础演示 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础演示"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <uvx-avatar :src="src1"></uvx-avatar>
+            </view>
+         </view>
+
+         <!-- 头像形状 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="头像形状"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <view class="avatar-demo__item">
+                  <uvx-avatar :src="src2" shape="circle" @click="handleAvatarClick"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar :src="src3" shape="square"></uvx-avatar>
+               </view>
+            </view>
+         </view>
+
+         <!-- 头像尺寸 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="头像尺寸"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <view class="avatar-demo__item">
+                  <uvx-avatar :src="src4" :size="30"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar :src="src5" :size="40"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar :src="src6" :size="50"></uvx-avatar>
+               </view>
+            </view>
+         </view>
+
+         <!-- 图标头像 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="图标头像"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <view class="avatar-demo__item">
+                  <uvx-avatar icon="level" :font-size="22"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar icon="star-fill" :font-size="22"></uvx-avatar>
+               </view>
+            </view>
+         </view>
+
+         <!-- 文字头像 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="文字头像(自动背景色)"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <view class="avatar-demo__item">
+                  <uvx-avatar text="U" :font-size="20" :random-bg-color="true" :color-index="0"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar text="邓" :font-size="18" :random-bg-color="true"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar text="张" :font-size="18" :random-bg-color="true"></uvx-avatar>
+               </view>
+               <view class="avatar-demo__item">
+                  <uvx-avatar text="王" :font-size="18" :random-bg-color="true"></uvx-avatar>
+               </view>
+            </view>
+         </view>
+
+         <!-- 图片加载失败 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="图片加载失败(显示默认占位)"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <uvx-avatar :src="src7"></uvx-avatar>
+            </view>
+         </view>
+
+         <!-- #ifdef MP-WEIXIN || MP-QQ || MP-BAIDU -->
+         <!-- 小程序开放头像 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="小程序开放能力"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <uvx-avatar mp-avatar :size="60"></uvx-avatar>
+            </view>
+         </view>
+         <!-- #endif -->
+
+         <!-- 头像组 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="头像组"></uvx-text>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content">
+               <uvx-avatar-group :urls="urls" :size="35" gap="0.4" @show-more="handleShowMore"></uvx-avatar-group>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content avatar-demo__content--spaced">
+               <uvx-avatar-group :urls="urls" :size="35" gap="0.6"></uvx-avatar-group>
+            </view>
+            <view class="uvx-demo-block__content avatar-demo__content avatar-demo__content--spaced">
+               <uvx-avatar-group :urls="objectUrls" key-name="avatar" :size="35" :max-count="3"></uvx-avatar-group>
+            </view>
+         </view>
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+const src1: string = "https://cdn.uviewui.com/uview/album/1.jpg";
+const src2: string = "https://cdn.uviewui.com/uview/album/2.jpg";
+const src3: string = "https://cdn.uviewui.com/uview/album/3.jpg";
+const src4: string = "https://cdn.uviewui.com/uview/album/4.jpg";
+const src5: string = "https://cdn.uviewui.com/uview/album/5.jpg";
+const src6: string = "https://cdn.uviewui.com/uview/album/6.jpg";
+const src7: string = "https://cdn.uviewui.com/uview/album/noExist.jpg";
+
+// 字符串地址头像组
+const urls: string[] = [
+   "https://cdn.uviewui.com/uview/album/1.jpg",
+   "https://cdn.uviewui.com/uview/album/2.jpg",
+   "https://cdn.uviewui.com/uview/album/3.jpg",
+   "https://cdn.uviewui.com/uview/album/4.jpg",
+   "https://cdn.uviewui.com/uview/album/7.jpg",
+   "https://cdn.uviewui.com/uview/album/6.jpg",
+   "https://cdn.uviewui.com/uview/album/5.jpg",
+];
+
+// 对象地址头像组
+const objectUrls: UTSJSONObject[] = [
+   { "avatar": "https://cdn.uviewui.com/uview/album/1.jpg" },
+   { "avatar": "https://cdn.uviewui.com/uview/album/2.jpg" },
+   { "avatar": "https://cdn.uviewui.com/uview/album/3.jpg" },
+   { "avatar": "https://cdn.uviewui.com/uview/album/4.jpg" },
+];
+
+/**
+ * 处理头像点击
+ * @param name 头像标识
+ * @returns null
+ */
+const handleAvatarClick = (name: string): void => {
+   console.log("avatar click", name);
+};
+
+/**
+ * 处理头像组更多点击
+ * @returns null
+ */
+const handleShowMore = (): void => {
+   console.log("avatar group show more");
+};
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 头像演示内容
+.avatar-demo__content {
+   flex-direction: row;
+   flex-wrap: wrap;
+   align-items: center;
+}
+
+// 头像演示项
+.avatar-demo__item {
+   margin-right: 30px;
+}
+
+// 头像组间距
+.avatar-demo__content--spaced {
+   margin-top: 20px;
+}
+</style>

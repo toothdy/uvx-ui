@@ -1,0 +1,24 @@
+{
+    "version" : "1.0",
+    "configurations" : [
+        {
+            "playground" : "standard",
+            "type" : "uni-app:app-ios"
+        },
+        {
+            "customPlaygroundType" : "device",
+            "packageName" : "uni.app.UNI8654F0B",
+            "playground" : "standard",
+            "type" : "uni-app:app-android"
+        },
+        {
+            "customPlaygroundType" : "device",
+            "iOSProjectStandardBaseHistory" : {
+                "current" : "Pandora_simulator_debug_vapor_5.31.2026093020-alpha.app",
+                "previous" : "Pandora_simulator_debug_vapor_5.26.2026091402-alpha.app"
+            },
+            "playground" : "standard",
+            "type" : "uni-app:app-ios_simulator"
+        }
+    ]
+}

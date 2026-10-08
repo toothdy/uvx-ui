@@ -1,0 +1,46 @@
+/**
+ * 字符串工具
+ */
+class StringUtils {
+	/**
+	 * 去除空格
+	 * @param str 需要处理的字符串
+	 * @param pos 去除位置：'both'(两端) | 'left' | 'right' | 'all'(所有空白)，默认 'both'
+	 * @example trim('  Hello  ') // => 'Hello'
+	 */
+	trim(str: string, pos: 'both' | 'left' | 'right' | 'all' = 'both'): string {
+		switch (pos) {
+			case 'both':
+				return str.replace(/^\s+|\s+$/g, '');
+			case 'left':
+				return str.replace(/^\s*/, '');
+			case 'right':
+				return str.replace(/(\s*$)/g, '');
+			case 'all':
+				return str.replace(/\s+/g, '');
+			default:
+				return str;
+		}
+	}
+
+	/**
+	 * 判断字符串是否为空(严格判断,不做 trim)
+	 * @param value 待判断字符串
+	 * @returns 为 null 或长度为 0 时返回 true
+	 */
+	empty(value: string | null): boolean {
+		return value == null || value.length == 0;
+	}
+
+	/**
+	 * 判断联合类型值是否未设置（空串），number 与 boolean 视为已设置
+	 * @param value 待判断的属性值，用于 props 默认值为空串的场景
+	 * @returns 为空串时返回 true，number/boolean 恒为 false
+	 * @example unset(props.labelSize) // label-size 未传（""）时 => true
+	 */
+	unset(value: string | number | boolean): boolean {
+		return typeof value == 'string' && value.length == 0;
+	}
+}
+
+export default new StringUtils();

@@ -1,0 +1,150 @@
+<template>
+   <!-- 分割线主体 -->
+   <view
+      class="uvx-divider"
+      :class="[uClass]"
+      :style="$uvx.style.parse(uStyle)"
+      @tap="clickHandler"
+   >
+      <!-- 左侧线条 -->
+      <uvx-line
+         :color="lineColor"
+         :u-style="leftLineStyle"
+         :hairline="hairline"
+         :dashed="dashed"
+      ></uvx-line>
+
+      <!-- 中间内容 -->
+      <text v-if="dot" class="uvx-divider__dot">●</text>
+      <text
+         v-else-if="hasText"
+         class="uvx-divider__text"
+         :style="textStyle"
+      >{{ text }}</text>
+
+      <!-- 右侧线条 -->
+      <uvx-line
+         :color="lineColor"
+         :u-style="rightLineStyle"
+         :hairline="hairline"
+         :dashed="dashed"
+      ></uvx-line>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-divider 分割线
+ * @description 区隔内容的分割线，支持文本、点、虚线和细线样式。
+ * @tutorial https://www.uvxui.cn/components/divider.html
+ * @property {Boolean} dashed 是否虚线（默认 false）
+ * @property {Boolean} hairline 是否细线（默认 true）
+ * @property {Boolean} dot 是否以点替代文字（默认 false）
+ * @property {String} textPosition 内容文本的位置：left/center/right（默认 center）
+ * @property {String | Number} text 文本内容
+ * @property {String | Number} textSize 文本大小（默认 14）
+ * @property {String} textColor 文本颜色，为空时使用主题色
+ * @property {String} lineColor 线条颜色，为空时使用主题色
+ * @property {String} uStyle 外层自定义样式
+ * @property {String} uClass 外层自定义类名
+ *
+ * @event {Function} click divider 被点击时触发
+ * @example <uvx-divider text="分割线"></uvx-divider>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Emits, Props } from "./types/index.uts";
+
+defineOptions({ name: "uvx-divider", options: { virtualHost: true }, externalClasses: ["u-class"] });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+   dashed: false,
+   hairline: true,
+   dot: false,
+   textPosition: "center",
+   text: "",
+   textSize: 14,
+   textColor: "",
+   lineColor: "",
+   uStyle: "",
+   uClass: "",
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/**
+ * 是否显示文本
+ * @returns boolean
+ */
+const hasText = computed((): boolean => {
+   return !$uvx.string.empty(props.text.toString());
+});
+
+/**
+ * 文本样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "font-size": $uvx.format.unit(props.textSize),
+   };
+   if (!$uvx.string.empty(props.textColor)) {
+      style.set("color", props.textColor);
+   }
+   return style;
+});
+
+/**
+ * 左侧线条样式
+ * @returns string
+ */
+const leftLineStyle = computed((): string => {
+   return props.textPosition == "left" ? "width:80px;" : "flex:1;";
+});
+
+/**
+ * 右侧线条样式
+ * @returns string
+ */
+const rightLineStyle = computed((): string => {
+   return props.textPosition == "right" ? "width:80px;" : "flex:1;";
+});
+
+/**
+ * 点击事件
+ * @returns null
+ */
+const clickHandler = () => {
+   emit("click");
+};
+</script>
+
+<style lang="scss" scoped>
+// 分割线主体布局
+.uvx-divider {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   width: 100%;
+   margin: 15px 0;
+}
+
+// 分割线文本
+.uvx-divider__text {
+   margin: 0 15px;
+   color: var(--uvx-text-tips);
+}
+
+// 分割线点标记
+.uvx-divider__dot {
+   margin: 0 12px;
+   font-size: 12px;
+   color: var(--uvx-text-placeholder);
+}
+</style>

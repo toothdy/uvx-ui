@@ -1,0 +1,286 @@
+<template>
+   <uvx-page>
+      <view class="uvx-page-demo swiper-demo">
+         <!-- 基础功能 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="基础功能"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="BASIC_LIST"
+               @change="handleChange"
+               @click="handleClick"
+            ></uvx-swiper>
+         </view>
+
+         <!-- 带标题 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="带标题"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="TITLE_LIST"
+               key-name="image"
+               show-title
+               title-style="color: #ff5a5f; text-align: center;"
+               :autoplay="false"
+               circular
+            ></uvx-swiper>
+         </view>
+
+         <!-- 带指示器 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="带指示器"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="INDICATOR_LIST"
+               indicator
+               indicator-mode="line"
+               circular
+            ></uvx-swiper>
+         </view>
+
+         <!-- 加载状态 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="加载中"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="INDICATOR_LIST"
+               :loading="isLoading"
+            ></uvx-swiper>
+         </view>
+
+         <!-- 嵌入视频 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="嵌入视频"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="VIDEO_LIST"
+               key-name="url"
+               :autoplay="false"
+            ></uvx-swiper>
+         </view>
+
+         <!-- 自定义指示器 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="自定义指示器"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="CUSTOM_LIST"
+               :autoplay="false"
+               @change="handleDotChange"
+            >
+               <template #indicator>
+                  <view class="swiper-demo__dots">
+                     <view
+                        v-for="(_, index) in CUSTOM_LIST"
+                        :key="index"
+                        class="swiper-demo__dot"
+                        :class="index == dotCurrent ? 'swiper-demo__dot--active' : ''"
+                     ></view>
+                  </view>
+               </template>
+            </uvx-swiper>
+
+            <view class="swiper-demo__spacing"></view>
+
+            <uvx-swiper
+               :list="NUMBER_LIST"
+               :autoplay="false"
+               indicator-style="right: 12px; left: auto;"
+               @change="handleNumberChange"
+            >
+               <template #indicator>
+                  <view class="swiper-demo__number">
+                     <text class="swiper-demo__number-text">{{ numberCurrent + 1 }}/{{ NUMBER_LIST.length }}</text>
+                  </view>
+               </template>
+            </uvx-swiper>
+         </view>
+
+         <!-- #ifndef APP-ANDROID -->
+         <!-- 卡片式轮播 -->
+         <view class="uvx-demo-block">
+            <view class="uvx-demo-block__title">
+               <uvx-text type="main" text="卡片式"></uvx-text>
+            </view>
+            <uvx-swiper
+               :list="INDICATOR_LIST"
+               previous-margin="30"
+               next-margin="30"
+               circular
+               :autoplay="false"
+               radius="5"
+               bg-color="var(--uvx-container)"
+            ></uvx-swiper>
+         </view>
+         <!-- #endif -->
+      </view>
+   </uvx-page>
+</template>
+
+<script lang="uts" setup>
+import type {
+   ChangeEvent,
+   Item,
+} from "@/uni_modules/uvx-ui/components/uvx-swiper/types/index.uts";
+
+// 自定义点型指示器索引
+const dotCurrent = ref(0);
+// 自定义数字指示器索引
+const numberCurrent = ref(0);
+// 加载示例状态
+const isLoading = ref(true);
+// 加载示例定时器
+let loadingTimer = 0;
+
+// 基础图片列表
+const BASIC_LIST: Item[] = [
+   "https://picsum.photos/750/400?random=4",
+   "https://picsum.photos/750/400?random=5",
+   "https://picsum.photos/750/400?random=6",
+];
+
+// 带标题图片列表
+const TITLE_LIST: Item[] = [
+   { image: "https://picsum.photos/750/400?random=7", title: "昨夜星辰昨夜风，画楼西畔桂堂东", type: "image" },
+   { image: "https://picsum.photos/750/400?random=8", title: "身无彩凤双飞翼，心有灵犀一点通" },
+   { image: "https://picsum.photos/750/400?random=9", title: "谁念西风独自凉，萧萧黄叶闭疏窗" },
+];
+
+// 内置指示器图片列表
+const INDICATOR_LIST: Item[] = [
+   "https://picsum.photos/750/400?random=10",
+   "https://picsum.photos/750/400?random=11",
+   "https://picsum.photos/750/400?random=12",
+];
+
+// 视频混合列表
+const VIDEO_LIST: Item[] = [
+   {
+      url: "https://cdn.uviewui.com/uview/resources/video.mp4",
+      title: "昨夜星辰昨夜风，画楼西畔桂堂东",
+      poster: "https://picsum.photos/750/400?random=13",
+      type: "video",
+   },
+   { url: "https://picsum.photos/750/400?random=14", title: "身无彩凤双飞翼，心有灵犀一点通" },
+   { url: "https://picsum.photos/750/400?random=15", title: "谁念西风独自凉，萧萧黄叶闭疏窗" },
+];
+
+// 自定义点型指示器图片列表
+const CUSTOM_LIST: Item[] = [
+   "https://picsum.photos/750/400?random=16",
+   "https://picsum.photos/750/400?random=17",
+   "https://picsum.photos/750/400?random=18",
+];
+
+// 自定义数字指示器图片列表
+const NUMBER_LIST: Item[] = [
+   "https://picsum.photos/750/400?random=19",
+   "https://picsum.photos/750/400?random=20",
+   "https://picsum.photos/750/400?random=21",
+];
+
+/**
+ * 输出基础轮播切换信息
+ * @param event 切换事件
+ * @returns null
+ */
+const handleChange = (event: ChangeEvent): void => {
+   console.log("swiper change", event.current);
+};
+
+/**
+ * 输出基础轮播点击信息
+ * @param item 点击项
+ * @param index 点击索引
+ * @returns null
+ */
+const handleClick = (_item: Item, index: number): void => {
+   console.log("swiper click", index);
+};
+
+/**
+ * 更新点型指示器
+ * @param event 切换事件
+ * @returns null
+ */
+const handleDotChange = (event: ChangeEvent): void => {
+   dotCurrent.value = event.current;
+};
+
+/**
+ * 更新数字指示器
+ * @param event 切换事件
+ * @returns null
+ */
+const handleNumberChange = (event: ChangeEvent): void => {
+   numberCurrent.value = event.current;
+};
+
+onMounted((): void => {
+   loadingTimer = setTimeout((): void => {
+      isLoading.value = false;
+      loadingTimer = 0;
+   }, 3000);
+});
+
+onUnmounted((): void => {
+   if (loadingTimer != 0) clearTimeout(loadingTimer);
+});
+</script>
+
+<style lang="scss">
+@import "@/common/demo.scss";
+
+// 轮播图演示页
+.swiper-demo {
+   // 自定义点型指示器
+   &__dots {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+   }
+
+   // 自定义指示点
+   &__dot {
+      width: 6px;
+      height: 6px;
+      margin: 0 5px;
+      background-color: rgba(255, 255, 255, 0.35);
+      border-radius: 100px;
+
+      &--active {
+         background-color: #ffffff;
+      }
+   }
+
+   // 两个轮播之间的间距
+   &__spacing {
+      height: 15px;
+   }
+
+   // 数字指示器
+   &__number {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      padding: 3px 0;
+      background-color: rgba(0, 0, 0, 0.35);
+      border-radius: 100px;
+   }
+
+   // 数字指示器文字
+   &__number-text {
+      color: #ffffff;
+      font-size: 12px;
+   }
+}
+</style>

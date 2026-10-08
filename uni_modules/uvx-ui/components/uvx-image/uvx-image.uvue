@@ -1,0 +1,305 @@
+<template>
+   <uvx-transition
+      :show="true"
+      mode="fade"
+      :duration="fade ? duration : 0"
+      :u-style="$uvx.style.stringify(wrapStyle)"
+   >
+      <view class="uvx-image" :style="contentStyle" @click="handleClick">
+         <!-- 图片内容 -->
+         <image
+            v-if="shouldRenderImage"
+            class="uvx-image__image"
+            :src="src"
+            :mode="imageMode"
+            :lazy-load="lazyLoad"
+            :style="imageStyle"
+            @load="handleLoad"
+            @error="handleError"
+            <!-- #ifdef MP-WEIXIN -->
+            :webp="webp"
+            :show-menu-by-longpress="showMenuByLongpress"
+            <!-- #endif -->
+         />
+
+         <!-- 加载占位 -->
+         <view v-if="showLoading && isLoading" class="uvx-image__loading" :style="placeholderStyle">
+            <slot name="loading">
+               <uvx-icon :name="loadingIcon" size="16" />
+            </slot>
+         </view>
+
+         <!-- 错误占位 -->
+         <view v-if="showError && isError && !isLoading" class="uvx-image__error" :style="placeholderStyle">
+            <slot name="error">
+               <uvx-icon :name="errorIcon" size="16" />
+            </slot>
+         </view>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-image 图片
+ * @description 原生 image 的加载、错误、圆角和淡入增强组件。
+ * @tutorial https://www.uvxui.cn/components/image.html
+ * @property {String} src 图片地址（默认空字符串）
+ * @property {String} mode 原生图片裁剪模式，位置模式使用 "top left" 等带空格值（默认 aspectFill）
+ * @property {String | Number} width 图片宽度，数值默认单位 px；heightFix 时由图片比例决定（默认 300）
+ * @property {String | Number} height 图片高度，数值默认单位 px；widthFix 时由图片比例决定（默认 225）
+ * @property {String} shape 图片形状：square 方形、circle 圆形（默认 square）
+ * @property {String | Number} radius 圆角，数值默认单位 px，circle 时使用圆形圆角（默认 0）
+ * @property {Boolean} lazyLoad 原生图片懒加载，支持范围随平台变化，Android 默认开启且不可关闭（默认 true）
+ * @property {Boolean} observeLazyLoad 观察器懒加载，仅微信小程序生效；Web、App 直接进入原生加载流程（默认 false）
+ * @property {Boolean} showMenuByLongpress 长按图片显示识别小程序码菜单，仅微信小程序有效（默认 true）
+ * @property {String} loadingIcon 加载占位图标名称或图片地址（默认 photo）
+ * @property {String} errorIcon 失败占位图标名称或图片地址（默认 error-circle）
+ * @property {Boolean} showLoading 是否显示加载图标或 loading 插槽（默认 true）
+ * @property {Boolean} showError 是否显示错误图标或 error 插槽（默认 true）
+ * @property {Boolean} fade 是否启用组件入场淡入效果（默认 true）
+ * @property {Number} duration 入场淡入时长，单位 ms，fade 为 false 时不生效（默认 500）
+ * @property {String} bgColor 加载与错误占位背景色，默认跟随主题容器色
+ * @property {Boolean} webp 微信小程序网络图片是否启用 WebP，Web、App 使用原生格式支持（默认 false）
+ * @property {String} uStyle 外层动画容器自定义样式（默认空字符串）
+ *
+ * @event {Function} click 点击图片区域时触发，无参数
+ * @event {Function} load 图片加载成功时触发，参数为 UniImageLoadEvent，detail 包含原图 width、height
+ * @event {Function} error 图片加载失败时触发，参数为 UniImageErrorEvent，detail.errMsg 为错误信息
+ * @slot loading 自定义加载占位内容，由 showLoading 控制
+ * @slot error 自定义失败占位内容，由 showError 控制
+ * @example <uvx-image src="/static/logo.jpeg" width="80px" height="80px" radius="4"></uvx-image>
+ */
+import { $uvx } from "../../index.uts";
+import type { Mode, Props, Emits } from "./types/index.uts";
+
+defineOptions({ name: "uvx-image", options: { virtualHost: true } });
+
+// 组件属性及默认值
+const props = withDefaults(defineProps<Props>(), {
+   src: "",
+   mode: "aspectFill",
+   width: 300,
+   height: 225,
+   shape: "square",
+   radius: 0,
+   lazyLoad: true,
+   observeLazyLoad: false,
+   showMenuByLongpress: true,
+   loadingIcon: "photo",
+   errorIcon: "error-circle",
+   showLoading: true,
+   showError: true,
+   fade: true,
+   duration: 500,
+   bgColor: "",
+   webp: false,
+   uStyle: "",
+});
+
+// 对外事件
+const emit = defineEmits<Emits>();
+
+// 图片是否加载中
+const isLoading = ref(true);
+// 图片是否加载失败
+const isError = ref(false);
+// 是否允许渲染图片，用于观察器懒加载
+const isVisible = ref(!props.observeLazyLoad);
+// 微信小程序懒加载观察器
+const observerRef = ref<IntersectionObserver | null>(null);
+// 观察器查询节点的组件作用域
+const instance = getCurrentInstance();
+
+/**
+ * 判断是否渲染原生图片
+ * @returns boolean
+ */
+const shouldRenderImage = computed((): boolean => {
+   return !$uvx.string.empty(props.src) && isVisible.value && !isError.value;
+});
+
+/**
+ * 获取原生图片裁剪模式
+ * @returns Mode
+ */
+const imageMode = computed((): Mode => {
+   return props.mode;
+});
+
+/**
+ * 合并外层尺寸、圆角与自定义样式
+ * @returns UTSJSONObject
+ */
+const wrapStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (props.mode != "heightFix") style.set("width", $uvx.format.unit(props.width));
+   if (props.mode != "widthFix") style.set("height", $uvx.format.unit(props.height));
+   style.set("position", "relative");
+   style.set("border-radius", props.shape == "circle" ? "10000px" : $uvx.format.unit(props.radius));
+   style.set("overflow", props.shape == "circle" || props.radius != 0 ? "hidden" : "visible");
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 衔接动画容器与图片的尺寸，自动尺寸模式保留加载占位
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("width", props.mode == "heightFix" ? "auto" : "100%");
+   style.set("height", props.mode == "widthFix" ? "auto" : "100%");
+   // 占位层为绝对定位，必须由父容器预留空间。
+   if (isLoading.value || isError.value || $uvx.string.empty(props.src)) {
+      if (props.mode == "widthFix") {
+         style.set("min-height", $uvx.format.unit(props.height));
+      }
+      if (props.mode == "heightFix") {
+         style.set("min-width", $uvx.format.unit(props.width));
+      }
+   }
+   return style;
+});
+
+/**
+ * 图片尺寸与圆角，自适应模式由原生图片计算对应边长
+ * @returns UTSJSONObject
+ */
+const imageStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("width", props.mode == "heightFix" ? "auto" : "100%");
+   style.set("height", props.mode == "widthFix" ? "auto" : "100%");
+   style.set("border-radius", props.shape == "circle" ? "10000px" : $uvx.format.unit(props.radius));
+   return style;
+});
+
+/**
+ * 加载与错误占位的尺寸、圆角和背景
+ * @returns UTSJSONObject
+ */
+const placeholderStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   style.set("width", $uvx.format.unit(props.width));
+   style.set("height", $uvx.format.unit(props.height));
+   style.set("border-radius", props.shape == "circle" ? "10000px" : $uvx.format.unit(props.radius));
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   return style;
+});
+
+/**
+ * 图片加载成功
+ * @param event 图片加载事件
+ * @returns null
+ */
+const handleLoad = (event: UniImageLoadEvent): void => {
+   isLoading.value = false;
+   isError.value = false;
+   emit("load", event);
+};
+
+/**
+ * 图片加载失败
+ * @param event 图片错误事件
+ * @returns null
+ */
+const handleError = (event: UniImageErrorEvent): void => {
+   isLoading.value = false;
+   isError.value = true;
+   emit("error", event);
+};
+
+/**
+ * 图片点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   emit("click");
+};
+
+/**
+ * 断开懒加载观察器
+ * @returns null
+ */
+const disconnectObserver = (): void => {
+   if (observerRef.value != null) {
+      observerRef.value.disconnect();
+      observerRef.value = null;
+   }
+};
+
+/**
+ * 建立懒加载观察器
+ * @returns null
+ */
+const observeImage = (): void => {
+   // #ifdef WEB
+   isVisible.value = true;
+   // #endif
+   // #ifdef MP-WEIXIN
+   if (instance == null || instance.proxy == null) return;
+   const observer = uni.createIntersectionObserver(instance.proxy, {});
+   observer.relativeToViewport({ bottom: 50 }).observe(".uvx-image", (result: ObserveResult): void => {
+      if (result.intersectionRatio > 0) {
+         isVisible.value = true;
+         disconnectObserver();
+      }
+   });
+   observerRef.value = observer;
+   // #endif
+   // #ifdef APP
+   isVisible.value = true;
+   // #endif
+};
+
+/**
+ * 图片地址变化时重置加载与错误状态
+ * @returns null
+ */
+watch((): string => props.src, (): void => {
+   isLoading.value = !$uvx.string.empty(props.src);
+   isError.value = false;
+   if (!props.observeLazyLoad) isVisible.value = true;
+});
+
+/**
+ * 挂载后等待节点更新，再建立懒加载观察器
+ * @returns null
+ */
+onMounted((): void => {
+   nextTick((): void => {
+      if (props.observeLazyLoad) observeImage();
+   });
+});
+
+/**
+ * 卸载时释放观察器
+ * @returns null
+ */
+onUnmounted((): void => {
+   disconnectObserver();
+});
+</script>
+
+<style lang="scss">
+// 图片内容与占位层的定位容器
+.uvx-image {
+   position: relative;
+
+   // 图片默认宽度，具体尺寸由内联样式调整
+   &__image {
+      width: 100%;
+   }
+
+   // 加载与错误占位居中显示
+   &__loading,
+   &__error {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--uvx-container);
+   }
+}
+</style>

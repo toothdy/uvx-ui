@@ -1,0 +1,455 @@
+<template>
+   <view ref="albumRoot" class="uvx-album">
+      <view
+         v-for="(row, rowIndex) in displayRows"
+         :key="rowIndex"
+         class="uvx-album__row"
+      >
+         <view
+            v-for="(item, itemIndex) in row"
+            :key="itemIndex"
+            class="uvx-album__item"
+            :style="getItemStyle(rowIndex, itemIndex, row.length)"
+            @click="handlePreview(item.originalIndex)"
+         >
+            <image
+               class="uvx-album__image"
+               :src="item.src"
+               :mode="imageMode"
+               :style="imageStyle"
+            ></image>
+
+            <!-- 超量图片提示 -->
+            <view
+               v-if="isMoreItem(item.originalIndex)"
+               class="uvx-album__more"
+               :style="moreStyle"
+            >
+               <text class="uvx-album__more-text" :style="moreTextStyle">+{{ hiddenCount }}</text>
+            </view>
+         </view>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-album 相册
+ * @description 展示单图或多图相册，支持对象地址、超量提示和完整图片预览。
+ * @tutorial https://www.uvxui.cn/components/album.html
+ * @property {Array} urls 图片地址列表
+ * @property {String} keyName 对象图片的地址字段
+ * @property {String | Number} singleSize 单图长边尺寸
+ * @property {String | Number} multipleSize 多图边长
+ * @property {String | Number} space 图片间距
+ * @property {String | Number} radius 图片圆角
+ * @property {String} singleMode 单图裁剪模式
+ * @property {String} multipleMode 多图裁剪模式
+ * @property {String | Number} maxCount 最大展示数量
+ * @property {Boolean} previewFullImage 是否允许预览完整图片
+ * @property {String | Number} rowCount 每行图片数量
+ * @property {Boolean} showMore 是否显示剩余图片数量
+ * @event {Function} albumWidth 相册宽度变化时触发
+ * @example <uvx-album :urls="images"></uvx-album>
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Mode } from "../uvx-image/types/index.uts";
+import type {
+   DisplayItem,
+   Emits,
+   Item,
+   Props,
+} from "./types/index.uts";
+
+defineOptions({ name: "uvx-album", options: { virtualHost: true } });
+
+const props = withDefaults(defineProps<Props>(), {
+   urls: (): Item[] => [],
+   keyName: "",
+   singleSize: 180,
+   multipleSize: 70,
+   space: 6,
+   radius: 5,
+   singleMode: "scaleToFill",
+   multipleMode: "aspectFill",
+   maxCount: 9,
+   previewFullImage: true,
+   rowCount: 3,
+   showMore: true,
+});
+
+/** 相册宽度事件 */
+const emit = defineEmits<Emits>();
+
+// 相册根节点
+const albumRoot = ref<UniElement | null>(null);
+// 单图实际宽度
+const singleWidth = ref(0);
+// 单图实际高度
+const singleHeight = ref(0);
+// 单图尺寸请求序号
+let imageRequestId = 0;
+
+/**
+ * 将尺寸转换为 px 数值
+ * @param value 尺寸值
+ * @param fallback 无效值回退尺寸
+ * @returns number
+ */
+const getPxSize = (value: string | number, fallback: number): number => {
+   if (typeof value == "number") return value > 0 ? value : fallback;
+   const text = value.trim();
+   const size = parseFloat(text);
+   if (Number.isNaN(size) || size <= 0) return fallback;
+   if (text.endsWith("rpx")) {
+      return size * uni.getWindowInfo().windowWidth / 750;
+   }
+   return size;
+};
+
+/**
+ * 获取有效正整数
+ * @param value 数值
+ * @param fallback 无效值回退值
+ * @returns number
+ */
+const getPositiveInteger = (value: string | number, fallback: number): number => {
+   const numberValue = parseInt(value.toString());
+   if (Number.isNaN(numberValue) || numberValue <= 0) return fallback;
+   return numberValue;
+};
+
+/**
+ * 提取图片地址
+ * @param item 图片项
+ * @returns string
+ */
+const getSource = (item: Item): string => {
+   if (typeof item == "string") return item;
+   if (!$uvx.string.empty(props.keyName)) {
+      const keySource = item.getString(props.keyName);
+      if (keySource != null) return keySource;
+   }
+   const source = item.getString("src");
+   return source != null ? source : "";
+};
+
+/**
+ * 标准化全部图片项
+ * @returns DisplayItem[]
+ */
+const normalizedItems = computed((): DisplayItem[] => {
+   const items: DisplayItem[] = [];
+   for (let index = 0; index < props.urls.length; index++) {
+      items.push({
+         src: getSource(props.urls[index]),
+         originalIndex: index,
+      });
+   }
+   return items;
+});
+
+/**
+ * 当前有效每行数量
+ * @returns number
+ */
+const rowCount = computed((): number => {
+   return getPositiveInteger(props.rowCount, 3);
+});
+
+/**
+ * 当前最大展示数量
+ * @returns number
+ */
+const maxCount = computed((): number => {
+   return getPositiveInteger(props.maxCount, 9);
+});
+
+/**
+ * 可见图片列表
+ * @returns DisplayItem[]
+ */
+const visibleItems = computed((): DisplayItem[] => {
+   return normalizedItems.value.slice(0, maxCount.value);
+});
+
+/**
+ * 按行划分后的可见图片
+ * @returns DisplayItem[][]
+ */
+const displayRows = computed((): DisplayItem[][] => {
+   const rows: DisplayItem[][] = [];
+   const count = rowCount.value;
+   for (let index = 0; index < visibleItems.value.length; index++) {
+      const rowIndex = Math.floor(index / count);
+      if (rowIndex >= rows.length) rows.push([]);
+      rows[rowIndex].push(visibleItems.value[index]);
+   }
+   return rows;
+});
+
+/**
+ * 多图尺寸
+ * @returns number
+ */
+const multipleSize = computed((): number => {
+   return getPxSize(props.multipleSize, 70);
+});
+
+/**
+ * 图片间距
+ * @returns number
+ */
+const space = computed((): number => {
+   return getPxSize(props.space, 6);
+});
+
+/**
+ * 当前图片宽度
+ * @returns number
+ */
+const imageWidth = computed((): number => {
+   return props.urls.length == 1 ? singleWidth.value : multipleSize.value;
+});
+
+/**
+ * 当前图片高度
+ * @returns number
+ */
+const imageHeight = computed((): number => {
+   return props.urls.length == 1 ? singleHeight.value : multipleSize.value;
+});
+
+/**
+ * 当前图片裁剪模式
+ * @returns Mode
+ */
+const imageMode = computed((): Mode => {
+   if (props.urls.length != 1) return props.multipleMode;
+   return singleHeight.value > 0 ? props.singleMode : "widthFix";
+});
+
+/**
+ * 当前图片尺寸与圆角样式
+ * @returns UTSJSONObject
+ */
+const imageStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "width": `${imageWidth.value}px`,
+      "border-radius": $uvx.format.unit(props.radius),
+   };
+   if (imageHeight.value > 0) style.set("height", `${imageHeight.value}px`);
+   return style;
+});
+
+/**
+ * 隐藏图片数量
+ * @returns number
+ */
+const hiddenCount = computed((): number => {
+   return Math.max(props.urls.length - visibleItems.value.length, 0);
+});
+
+/**
+ * 超量遮罩样式
+ * @returns UTSJSONObject
+ */
+const moreStyle = computed((): UTSJSONObject => {
+   return {
+      "border-radius": $uvx.format.unit(props.radius),
+   };
+});
+
+/**
+ * 超量文字样式
+ * @returns UTSJSONObject
+ */
+const moreTextStyle = computed((): UTSJSONObject => {
+   return {
+      "font-size": `${multipleSize.value * 0.3}px`,
+   };
+});
+
+/**
+ * 相册最终宽度
+ * @returns number
+ */
+const albumWidth = computed((): number => {
+   if (props.urls.length == 1) return singleWidth.value;
+   if (displayRows.value.length == 0) return 0;
+   const count = displayRows.value[0].length;
+   return count * multipleSize.value + Math.max(count - 1, 0) * space.value;
+});
+
+/**
+ * 获取图片项间距样式
+ * @param rowIndex 行索引
+ * @param itemIndex 行内索引
+ * @param rowLength 当前行数量
+ * @returns UTSJSONObject
+ */
+const getItemStyle = (rowIndex: number, itemIndex: number, rowLength: number): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (itemIndex < rowLength - 1) style.set("margin-right", `${space.value}px`);
+   if (rowIndex < displayRows.value.length - 1) style.set("margin-bottom", `${space.value}px`);
+   return style;
+};
+
+/**
+ * 判断当前项是否显示超量提示
+ * @param originalIndex 原始数组索引
+ * @returns boolean
+ */
+const isMoreItem = (originalIndex: number): boolean => {
+   if (!props.showMore || hiddenCount.value <= 0 || visibleItems.value.length == 0) return false;
+   return visibleItems.value[visibleItems.value.length - 1].originalIndex == originalIndex;
+};
+
+/**
+ * 使用相册容器宽度回退单图尺寸
+ * @param requestId 当前请求序号
+ * @returns null
+ */
+const setSingleFallback = (requestId: number): void => {
+   nextTick((): void => {
+      if (requestId != imageRequestId) return;
+      const root = albumRoot.value;
+      const defaultSize = getPxSize(props.singleSize, 180);
+      if (root == null) {
+         singleWidth.value = defaultSize;
+         singleHeight.value = 0;
+         return;
+      }
+      const width = root.getBoundingClientRect().width;
+      singleWidth.value = width > 0 ? width * 0.6 : defaultSize;
+      singleHeight.value = 0;
+   });
+};
+
+/**
+ * 读取单图原始尺寸并计算展示比例
+ * @returns null
+ */
+const refreshSingleSize = (): void => {
+   const requestId = ++imageRequestId;
+   const size = getPxSize(props.singleSize, 180);
+   singleWidth.value = size;
+   singleHeight.value = 0;
+   if (props.urls.length != 1) return;
+
+   const source = getSource(props.urls[0]);
+   if ($uvx.string.empty(source)) return;
+   uni.getImageInfo({
+      src: source,
+      success: (result): void => {
+         if (requestId != imageRequestId || result.width <= 0 || result.height <= 0) return;
+         const isHorizontal = result.width >= result.height;
+         if (isHorizontal) {
+            singleWidth.value = size;
+            singleHeight.value = result.height / result.width * size;
+         } else {
+            singleWidth.value = result.width / result.height * size;
+            singleHeight.value = size;
+         }
+      },
+      fail: (): void => {
+         setSingleFallback(requestId);
+      },
+   });
+};
+
+/**
+ * 预览指定原始索引的图片
+ * @param originalIndex 原始数组索引
+ * @returns null
+ */
+const handlePreview = (originalIndex: number): void => {
+   if (!props.previewFullImage) return;
+   const urls: string[] = [];
+   let current = -1;
+   for (let index = 0; index < normalizedItems.value.length; index++) {
+      const item = normalizedItems.value[index];
+      if ($uvx.string.empty(item.src)) continue;
+      if (item.originalIndex == originalIndex) current = urls.length;
+      urls.push(item.src);
+   }
+   if (current < 0 || urls.length == 0) return;
+   uni.previewImage({
+      current,
+      urls,
+   });
+};
+
+/** 图片列表首项变化时重新计算单图尺寸 */
+watch((): string => normalizedItems.value.length > 0 ? normalizedItems.value[0].src : "", (): void => {
+   refreshSingleSize();
+}, { immediate: true });
+
+/** 图片数量变化时重新计算单图尺寸 */
+watch((): number => props.urls.length, (): void => {
+   refreshSingleSize();
+});
+
+/** 单图尺寸配置变化时重新计算 */
+watch((): string | number => props.singleSize, (): void => {
+   refreshSingleSize();
+});
+
+/** 相册宽度变化时通知使用方 */
+watch(albumWidth, (width: number): void => {
+   emit("albumWidth", width);
+}, { immediate: true });
+
+/** 挂载后重新读取单图尺寸，确保回退测量可取得节点宽度 */
+onMounted((): void => {
+   refreshSingleSize();
+});
+</script>
+
+<style lang="scss">
+// 相册根容器
+.uvx-album {
+   display: flex;
+   flex-direction: column;
+   align-items: flex-start;
+}
+
+// 相册图片行
+.uvx-album__row {
+   display: flex;
+   flex-direction: row;
+   align-items: flex-start;
+}
+
+// 相册图片项
+.uvx-album__item {
+   position: relative;
+   overflow: visible;
+}
+
+// 相册原生图片
+.uvx-album__image {
+   flex-shrink: 0;
+}
+
+// 超量图片遮罩
+.uvx-album__more {
+   position: absolute;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   background-color: rgba(0, 0, 0, 0.35);
+}
+
+// 超量图片文字
+.uvx-album__more-text {
+   color: #ffffff;
+   text-align: center;
+}
+</style>

@@ -1,0 +1,274 @@
+<template>
+	<view class="uvx-icon" @click="clickHandler" :class="[`uvx-icon--${labelPos}`]">
+		<image
+			class="uvx-icon__img"
+			v-if="isImg"
+			:src="name"
+			:mode="imgMode"
+			:style="imgStyle"
+		></image>
+		<text
+			v-else
+			class="uvx-icon__icon"
+			:class="[uClasses]"
+			:style="iconStyle"
+			:hover-class="hoverClass"
+		>{{ icon }}</text>
+		<text
+			v-if="!$uvx.string.empty(label)"
+			class="uvx-icon__label"
+			:class="[labelColorClass]"
+			:style="labelStyle"
+		>{{ label }}</text>
+	</view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-icon 图标
+ * @description 基于字体的图标集，包含了大多数常见场景的图标。
+ * @tutorial https://www.uvxui.cn/components/icon.html
+ * @property {String} name 图标名称，见示例图标集
+ * @property {String} color 图标颜色,可接受主题色。空表示使用主题默认（随暗色模式适配）
+ * @property {String | Number} size 图标字体大小，单位px （默认 '16px' ）
+ * @property {Boolean} bold 是否显示粗体 （默认 false ）
+ * @property {String} hoverClass 图标按下去的样式类，用法同uni的view组件的hoverClass参数，详情见官网
+ * @property {String} uPrefix 自定义扩展前缀，方便用户扩展自己的图标库 （默认 'uicon' ）
+ * @property {String} label 图标右侧的label文字
+ * @property {String} labelPos Label相对于图标的位置，可选值为right、bottom、top、left （默认 'right' ）
+ * @property {String | Number} labelSize Label字体大小，单位px （默认 '15px' ）
+ * @property {String} labelColor 图标右侧的label文字颜色，空表示使用主题默认（随暗色模式适配）
+ * @property {String | Number} space Label与图标的距离，单位px （默认 '3px' ）
+ * @property {String} imgMode 图片小图标时的Mode，可选值为scaleToFill、aspectFit、aspectFill、widthFix、heightFix （默认 'aspectFit' ）
+ * @property {String | Number} width 显示图片小图标时的宽度
+ * @property {String | Number} height 显示图片小图标时的高度
+ * @property {Number} top 图标在垂直方向上的定位 用于解决某些情况下，让图标垂直居中的用途  （默认 0 ）
+ * @property {Boolean} stop 是否阻止事件传播 （默认 false ）
+ * @property {String} uStyle 自定义的样式，样式字符串
+ * @property {String} uClass 自定义的类名
+ * 
+ * @event {Function} click 点击图标时触发
+ * @event {Function} touchstart 事件触摸时触发
+ * @example <uvx-icon name="photo" color="#2979ff" size="28"></uvx-icon>
+ */
+
+import icons from './icons.uts';
+import { $uvx } from '../../index.uts';
+import type { Props, Emits } from './types/index.uts';
+
+defineOptions({ name: 'uvx-icon', options: { virtualHost: true }, externalClasses: ['u-class'] });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	name: '',
+	color: '',
+	size: '16px',
+	bold: false,
+	hoverClass: '',
+	uPrefix: 'uicon',
+	label: '',
+	labelPos: 'right',
+	labelSize: '15px',
+	labelColor: '',
+	space: '3px',
+  	imgMode: 'aspectFit',
+  	width: 'auto',
+  	height: 'auto',
+  	top: 0,
+  	stop: false,
+	 uStyle: "",
+  	uClass: ''
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/**
+ * 颜色
+ */
+const colors = ['primary', 'success', 'warning', 'error', 'info', 'main', 'disabled'];
+
+/**
+ * 类名
+ * @returns Array<string>
+ */
+const uClasses = computed(() => {
+	let classes:Array<string> = [];
+	classes.push(props.uPrefix);
+	classes.push(`${props.uPrefix}-${props.name}`);
+	if (!$uvx.string.empty(props.uPrefix) && props.uPrefix != 'uicon' && props.uPrefix != 'uvx-icon') {
+		classes.push('uvx-icon__icon--custom');
+	}
+	if (colors.includes(props.color)) {
+		classes.push(`uvx-icon__icon--${props.color}`);
+	} else if ($uvx.string.empty(props.color)) {
+		classes.push('uvx-icon__icon--default');
+	}
+	return classes;
+});
+
+/**
+ * 是否为图片
+ * @returns boolean
+ */
+const isImg = computed(() => {
+	const isBase64 = props.name.includes('data:') && props.name.indexOf('base64') > -1;
+	return props.name.indexOf('/') > -1 || isBase64;
+});
+
+/**
+ * 图片样式
+ * @returns UTSJSONObject
+ */
+const imgStyle = computed(() => {
+	const style: UTSJSONObject = {};
+	style.set('width', props.width != 'auto' ? $uvx.format.unit(props.width) : $uvx.format.unit(props.size));
+	style.set('height', props.height != 'auto' ? $uvx.format.unit(props.height) : $uvx.format.unit(props.size));
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 图标样式
+ * @returns UTSJSONObject
+ */
+const iconStyle = computed(() => {
+	const style: UTSJSONObject = {};
+	style.set('font-size', $uvx.format.unit(props.size));
+	style.set('line-height', $uvx.format.unit(props.size));
+	style.set('font-weight', props.bold ? 'bold' : 'normal');
+	style.set('top', $uvx.format.unit(props.top));
+	// 非主题色且有传入值时，使用传入的 color
+	if (!colors.includes(props.color) && !$uvx.string.empty(props.color)) {
+		style.set('color', props.color);
+	}
+	return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 标签颜色类名
+ * @returns string
+ */
+const labelColorClass = computed(() => {
+	return $uvx.string.empty(props.labelColor) ? 'uvx-icon__label--default' : '';
+});
+
+/**
+ * 标签样式
+ * @returns UTSJSONObject
+ */
+const labelStyle = computed(() => {
+	const style: UTSJSONObject = {};
+	// 有传入 labelColor 时用 style，空则用 class 适配暗色
+	if (!$uvx.string.empty(props.labelColor)) {
+		style.set('color', props.labelColor);
+	}
+	style.set('font-size', $uvx.format.unit(props.labelSize));
+	style.set('margin-left', props.labelPos == 'right' ? $uvx.format.unit(props.space) : 0);
+	style.set('margin-top', props.labelPos == 'bottom' ? $uvx.format.unit(props.space) : 0);
+	style.set('margin-right', props.labelPos == 'left' ? $uvx.format.unit(props.space) : 0);
+	style.set('margin-bottom', props.labelPos == 'top' ? $uvx.format.unit(props.space) : 0);
+	return style;
+});
+
+/**
+ * 图标
+ * @returns string
+ */
+const icon = computed(() => {
+	const code = icons[`uvx-icon-${props.name}`];
+	if (code != null && typeof code == 'string') {
+		return String.fromCharCode(parseInt(code, 16));
+	}
+	if (!$uvx.string.empty(props.uPrefix) && props.uPrefix != 'uicon' && props.uPrefix != 'uvx-icon' && /^[0-9a-fA-F]{4}$/.test(props.name)) {
+		return String.fromCharCode(parseInt(props.name, 16));
+	}
+	return ['uvx-icon'].indexOf(props.uPrefix) > -1 ? props.name : '';
+});
+
+/**
+ * 点击事件
+ * @param e 点击事件
+ * @returns null
+ */
+const clickHandler = (e: Event) => {
+	emit('click', props);
+	if (props.stop) {
+		e.stopPropagation();
+	}
+}
+</script>
+
+<style lang="scss">
+$uvx-icon-label-line-height: 1 !default;
+
+@font-face {
+	font-family: 'uvx-icon-iconfont';
+	src: url('./uvx-icons.ttf') format('truetype');
+}
+
+/* 自定义图标字体:用户将 iconfont.ttf 改名 custom-icon.ttf 放入项目 static 目录即可使用 */
+@font-face {
+	font-family: 'uvx-icon-custom';
+	src: url('/static/custom-icon.ttf');
+}
+
+.uvx-icon {
+	display: flex;
+	align-items: center;
+
+	&--left {
+		flex-direction: row-reverse;
+		align-items: center;
+	}
+
+	&--right {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	&--top {
+		flex-direction: column-reverse;
+		justify-content: center;
+	}
+
+	&--bottom {
+		flex-direction: column;
+		justify-content: center;
+	}
+
+	&__icon {
+		font-family: 'uvx-icon-iconfont';
+		position: relative;
+
+		&--default { color: var(--uvx-text-tips); }
+		&--primary { color: var(--uvx-primary); }
+		&--success { color: var(--uvx-success); }
+		&--warning { color: var(--uvx-warning); }
+		&--error   { color: var(--uvx-error); }
+		&--info    { color: var(--uvx-info); }
+		&--main    { color: var(--uvx-text-main); }
+		&--disabled { color: var(--uvx-disabled); }
+	}
+
+	&__img {
+		height: auto;
+	}
+
+	&__label {
+		line-height: $uvx-icon-label-line-height;
+	}
+}
+
+.uvx-icon__label--default {
+	color: var(--uvx-text-tips);
+}
+
+/* 自定义字体 */
+.uvx-icon__icon--custom {
+	font-family: 'uvx-icon-custom';
+}
+</style>

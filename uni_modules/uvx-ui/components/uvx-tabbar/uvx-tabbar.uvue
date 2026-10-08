@@ -1,0 +1,241 @@
+<template>
+   <view class="uvx-tabbar" :class="[uClass]">
+      <!-- 底部导航栏主体 -->
+      <view
+         class="uvx-tabbar__content"
+         :class="[contentClasses]"
+         :style="contentStyle"
+         <!-- #ifdef APP-HARMONY -->
+         @touchmove.stop="handleTouchMove"
+         <!-- #else -->
+         @touchmove.stop.prevent="handleTouchMove"
+         <!-- #endif -->
+      >
+         <view class="uvx-tabbar__items">
+            <slot></slot>
+         </view>
+         <uvx-safe-bottom v-if="safeAreaInsetBottom"></uvx-safe-bottom>
+      </view>
+
+      <!-- 固定定位时的页面占位 -->
+      <view v-if="placeholder && fixed" class="uvx-tabbar__placeholder">
+         <view class="uvx-tabbar__items-spacer"></view>
+         <uvx-safe-bottom v-if="safeAreaInsetBottom"></uvx-safe-bottom>
+      </view>
+   </view>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-tabbar 底部导航栏
+ * @description 管理多个导航项的选中状态，支持固定定位、徽标和安全区。
+ * @tutorial https://www.uvxui.cn/components/tabbar.html
+ * @property {String | Number} value 当前选中项的 name，未设置 name 时使用索引
+ * @property {Boolean} safeAreaInsetBottom 是否为底部安全区留出空间
+ * @property {Boolean} border 是否显示顶部边框
+ * @property {String | Number} zIndex 固定定位时的层级，默认使用全局层级配置
+ * @property {String} activeColor 选中项颜色，空值时使用主题主色
+ * @property {String} inactiveColor 未选中项颜色，空值时使用主题提示色
+ * @property {Boolean} fixed 是否固定在窗口底部
+ * @property {Boolean} placeholder 固定定位时是否生成占位元素
+ * @property {String | Number} iconSize 图标尺寸
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} change 点击未选中项时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import { config } from "../../core/config.uts";
+import type { ComponentPublicInstance } from "vue";
+import type {
+   Config,
+   Context,
+   Emits,
+   Props,
+   Value,
+} from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-tabbar",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   value: "",
+   safeAreaInsetBottom: true,
+   border: true,
+   zIndex: config.zIndex,
+   activeColor: "",
+   inactiveColor: "",
+   fixed: true,
+   placeholder: true,
+   iconSize: 20,
+   uStyle: "",
+   uClass: "",
+});
+
+/** 导航栏事件 */
+const emit = defineEmits<Emits>();
+
+// 已注册的导航项实例
+const children = ref<ComponentPublicInstance[]>([]);
+
+/**
+ * 子项共享配置
+ * @returns Config
+ */
+const tabbarConfig = computed((): Config => {
+   return {
+      value: props.value,
+      activeColor: props.activeColor,
+      inactiveColor: props.inactiveColor,
+      iconSize: props.iconSize,
+   };
+});
+
+/**
+ * 导航栏内容状态类
+ * @returns string[]
+ */
+const contentClasses = computed((): string[] => {
+   const classes: string[] = [];
+   classes.push(
+      props.border ? "uvx-tabbar__content--border" : "uvx-tabbar__content--shadow",
+   );
+   if (props.fixed) classes.push("uvx-tabbar__content--fixed");
+   return classes;
+});
+
+/**
+ * 导航栏内容样式
+ * @returns UTSJSONObject
+ */
+const contentStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {
+      "z-index": props.zIndex.toString(),
+   };
+   return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+});
+
+/**
+ * 同步全部子项索引
+ * @returns null
+ */
+const syncChildren = (): void => {
+   for (let index = 0; index < children.value.length; index++) {
+      children.value[index].$callMethod("syncFromTabbar", index);
+   }
+};
+
+/**
+ * 注册导航项
+ * @param child 子组件实例
+ * @returns null
+ */
+const register = (child: ComponentPublicInstance): void => {
+   if (children.value.indexOf(child) == -1) children.value.push(child);
+   syncChildren();
+};
+
+/**
+ * 注销导航项
+ * @param child 子组件实例
+ * @returns null
+ */
+const unregister = (child: ComponentPublicInstance): void => {
+   const index = children.value.indexOf(child);
+   if (index == -1) return;
+   children.value.splice(index, 1);
+   syncChildren();
+};
+
+/**
+ * 选中导航项并通知使用方
+ * @param value 导航项名称或索引
+ * @returns null
+ */
+const select = (value: Value): void => {
+   const currentValue = tabbarConfig.value.value;
+   if (typeof currentValue == typeof value && currentValue == value) return;
+   emit("change", value);
+};
+
+/**
+ * 阻止触摸移动穿透
+ * @returns null
+ */
+const handleTouchMove = (): void => {};
+
+/** 向子项提供配置和注册方法 */
+provide<Context>("uvx-tabbar-context", {
+   config: tabbarConfig,
+   register,
+   unregister,
+   select,
+});
+
+defineExpose({ register, unregister, select });
+</script>
+
+<style lang="scss">
+// 导航栏根节点
+.uvx-tabbar {
+   width: 100%;
+   overflow: visible;
+}
+
+// 导航栏内容
+.uvx-tabbar__content {
+   display: flex;
+   flex-direction: column;
+   box-sizing: border-box;
+   width: 100%;
+   background-color: var(--uvx-container);
+   padding-bottom: 20rpx;
+   overflow: visible;
+}
+
+// 导航项横向容器
+.uvx-tabbar__items {
+   display: flex;
+   flex-direction: row;
+   width: 100%;
+   height: 50px;
+   overflow: visible;
+}
+
+// 顶部边框
+.uvx-tabbar__content--border {
+   border-top-width: 1px;
+   border-top-style: solid;
+   border-top-color: var(--uvx-border);
+}
+
+// 无边框阴影
+.uvx-tabbar__content--shadow {
+   box-shadow: 0 0 20px var(--uvx-shadow);
+}
+
+// 固定到底部
+.uvx-tabbar__content--fixed {
+   position: fixed;
+   right: 0;
+   bottom: 0;
+   left: 0;
+}
+
+// 固定定位占位容器
+.uvx-tabbar__placeholder {
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   padding-bottom: 20rpx;
+}
+
+// 占位高度与主体导航项保持一致
+.uvx-tabbar__items-spacer {
+   width: 100%;
+   height: 50px;
+}
+</style>

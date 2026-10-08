@@ -1,0 +1,301 @@
+<template>
+	<view
+		class="uvx-cell"
+		:class="[uClass]"
+		:style="$uvx.style.parse(uStyle)"
+		:hover-stay-time="250"
+		:hover-class="hoverClass"
+		@click="clickHandler"
+	>
+		<view
+			class="uvx-cell__body"
+			:class="[center ? 'uvx-cell--center' : '', size == 'large' ? 'uvx-cell__body--large' : '']"
+			:style="$uvx.style.parse(cellStyle)"
+		>
+			<view class="uvx-cell__body__content">
+				<view class="uvx-cell__left-icon-wrap">
+					<slot name="icon">
+						<uvx-icon
+							v-if="icon"
+							:name="icon"
+							:u-style="iconStyle"
+							:size="size == 'large' ? 22 : 18"
+						>
+						</uvx-icon>
+					</slot>
+				</view>
+				<view class="uvx-cell__title">
+					<slot name="title">
+						<text
+							v-if="title"
+							class="uvx-cell__title-text"
+							:style="$uvx.style.parse(props.titleStyle)"
+							:class="[disabled ? 'uvx-cell--disabled' : '',
+                			size == 'large' ? 'uvx-cell__title-text--large' : '']"
+						>
+							{{ title }}
+						</text>
+					</slot>
+					<slot name="label">
+						<text
+							v-if="label"
+							class="uvx-cell__label"
+							:class="[disabled ? 'uvx-cell--disabled' : '', size == 'large' ? 'uvx-cell__label--large' : '']"
+						>
+							{{ label }}
+						</text>
+					</slot>
+				</view>
+			</view>
+			<slot name="value">
+				<text
+					v-if="isVal"
+					class="uvx-cell__value"
+					:class="[disabled ? 'uvx-cell--disabled' : '', size == 'large' ? 'uvx-cell__value--large' : '']"
+				>
+					{{ value }}
+				</text>
+			</slot>
+			<view class="uvx-cell__right-icon-wrap" :class="[`uvx-cell__right-icon-wrap--${arrowDirection}`]">
+				<slot name="right-icon">
+					<uvx-icon
+						v-if="isLink"
+						:name="rightIcon"
+						:u-style="rightIconStyle"
+						:size="size == 'large' ? 18 : 16"
+					>
+					</uvx-icon>
+				</slot>
+			</view>
+		</view>
+		<!-- 下边框 -->
+		<uvx-line v-if="border" />
+	</view>
+</template>
+
+<script setup lang="uts">
+/**
+ * uvx-cell 单元格
+ * @description 单元格组件,用于展示信息列表,一般用于个人中心、设置等页面
+ * @tutorial https://www.uvxui.cn/components/cell.html
+ * @property {String} title 标题
+ * @property {String} label 标题下方的描述信息
+ * @property {String} value 右侧的内容
+ * @property {String} icon 左侧图标名称
+ * @property {Boolean} disabled 是否禁用 (默认 false)
+ * @property {Boolean} border 是否显示下边框 (默认 true)
+ * @property {Boolean} center 内容是否垂直居中 (默认 true)
+ * @property {String} url 点击后跳转的URL地址
+ * @property {String} linkType 链接跳转方式 (默认 'navigateTo')
+ * @property {Boolean} clickable 是否开启点击反馈 (默认 false)
+ * @property {Boolean} isLink 是否展示右侧箭头 (默认 false)
+ * @property {Boolean} required 是否显示必填星号 (默认 false)
+ * @property {String} rightIcon 右侧图标箭头 (默认 'arrow-right')
+ * @property {String} arrowDirection 右侧箭头方向 (默认 'right')
+ * @property {String} iconStyle 左侧图标样式
+ * @property {String} rightIconStyle 右侧箭头图标样式
+ * @property {String} titleStyle 标题样式
+ * @property {String} size 单元格大小 (默认 'normal')
+ * @property {Boolean} stop 是否阻止事件冒泡 (默认 true)
+ * @property {String} name 标识符
+ * @property {String} cellStyle 单元格自定义样式
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * 
+ * @event {Function} click 点击单元格触发
+ */
+
+import { $uvx } from '../../index.uts';
+import type { Emits, Props } from './types/index.uts';
+
+defineOptions({ name: 'uvx-cell', options: { virtualHost: true }, externalClasses: ['u-class'] });
+
+/**
+ * 属性
+ */
+const props = withDefaults(defineProps<Props>(), {
+	title: '',
+	label: '',
+	value: '',
+	icon: '',
+	disabled: false,
+	border: true,
+	center: false,
+	url: '',
+	linkType: 'navigateTo',
+	clickable: false,
+	isLink: false,
+	required: false,
+	rightIcon: 'arrow-right',
+	arrowDirection: 'right',
+	iconStyle: "",
+	rightIconStyle: "",
+	titleStyle: "",
+	size: 'normal',
+	stop: true,
+	name: '',
+	cellStyle: "",
+	uStyle: "",
+	uClass: ''
+});
+
+/**
+ * 事件
+ */
+const emit = defineEmits<Emits>();
+
+/**
+ * 是否显示右侧内容
+ * @returns boolean
+ */
+const isVal = computed(() => {
+	return !$uvx.string.empty(props.value);
+});
+
+/**
+ * 手指按下时的类名
+ * @returns string
+ */
+const hoverClass = computed(() => {
+	if (props.disabled || (!props.clickable && !props.isLink)) {
+		return 'none';
+	}
+	return 'uvx-cell--clickable';
+});
+
+/**
+ * 点击事件
+ * @param e 点击事件
+ * @returns null
+ */
+const clickHandler = (e : Event) => {
+	if (props.disabled) return;
+	emit('click', props);
+	if (!$uvx.string.empty(props.url)) {
+		$uvx.route({
+			type: props.linkType,
+			url: props.url
+		});
+	}
+	// 是否阻止事件冒泡
+	if (props.stop) {
+		e.stopPropagation();
+	}
+};
+</script>
+
+<style lang="scss">
+.uvx-cell {
+	&__body {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		box-sizing: border-box;
+		padding: 10px 15px;
+
+		&__content {
+			display: flex;
+			flex: 1;
+			flex-direction: row;
+			align-items: center;
+		}
+
+		&--large {
+			padding: 13px 15px;
+		}
+	}
+
+	&__left-icon-wrap,
+	&__right-icon-wrap {
+		display: flex;
+		align-items: center;
+	}
+
+	&__left-icon-wrap {
+		margin-right: 4px;
+	}
+
+	&__right-icon-wrap {
+		margin-left: 4px;
+		transition: transform 0.3s;
+
+		&--up {
+			transform: rotate(-90deg);
+		}
+
+		&--down {
+			transform: rotate(90deg);
+		}
+
+		&--left {
+			transform: rotate(180deg);
+		}
+
+		&--right {
+			transform: rotate(0deg);
+		}
+	}
+
+	&__title {
+		flex: 1;
+
+		&-text {
+			font-size: 15px;
+			line-height: 22px;
+			color: var(--uvx-text-main);
+
+			&.uvx-cell--disabled {
+				color: var(--uvx-disabled);
+			}
+
+			&--large {
+				font-size: 16px;
+			}
+		}
+	}
+
+	&__label {
+		margin-top: 5px;
+		font-size: 12px;
+		line-height: 18px;
+		color: var(--uvx-text-tips);
+
+		&.uvx-cell--disabled {
+			color: var(--uvx-disabled);
+		}
+
+		&--large {
+			font-size: 14px;
+		}
+	}
+
+	&__value {
+		text-align: right;
+		font-size: 14px;
+		line-height: 24px;
+		color: var(--uvx-text-content);
+
+		&.uvx-cell--disabled {
+			color: var(--uvx-disabled);
+		}
+
+		&--large {
+			font-size: 15px;
+		}
+	}
+
+	&--clickable {
+		background-color: var(--uvx-hover);
+	}
+
+	&--disabled {
+		/* #ifdef WEB */
+		cursor: not-allowed;
+		/* #endif */
+	}
+	
+	&--center {
+		align-items: center;
+	}
+}
+</style>

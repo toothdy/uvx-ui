@@ -1,0 +1,11 @@
+export type Mode = "line" | "dot";
+
+export type Props = {
+   length: string | number;
+   current: string | number;
+   indicatorActiveColor: string;
+   indicatorInactiveColor: string;
+   indicatorMode: Mode;
+   uStyle: string;
+   uClass: string;
+};

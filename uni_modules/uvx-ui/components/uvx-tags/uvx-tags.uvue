@@ -1,0 +1,360 @@
+<template>
+   <!-- 标签主体 -->
+   <uvx-transition
+      mode="fade"
+      :show="show"
+   >
+      <view
+         class="uvx-tags-wrapper"
+         :class="[
+            closable ? 'uvx-tags-wrapper--close-top' : '',
+            closable ? 'uvx-tags-wrapper--' + size : '',
+         ]"
+      >
+         <view
+            class="uvx-tags"
+            :class="[tagClasses, uClass]"
+            :style="tagStyle"
+            @tap.stop="handleClick"
+         >
+            <!-- 前置图标 -->
+            <uvx-icon
+               v-if="icon != ''"
+               :name="icon"
+               :size="iconSize"
+               :color="iconColorValue"
+               u-class="uvx-tags__icon"
+            ></uvx-icon>
+            <!-- 标签文字 -->
+            <text
+               class="uvx-tags__text"
+               :class="textClasses"
+               :style="textStyle"
+            >{{ text }}</text>
+         </view>
+         <!-- 右上角关闭按钮需要脱离标签内容区域，避免遮挡文字 -->
+         <view
+            v-if="closable"
+            class="uvx-tags__close uvx-tags__close--right-top"
+            :class="closeClasses"
+            :style="closeStyle"
+            @tap.stop="handleClose"
+         >
+            <uvx-icon name="close" :size="closeSize" color="#ffffff"></uvx-icon>
+         </view>
+      </view>
+   </uvx-transition>
+</template>
+
+<script lang="uts" setup>
+/**
+ * uvx-tags 标签
+ * @description 用于标记内容，支持主题、尺寸、镂空和关闭操作。
+ * @property {String} type 主题类型
+ * @property {Boolean} disabled 是否禁用点击
+ * @property {String} size 尺寸
+ * @property {String} shape 形状
+ * @property {String | Number} text 标签文字
+ * @property {String | Number} name 点击事件携带的标识
+ * @property {Boolean} plain 是否镂空
+ * @property {Boolean} plainFill 镂空时是否填充浅色背景
+ * @property {Boolean} closable 是否显示关闭按钮
+ * @property {Boolean} show 是否显示标签
+ * @property {String} icon 图标名称
+ * @property {String} uStyle 自定义样式
+ * @property {String} uClass 自定义类名
+ * @event {Function} click 点击标签时触发
+ * @event {Function} close 点击关闭按钮时触发
+ */
+
+import { $uvx } from "../../index.uts";
+import type { Props, Emits } from "./types/index.uts";
+
+defineOptions({
+   name: "uvx-tags",
+   options: { virtualHost: true },
+   externalClasses: ["u-class"],
+});
+
+const props = withDefaults(defineProps<Props>(), {
+   type: "primary",
+   disabled: false,
+   size: "medium",
+   shape: "square",
+   text: "",
+   bgColor: "",
+   color: "",
+   borderColor: "",
+   name: "",
+   plainFill: false,
+   plain: false,
+   closable: false,
+   closeColor: "",
+   show: true,
+   icon: "",
+   iconColor: "",
+   cellChild: false,
+   uStyle: "",
+   uClass: "",
+});
+
+const emit = defineEmits<Emits>();
+
+/**
+ * 标签状态类
+ * @returns string[]
+ */
+const tagClasses = computed((): string[] => {
+   const classes: string[] = ["uvx-tags--" + props.size, "uvx-tags--" + props.shape];
+   if (props.plain) classes.push("uvx-tags--" + props.type + "--plain");
+   else classes.push("uvx-tags--" + props.type);
+   if (props.plain && props.plainFill) classes.push("uvx-tags--" + props.type + "--plain-fill");
+   if (props.disabled) classes.push("uvx-tags--disabled");
+   return classes;
+});
+
+/**
+ * 标签文字状态类
+ * @returns string[]
+ */
+const textClasses = computed((): string[] => {
+   const classes: string[] = ["uvx-tags__text--" + props.size];
+   classes.push("uvx-tags__text--" + props.type + (props.plain ? "--plain" : ""));
+   return classes;
+});
+
+/**
+ * 关闭按钮状态类
+ * @returns string[]
+ */
+const closeClasses = computed((): string[] => {
+   return ["uvx-tags__close--" + props.size];
+});
+
+/**
+ * 标签动态样式
+ * @returns UTSJSONObject
+ */
+const tagStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.bgColor)) style.set("background-color", props.bgColor);
+   if (!$uvx.string.empty(props.borderColor)) style.set("border-color", props.borderColor);
+   if (!$uvx.string.empty(props.uStyle)) return $uvx.object.deepMerge(style, $uvx.style.parse(props.uStyle));
+   return style;
+});
+
+/**
+ * 标签文字动态样式
+ * @returns UTSJSONObject
+ */
+const textStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.color)) style.set("color", props.color);
+   return style;
+});
+
+/**
+ * 关闭按钮动态样式
+ * @returns UTSJSONObject
+ */
+const closeStyle = computed((): UTSJSONObject => {
+   const style: UTSJSONObject = {};
+   if (!$uvx.string.empty(props.closeColor)) style.set("background-color", props.closeColor);
+   const offset = props.size == "large" ? "7.5px" : props.size == "mini" ? "5.5px" : "6.5px";
+   style.set("top", offset);
+   style.set("right", offset);
+   return style;
+});
+
+/**
+ * 标签图标颜色
+ * @returns string
+ */
+const iconColorValue = computed((): string => {
+   if (!$uvx.string.empty(props.iconColor)) return props.iconColor;
+   if (props.plain) return "";
+   return "#ffffff";
+});
+
+/**
+ * 标签图标尺寸
+ * @returns number
+ */
+const iconSize = computed((): number => {
+   if (props.size == "large") return 17;
+   if (props.size == "mini") return 13;
+   return 15;
+});
+
+/**
+ * 关闭图标尺寸
+ * @returns number
+ */
+const closeSize = computed((): number => {
+   if (props.size == "large") return 11;
+   if (props.size == "mini") return 8;
+   return 9;
+});
+
+/**
+ * 处理标签点击
+ * @returns null
+ */
+const handleClick = (): void => {
+   if (!props.disabled) emit("click", props.name);
+};
+
+/**
+ * 处理关闭点击
+ * @returns null
+ */
+const handleClose = (): void => {
+   if (!props.disabled) emit("close", props.name);
+};
+</script>
+
+<style lang="scss">
+// 标签包装器，承载右上角关闭按钮的布局占位
+.uvx-tags-wrapper {
+   position: relative;
+}
+
+// 右上角关闭按钮的布局占位，避免依赖父节点允许溢出
+.uvx-tags-wrapper--close-top {
+   padding-top: 13px;
+   padding-right: 13px;
+}
+
+.uvx-tags-wrapper--mini {
+   padding-top: 11px;
+   padding-right: 11px;
+}
+
+.uvx-tags-wrapper--medium {
+   padding-top: 13px;
+   padding-right: 13px;
+}
+
+.uvx-tags-wrapper--large {
+   padding-top: 15px;
+   padding-right: 15px;
+}
+
+// 标签主体
+.uvx-tags {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   box-sizing: border-box;
+   border-style: solid;
+}
+
+/* #ifdef APP-ANDROID */
+// Android 为边框预留绘制空间
+.uvx-tags {
+   margin: 1px;
+}
+/* #endif */
+
+// 标签图标
+.uvx-tags__icon {
+   margin-right: 4px;
+}
+
+// 标签文字
+.uvx-tags__text {
+   line-height: 1.2em;
+   text-align: center;
+}
+
+// 关闭按钮
+.uvx-tags__close {
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+   justify-content: center;
+   border-radius: 100px;
+   background-color: var(--uvx-error);
+}
+
+// 右上角关闭按钮
+.uvx-tags__close--right-top {
+   position: absolute;
+   top: 0;
+   right: 0;
+   z-index: 2;
+}
+
+// 迷你尺寸
+.uvx-tags--mini {
+   height: 22px;
+   padding: 0 5px;
+   border-width: 1px;
+}
+
+// 普通尺寸
+.uvx-tags--medium {
+   height: 26px;
+   padding: 0 10px;
+   border-width: 1px;
+}
+
+// 大尺寸
+.uvx-tags--large {
+   height: 32px;
+   padding: 0 15px;
+   border-width: 1px;
+}
+
+// 尺寸文字
+.uvx-tags__text--mini { font-size: 12px; }
+.uvx-tags__text--medium { font-size: 13px; }
+.uvx-tags__text--large { font-size: 15px; }
+
+// 形状
+.uvx-tags--square { border-radius: 3px; }
+.uvx-tags--circle { border-radius: 100px; }
+
+// 关闭按钮尺寸
+.uvx-tags__close--mini { width: 11px; height: 11px; }
+.uvx-tags__close--medium { width: 13px; height: 13px; }
+.uvx-tags__close--large { width: 15px; height: 15px; }
+
+// 禁用状态
+.uvx-tags--disabled { opacity: 0.5; }
+
+// 主题实心样式
+.uvx-tags--primary { background-color: var(--uvx-primary); border-color: var(--uvx-primary); }
+.uvx-tags--success { background-color: var(--uvx-success); border-color: var(--uvx-success); }
+.uvx-tags--warning { background-color: var(--uvx-warning); border-color: var(--uvx-warning); }
+.uvx-tags--error { background-color: var(--uvx-error); border-color: var(--uvx-error); }
+.uvx-tags--info { background-color: var(--uvx-info); border-color: var(--uvx-info); }
+
+// 主题镂空样式
+.uvx-tags--primary--plain { border-color: var(--uvx-primary); background-color: transparent; }
+.uvx-tags--success--plain { border-color: var(--uvx-success); background-color: transparent; }
+.uvx-tags--warning--plain { border-color: var(--uvx-warning); background-color: transparent; }
+.uvx-tags--error--plain { border-color: var(--uvx-error); background-color: transparent; }
+.uvx-tags--info--plain { border-color: var(--uvx-info); background-color: transparent; }
+
+// 镂空填充样式
+.uvx-tags--primary--plain-fill { background-color: $uvx-primary-light; }
+.uvx-tags--success--plain-fill { background-color: $uvx-success-light; }
+.uvx-tags--warning--plain-fill { background-color: $uvx-warning-light; }
+.uvx-tags--error--plain-fill { background-color: $uvx-error-light; }
+.uvx-tags--info--plain-fill { background-color: $uvx-info-light; }
+
+// 实心文字颜色
+.uvx-tags__text--primary { color: #ffffff; }
+.uvx-tags__text--success { color: #ffffff; }
+.uvx-tags__text--warning { color: #ffffff; }
+.uvx-tags__text--error { color: #ffffff; }
+.uvx-tags__text--info { color: #ffffff; }
+
+// 镂空文字颜色
+.uvx-tags__text--primary--plain { color: var(--uvx-primary); }
+.uvx-tags__text--success--plain { color: var(--uvx-success); }
+.uvx-tags__text--warning--plain { color: var(--uvx-warning); }
+.uvx-tags__text--error--plain { color: var(--uvx-error); }
+.uvx-tags__text--info--plain { color: var(--uvx-info); }
+</style>
