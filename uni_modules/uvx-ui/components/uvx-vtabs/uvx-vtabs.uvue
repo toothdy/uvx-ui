@@ -744,6 +744,13 @@ const handleBarScroll = (event: UniScrollEvent): void => {
  */
 const handleContentScroll = (event: UniScrollEvent): void => {
    contentScrollPosition.value = Math.max(0, event.detail.scrollTop);
+   // Web 端不支持 scrollend，程序滚动完成后的 scroll 事件负责解除锁定
+   // #ifdef WEB
+   if (programmaticIndex.value != -1) {
+      programmaticIndex.value = -1;
+      return;
+   }
+   // #endif
    if (programmaticIndex.value != -1) return;
    if (props.chain) updateActiveFromContent(contentScrollPosition.value);
 };
